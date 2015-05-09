@@ -115,6 +115,6 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
                                                 sprintf "*%d\r\n%s" vals.Length allValStr |> StrToBytes
 
     | FredisCmd.Ping                        ->  pongBytes
-
+    | FredisCmd.GetRange (_, _)             ->  errorBytes
 
 
