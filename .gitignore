@@ -41,3 +41,18 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+
+
+*.ReSharper.user
+_ReSharper.*
+*.suo
+bin
+obj
+*moles*
+*Dot*
+~*
+*.user
+Release/*
+packages/*
+
