@@ -1,12 +1,12 @@
 ﻿
 module CmdCommon
 
-open RESPTypes
+open FredisTypes
 open Utils
 
 // temporarily using ConcurrentDictionary in early development, just to have something that works from the multiple .net threadpool threads used by the async workflows + IOCP
 // will experiment with other data structures at a later stage
-type HashMap = System.Collections.Concurrent.ConcurrentDictionary<string,Bytes>
+type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
 
 
 

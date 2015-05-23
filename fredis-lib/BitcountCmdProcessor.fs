@@ -1,7 +1,7 @@
 ﻿
 module BitcountCmdProcessor
 
-open RESPTypes
+open FredisTypes
 open CmdCommon
 open Utils
 

@@ -1,7 +1,7 @@
 ﻿
 module BitposCmdProcessor
 
-open RESPTypes
+open FredisTypes
 open CmdCommon
 open Utils
 

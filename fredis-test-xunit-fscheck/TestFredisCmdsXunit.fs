@@ -7,7 +7,7 @@ open FsCheck
 open FsCheck.Xunit
 
 open CmdCommon
-open RESPTypes
+open FredisTypes
 
 
 
@@ -38,7 +38,7 @@ type PositiveInt32SmallRange =
 //[<Property(Arbitrary = [| typeof<Offsets> |], MaxTest = 9999, Verbose=true, QuietOnSuccess = true)>]
 [<Property(Arbitrary = [| typeof<PositiveInt32> |])>]
 let ``SETBIT, array len created is never more than 8 longer than the bit offset`` (offset:int) =
-    let key = "key"
+    let key = Key "key"
     let value  = true
     let hashMap = HashMap()
     let cmd = FredisCmd.SetBit (key, offset, value)
@@ -156,7 +156,7 @@ let ``FindFirstBitIndex false equals reference implementation`` (bs:byte array) 
 
 [<Property( MaxTest = 9999, Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
 let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
-    let key = "key"
+    let key = Key "key"
     let value  = true
     let hashMap = HashMap()
 
@@ -172,7 +172,7 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
 
 [<Property( MaxTest = 99999, Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
 let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:int) =
-    let key = "key"
+    let key = Key "key"
     let hashMap = HashMap()
 
     let arraySizeToCreate = (bitOffset / 8) * 2 + 1 // big enough to contain the offset
@@ -195,7 +195,7 @@ let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one
 
 [<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |])>]
 let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:int) =
-    let key = "key"
+    let key = Key "key"
     let value  = true
     let hashMap = HashMap()
     let setCmd = FredisCmd.SetBit (key, offset, value)
@@ -214,22 +214,24 @@ let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:int) =
 [<Property>]
 let ``INCRBY when key does not exist, value equals increment `` (increment:int64) =
     let hashMap = HashMap()
-    let cmd = FredisCmd.IncrBy ("key", increment)
+    let key = Key "key"
+    let cmd = FredisCmd.IncrBy (key, increment)
     let _ = FredisCmdProcessor.Execute hashMap cmd
     let expected = int64ToBytes increment
-    expected = hashMap.["key"]
+    expected = hashMap.[key]
 
 
 
 [<Property>]
 let ``INCRBY when key does exist, value equals old + new `` (oldValue:int64) (increment:int64) =
     let hashMap = HashMap()
+    let key = Key "key"
     let bsOldValue = int64ToBytes oldValue
-    let setCmd = FredisCmd.Set ("key", bsOldValue)
+    let setCmd = FredisCmd.Set (key, bsOldValue)
     let _ = FredisCmdProcessor.Execute hashMap setCmd
-    let incrCmd = FredisCmd.IncrBy ("key", increment)
+    let incrCmd = FredisCmd.IncrBy (key, increment)
     let _ = FredisCmdProcessor.Execute hashMap incrCmd
-    let newValue = BytesToInt64 hashMap.["key"]
+    let newValue = BytesToInt64 hashMap.[key]
     (oldValue+increment) = newValue
 
 

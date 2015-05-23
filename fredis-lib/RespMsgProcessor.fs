@@ -2,7 +2,7 @@
 module RespMsgProcessor
 
 open System.IO
-open RESPTypes
+open FredisTypes
 open Utils
 
 

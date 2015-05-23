@@ -4,9 +4,12 @@ module BitopCmdProcessor
 open System.Collections
 
 open FSharpx.Option
-open RESPTypes
+open FredisTypes
 open Utils
 open CmdCommon
+
+
+
 
 
 
@@ -16,14 +19,14 @@ let Parse (msgArr:RESPMsg []) =
 
     // must be at least BITOP OP DESTKEY SRCKEY1 in msgArr
     match arrLen with 
-    | n when n > 3  ->  let opStr   = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
-                        let destKey = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+    | n when n > 3  ->  let operationStr   = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                        let destKey = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToKey
                         
                         // three 'tails' to remove the cmd and bitop op, and destKey (#### f# 4.0 might add 'skip' to List)
-                        let srcKeys = msgArr |> Array.toList |>  List.tail |> List.tail |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToStr
+                        let srcKeys = msgArr |> Array.toList |>  List.tail |> List.tail |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToKey
 
                         // there must be at least one srcKey as arrLen > 3, NOT requires exactly one src key
-                        match opStr.ToUpper(), srcKeys.Length with
+                        match operationStr.ToUpper(), srcKeys.Length with
                         | "AND", _  ->    let op = BitOpInner.AND (destKey, srcKeys)
                                           Choice1Of2 (FredisCmd.BitOp op)
                         | "OR",  _  ->    let op = BitOpInner.OR (destKey, srcKeys) 
@@ -41,7 +44,7 @@ let Parse (msgArr:RESPMsg []) =
 
     
 
-let private GetValOrEmpty (hashMap:HashMap) (key:string) : Bytes = 
+let private GetValOrEmpty (hashMap:HashMap) (key:Key) : Bytes = 
     match hashMap.ContainsKey(key) with
     | true  -> hashMap.[key]
     | false -> [||]
@@ -79,7 +82,7 @@ let private ByteArrayXor = ByteArrayBinOpAdaptor (^^^)
 
 
 
-let private applyBitOp (destKey:string) (srcKeys:string list) (hashMap:HashMap) (byteArrayBitOp:Bytes->Bytes->Bytes) = 
+let private applyBitOp (destKey:Key) (srcKeys:Key list) (hashMap:HashMap) (byteArrayBitOp:Bytes->Bytes->Bytes) = 
     let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.Keys.Contains(srcKey))
     match anySrcKeyExists with
     | true ->

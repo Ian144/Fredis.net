@@ -2,7 +2,7 @@
 module RespUtils
 
 
-open RESPTypes
+open FredisTypes
 
 let errorBytes  = Utils.StrToBytes "-Error\r\n"
 

@@ -4,7 +4,7 @@ module FredisCmdParser
 open FSharpx.Option
 open FSharpx.Choice
 
-open RESPTypes
+open FredisTypes
 open Utils
 
 
@@ -18,7 +18,7 @@ open Utils
 let GetMSetParamPairs (msgArr:RESPMsg []) = 
     let msetParams = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload // throw away the first element, which will be the string MSET
     let keys, vals = List.foldBack (fun x (l,r) -> x::r, l) msetParams ([],[]) // note the (l,r) -> (r,l) switch see: http://stackoverflow.com/questions/7942630/splitting-a-list-of-items-into-two-lists-of-odd-and-even-indexed-items
-    List.zip keys vals |> List.map (fun (rawKey, vv) -> (BytesToStr rawKey), vv )
+    List.zip keys vals |> List.map (fun (rawKey, vv) -> (BytesToKey rawKey), vv )
 
 
 
@@ -27,12 +27,13 @@ let Parse (msgArr:RESPMsg []) =
     let msgStr      = BytesToStr(msgBytes)
     let arrLen      = Array.length msgArr
 
+//    printfn "%A - %s" msgArr msgStr
 
     //#### consider replacing this ever growing match statement with a map of string to function
     match msgStr.ToUpper() with
     | "APPEND" -> 
         match arrLen with
-        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let vv  = RespUtils.PartialGetMsgPayload msgArr.[2]
                     Choice1Of2 (FredisCmd.Append (kk, vv))
         | _     ->  Choice2Of2 ErrorMsgs.numArgsAppend
@@ -40,7 +41,7 @@ let Parse (msgArr:RESPMsg []) =
     | "BITCOUNT" -> 
         // up to 3 params - BITCOUNT key [startIndx endIndx],  the last two optional, but must be present together
         match arrLen with
-        | 4 ->  let key         = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 4 ->  let key         = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                 let sLIdx       = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                 let sUIdx       = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                 let optParams   = maybe{    let! lIndx    = FSharpx.FSharpOption.ParseInt sLIdx
@@ -50,7 +51,7 @@ let Parse (msgArr:RESPMsg []) =
                 match optParams with
                 | Some prms   ->  Choice1Of2 (FredisCmd.Bitcount prms)
                 | None        ->  Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange
-        | 2 ->  let key = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 2 ->  let key = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                 Choice1Of2 (FredisCmd.Bitcount (key, None))
         | _ ->  Choice2Of2 ErrorMsgs.numArgsGet
     
@@ -60,7 +61,7 @@ let Parse (msgArr:RESPMsg []) =
             // BITPOS key bit startByte endByte
             match arrLen with
             | 5 ->  
-                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let strBit = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let strStartByte = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                             let strEndByte = RespUtils.PartialGetMsgPayload msgArr.[4] |> BytesToStr
@@ -72,7 +73,7 @@ let Parse (msgArr:RESPMsg []) =
 
             // BITPOS key bit startByte 
             | 4 ->  
-                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let strBit = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let! bit = Utils.ParseChoiceBoolFromStr ErrorMsgs.badBitArgBitpos strBit
                             let strStartByte = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
@@ -82,7 +83,7 @@ let Parse (msgArr:RESPMsg []) =
 
             // BITPOS key bit
             | 3 ->  
-                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                    choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let strBit = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let! bit = Utils.ParseChoiceBoolFromStr ErrorMsgs.badBitArgBitpos strBit
                             return FredisCmd.Bitpos (key, bit, ArrayRange.All) }
@@ -95,21 +96,21 @@ let Parse (msgArr:RESPMsg []) =
     | "DECR" ->
         // should be "DECR key" only,so arrLen must be 2
         match arrLen with
-        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     Choice1Of2 (FredisCmd.Decr kk)
         | _     ->  Choice2Of2 ErrorMsgs.numArgsDecr
 
     | "INCR" ->
         // should be "INCR key" only,so arrLen must be 2
         match arrLen with
-        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     Choice1Of2 (FredisCmd.Incr kk)
         | _     ->  Choice2Of2 ErrorMsgs.numArgsIncr
 
     | "DECRBY" ->
         // should be "DECRBY key num" only,so arrLen must be 3
         match arrLen with
-        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let optCmd = RespUtils.PartialGetMsgPayload msgArr.[2] 
                                     |> BytesToStr
                                     |> FSharpx.FSharpOption.ParseInt64 
@@ -123,7 +124,7 @@ let Parse (msgArr:RESPMsg []) =
     | "INCRBY" ->
         // should be "INCRBY key" only,so arrLen must be 3
         match arrLen with
-        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let optCmd = RespUtils.PartialGetMsgPayload msgArr.[2] 
                                     |> BytesToStr
                                     |> FSharpx.FSharpOption.ParseInt64 
@@ -137,14 +138,14 @@ let Parse (msgArr:RESPMsg []) =
     
     | "SET" -> 
         match arrLen with
-        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let vv  = RespUtils.PartialGetMsgPayload msgArr.[2]
                     Choice1Of2 (FredisCmd.Set (kk, vv))
         | _     ->  Choice2Of2 ErrorMsgs.numArgsSet
 
     | "GETSET" -> 
         match arrLen with
-        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let vv  = RespUtils.PartialGetMsgPayload msgArr.[2]
                     Choice1Of2 (FredisCmd.GetSet (kk, vv))
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetSet
@@ -154,7 +155,7 @@ let Parse (msgArr:RESPMsg []) =
     | "SETBIT" -> 
         match arrLen with
         | 4     ->  choose{
-                            let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                            let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let  offsetStr = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let! offset = Utils.ParseChoiceInteger ErrorMsgs.bitOffsetNotIntegerOrOutOfRange offsetStr 
                             let  bitValStr = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
@@ -168,7 +169,7 @@ let Parse (msgArr:RESPMsg []) =
     | "GETBIT" -> 
         match arrLen with
         | 3     ->  choose{
-                            let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
+                            let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let  offsetStr = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let! offset = Utils.ParseChoiceInteger ErrorMsgs.bitOffsetNotIntegerOrOutOfRange offsetStr 
                             return FredisCmd.GetBit (key, offset)
@@ -185,19 +186,19 @@ let Parse (msgArr:RESPMsg []) =
 
     | "GET" -> 
         match arrLen with
-        | 2     ->  let kk = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
-                    Choice1Of2 (FredisCmd.Get kk)
+        | 2     ->  let kk = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
+                    Choice1Of2 (FredisCmd.Get kk )
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGet
 
     | "STRLEN" -> 
         match arrLen with
-        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1]  |> BytesToStr
+        | 2     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1]  |> BytesToKey
                     Choice1Of2 (FredisCmd.Strlen kk)
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGet
     
     | "MGET" -> 
         match (arrLen > 1) with
-        | true     ->   let keys = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToStr
+        | true     ->   let keys = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToKey
                         Choice1Of2 (FredisCmd.MGet keys)
         | false    ->   Choice2Of2 ErrorMsgs.numArgsMGet
 

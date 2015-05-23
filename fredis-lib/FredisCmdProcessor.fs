@@ -1,7 +1,7 @@
 ﻿
 module FredisCmdProcessor
 
-open RESPTypes
+open FredisTypes
 open Utils
 
 open CmdCommon

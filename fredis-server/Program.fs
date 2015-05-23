@@ -18,7 +18,6 @@ let hashMap = HashMap()
 
 let ClientListenerLoop (client:TcpClient) =
     printfn "new connection"
-    
 
     let asyncProcessClientRequests =
         //let mutable (loopAgain:bool) = true
@@ -75,7 +74,7 @@ let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
 listener.Start()
 ConnectionListenerLoop listener
-printfn "fredis startup complete\nawaiting incoming connection"
+printfn "fredis startup complete\nawaiting incoming connection requests"
 System.Console.ReadKey() |> ignore
 //asyncConnectionListener.Cancel //#### shutdown all the clients, how? cancellationToken?
 listener.Stop()

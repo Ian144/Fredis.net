@@ -51,7 +51,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="RespTypes.fs" />
+    <Compile Include="FredisTypes.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="RedisErrorMsgs.fs" />
     <Compile Include="RespMsgProcessor.fs" />
