@@ -12,7 +12,8 @@ let numArgsAppend                  = System.Text.Encoding.UTF8.GetBytes("-ERR wr
 let numArgsBitcount                = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'bitcount' command\r\n")
 let numArgsBitop                   = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'bitop' command\r\n")
 let numArgsBitpos                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'bitpos' command\r\n")
-let badBitArgBitpos                   = System.Text.Encoding.UTF8.GetBytes("-ERR The bit argument must be 1 or 0\r\n");
+let numArgsGetRange                = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'getrange' command\r\n")
+let badBitArgBitpos                = System.Text.Encoding.UTF8.GetBytes("-ERR The bit argument must be 1 or 0\r\n");
 let numKeysBitopNot                = System.Text.Encoding.UTF8.GetBytes("-ERR BITOP NOT must be called with a single source key\r\n")
 
 let numArgsDecr                    = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'decr' command\r\n")

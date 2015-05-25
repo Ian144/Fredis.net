@@ -528,6 +528,35 @@ let StrToBulkStr = Utils.StrToBytes >> RESPMsg.BulkString
 
 
 [<TestFixture>]
+type ``Parse GETRANGE`` () =
+    let getRange    = "GETRANGE"  |> StrToBulkStr
+    let key         = "key"       |> StrToBulkStr
+    let kkey        = Key "key"
+    let startIdx    = "0"         |> StrToBulkStr
+    let endIdx      = "2"         |> StrToBulkStr
+
+    [<Test>]
+    member this.``parse GETRANGE fails when no params supplied`` () = 
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange|] @>
+
+    [<Test>]
+    member this.``parse GETRANGE key fails when no 'start end' params supplied`` () = 
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key|] @>
+
+    [<Test>]
+    member this.``parse GETRANGE key start fails when no 'end' param supplied`` () = 
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key; startIdx|] @>
+
+    [<Test>]
+    member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
+        let range = ArrayRange.LowerUpper (0,2)
+        let expected = FredisCmd.GetRange (kkey, range)
+        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
+
+
+
+
+[<TestFixture>]
 type ``Parse BITPOS`` () =
     let bitPos      = "BITPOS"  |> StrToBulkStr
     let key         = "key"     |> StrToBulkStr

@@ -151,6 +151,22 @@ let Parse (msgArr:RESPMsg []) =
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetSet
 
 
+    | "GETRANGE" ->  // getrange key start end - no params are optional
+        match arrLen with
+        | 4     ->  choose{
+                            let  key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
+                            let  startIdxStr = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+                            let! startIdx = Utils.ParseChoiceInteger ErrorMsgs.bitOffsetNotIntegerOrOutOfRange startIdxStr 
+                            let  endIdxStr = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
+                            let! endIdx = Utils.ParseChoiceInteger ErrorMsgs.bitNotIntegerOrOutOfRange endIdxStr
+                            let range = ArrayRange.LowerUpper (startIdx, endIdx)
+                            return FredisCmd.GetRange (key, range)
+                        }
+
+        | _     ->  Choice2Of2 ErrorMsgs.numArgsGetRange
+
+
+
 
     | "SETBIT" -> 
         match arrLen with

@@ -107,7 +107,7 @@ let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx
     | false -> -1
 
 
-// this test fails, redis returns 12, fredis returns 8 due to byte endianess
+// this test fails, 'OS X' redis returns 12, fredis returns 8 due to byte endianess
 //[<Fact>]
 //let ``Bitpos FindFirstBitIndex returns 12`` () =
 //    let bs = Array.zeroCreate<byte>(3)
@@ -143,7 +143,6 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
     let key = Key "key"
     let value  = true
     let hashMap = HashMap()
-
     let setCmd = FredisCmd.SetBit (key, offset, value)
     FredisCmdProcessor.Execute hashMap setCmd |> ignore
 
