@@ -9,7 +9,7 @@ open FsCheck.Xunit
 open CmdCommon
 open FredisTypes
 
-
+open Swensen.Unquote
 
 
 
@@ -107,33 +107,16 @@ let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx
     | false -> -1
 
 
+// this test fails, redis returns 12, fredis returns 8 due to byte endianess
+//[<Fact>]
+//let ``Bitpos FindFirstBitIndex returns 12`` () =
+//    let bs = Array.zeroCreate<byte>(3)
+//    bs.[0] <- 0xFFuy
+//    bs.[1] <- 0xF0uy
+//    let uIndx = bs.GetUpperBound(0)
+//    <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
 
-
-
-
-let trueBitPosLookup  = [|-1; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 6; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 7; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 6; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0|]
-let falseBitPosLookup = [|0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 6; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 7; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 6; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 5; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; 4; 0; 1; 0; 2; 0; 1; 0; 3; 0; 1; 0; 2; 0; 1; 0; -1|]
-
-
-let private FindFirstBitIndex (searchVal:bool) (bs:byte []) : int =
-    let bitPosLookup, funcx = 
-            match searchVal with
-            | true  -> trueBitPosLookup, (fun bb -> bb <> 0uy)
-            | false -> falseBitPosLookup, (fun bb -> bb <> 255uy)
-
-    let cFirstNonZeroByteIndex = FSharpx.Choice.protect ( Array.findIndex funcx )
-    match cFirstNonZeroByteIndex bs with
-    | Choice2Of2 _          -> -1   // indicating there are no bits of the value being searched for
-    | Choice1Of2 byteIdx    ->  let firstFoundByte = bs.[byteIdx] |> int
-                                byteIdx * 8 + bitPosLookup.[firstFoundByte]
-
-
-
-
-
-
-
-
+    
 
 //[<Property(Verbose = true, MaxTest = 9999)>]
 [<Property>]
@@ -143,18 +126,19 @@ let ``BitcountCmdProcessor.CountBitsInArrayRange agrees with alternate count met
 
 
 [<Property>]
-let ``FindFirstBitIndex true equals reference implementation`` (bs:byte array) =
-    FindFirstBitIndex true bs =  findFirstSetBitposReference true bs
+let ``BitposCmdProcessor.FindFirstBitIndex true equals reference implementation`` (bs:byte array) =
+    let uIndx = bs.GetUpperBound(0)
+    BitposCmdProcessor.FindFirstBitIndex 0 uIndx true bs =  findFirstSetBitposReference true bs
 
 [<Property>]
-let ``FindFirstBitIndex false equals reference implementation`` (bs:byte array) =
-    FindFirstBitIndex false bs =  findFirstSetBitposReference false bs
+let ``BitposCmdProcessor.FindFirstBitIndex false equals reference implementation`` (bs:byte array) =
+    let uIndx = bs.GetUpperBound(0)    
+    BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs =  findFirstSetBitposReference false bs
 
 
 
-// what should BITPOS return when no bits are set? try in redis
 
-[<Property( MaxTest = 9999, Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
+[<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
 let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
     let key = Key "key"
     let value  = true
@@ -170,7 +154,7 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
 
 
 
-[<Property( MaxTest = 99999, Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
+[<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
 let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:int) =
     let key = Key "key"
     let hashMap = HashMap()

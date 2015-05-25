@@ -86,7 +86,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="Unquote">
-      <HintPath>..\packages\Unquote.2.2.2\lib\net40\Unquote.dll</HintPath>
+      <HintPath>..\packages\Unquote.3.0.0\lib\net45\Unquote.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
