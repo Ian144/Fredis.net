@@ -28,7 +28,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>C:\Users\Ian Spratt\Documents\GitHub\IanSpratt\FsCheck\packages\xunit.runners.1.9.2\tools\xunit.gui.clr4.exe</StartProgram>
     <StartWorkingDirectory>C:\Users\Ian Spratt\Documents\GitHubIan144\Fredis.net\fredis-test-xunit-fscheck\bin\Debug\</StartWorkingDirectory>
-    <StartArguments>\noshadow fredis_test_xunit_fscheck.dll</StartArguments>
+    <StartArguments>fredis_test_xunit_fscheck.dll</StartArguments>
     <OtherFlags>--warnon:1182</OtherFlags>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">

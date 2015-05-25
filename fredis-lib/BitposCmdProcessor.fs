@@ -33,20 +33,22 @@ let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
             | (_, false)                                ->  -1L   // key not in map, so bitval is not found
                                                                     
             | (ArrayRange.All, true)                    ->  let bs = hashMap.[key]       
-                                                            let ii = FindFirstBitIndex 0 (bs.Length-1) bitVal bs
-                                                            int64 ii //#### is this conversion really neccessary
+                                                            (FindFirstBitIndex 0 (bs.Length-1) bitVal bs) |> int64
 
             | (ArrayRange.Lower ll, true)               ->  let bs = hashMap.[key] 
                                                             let arrayUBound = bs.Length - 1
-                                                            let uu = arrayUBound
-                                                            let lower2, upper2 = CmdCommon.RationaliseArrayBounds ll uu arrayUBound
-                                                            let ii = FindFirstBitIndex lower2 upper2 bitVal bs
-                                                            int64 ii //#### is this conversion really neccessary
+                                                            let uu = arrayUBound        
+                                                            let optBounds = CmdCommon.RationaliseArrayBounds ll uu arrayUBound //#### consider a function to only rationalise the lower bound here
+                                                            match optBounds with
+                                                            | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary
+                                                            | None                  -> -1L
+
 
             | (ArrayRange.LowerUpper (ll,uu) , true)    ->  let bs = hashMap.[key] 
                                                             let arrayUBound = bs.Length - 1
-                                                            let lower2, upper2 = CmdCommon.RationaliseArrayBounds ll uu arrayUBound
-                                                            let ii = FindFirstBitIndex lower2 upper2 bitVal bs
-                                                            int64 ii //#### is this conversion really neccessary
+                                                            let optBounds = CmdCommon.RationaliseArrayBounds ll uu arrayUBound 
+                                                            match optBounds with
+                                                            | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary
+                                                            | None                  -> -1L
 
     MakeRespIntegerArr numSetBits

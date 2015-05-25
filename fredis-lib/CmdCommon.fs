@@ -9,12 +9,12 @@ open Utils
 type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
 
 
-
 let nilByteStr  = "$-1\r\n"
 let errorBytes  = Utils.StrToBytes "-Error\r\n"
 let pongBytes   = Utils.StrToBytes "+PONG\r\n"
 let okBytes     = Utils.StrToBytes "+OK\r\n"
 let nilBytes    = Utils.StrToBytes nilByteStr
+let emptyBytes  = Utils.StrToBytes "+\r\n" 
 
 
 // used by DECR, INCR, DECRBY and INCRBY
@@ -35,26 +35,48 @@ let IncrementBy (hashMap:HashMap) kk increment =
     
 
 
-// convert negative indices based on array upper bound to be zero based
-// constrain lower and upper bounds to array dimensions
-// see redis GetRange cmd documenation
-let RationaliseArrayBounds (lower:int) (upper:int) (arrayUBound) = 
+    
+// converts negative offsets to positive, see http://redis.io/commands/getrange
+// ensures positive offsets are within array bounds and that lower <= upper
+// for zero based arrays only
+let RationaliseArrayBounds (ll:int) (uu:int) (uBound:int) = 
 
-    let convertToZeroBasedIndex = function
+    let convertLowerToZeroBasedIndex idx =
+        let idx1 = 
+            match idx with
             | n when n >= 0 -> n
-            | n             -> arrayUBound + n  // if n is negative then it is a downwards offset from the array's upper bound
 
-    let constrainToArrayBounds =
-                    function
-                    |   n when n < 0            -> 0
-                    |   n when n > arrayUBound  -> arrayUBound
-                    |   n                       -> n 
+            // if n is negative then it is a downwards offset from the array's upper bound
+            // -1 refers to the last element, hence the +1
+            | n             ->  let zeroBasedIdx = uBound + n + 1   // convert to +ve
+                                if (zeroBasedIdx < 0) then 0        // constrain to lower array bound
+                                else zeroBasedIdx
+        if (idx1 <= uBound) then 
+            Some idx1
+        else
+            None // having a lower bound higher than uBound means nothing in the array is referenced
 
-    let lower1 = convertToZeroBasedIndex lower
-    let upper1 = convertToZeroBasedIndex upper
+    let convertUpperToZeroBasedIndex idx =
+        let idx1 = 
+            match idx with
+            | n when n >= 0 -> n
 
-    let lower2 = constrainToArrayBounds lower1
-    let upper2 = constrainToArrayBounds upper1
+            // if n is negative then it is a downwards offset from the array's upper bound
+            // -1 refers to the last element, hence the +1
+            | n             ->  let zeroBasedIdx = uBound + n + 1           // convert to +vw
+                                if (zeroBasedIdx > uBound) then uBound      // constrain to upper array bound
+                                else zeroBasedIdx
+        if (idx1 >= 0) then
+            Some idx1
+        else
+            None      // having an upperIndex less that zero means nothing in the array is referenced
 
-    //#### lower2 can still be higher than upper2, should this be handled by the callers of this function?
-    lower2, upper2
+    let optlower1 = convertLowerToZeroBasedIndex ll
+    let optUpper1 = convertUpperToZeroBasedIndex uu   
+
+    match optlower1, optUpper1 with
+    | None, _ | _, None     ->  None
+    | Some ll1, Some uu1    ->  if (ll1 <= uu1) then    // lower and upper indices are ok, but lower must be <= upper for both to be valid together
+                                    Some (ll1, uu1)
+                                else
+                                    None

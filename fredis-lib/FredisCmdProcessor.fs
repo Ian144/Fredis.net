@@ -22,7 +22,7 @@ let ExtendBytes (lenRequired:int) (bs:Bytes) =
         bs.CopyTo(bs2, 0)
         bs2
 
-
+//#### consider replacing this with a hashmap of commands to handlers
 let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array = 
     match cmd with
     | FredisCmd.Append (kk,vappend)         ->  match hashMap.ContainsKey(kk) with 
@@ -88,13 +88,13 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
 
     | FredisCmd.Get kk                      ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let vv = hashMap.[kk] |> BytesToStr
-                                                            MakeSingleArrRespBulkString vv |> StrToBytes
+                                                            MakeSingleArrayRespBulkString vv |> StrToBytes
                                                 | false ->  nilBytes
 
     | FredisCmd.GetSet (kk,newVal)          ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let oldVal = hashMap.[kk] |> BytesToStr
                                                             hashMap.[kk] <- newVal
-                                                            let ret = MakeSingleArrRespBulkString oldVal |> StrToBytes
+                                                            let ret = MakeSingleArrayRespBulkString oldVal |> StrToBytes
                                                             ret
                                                 | false ->  hashMap.[kk] <- newVal
                                                             nilBytes
@@ -112,9 +112,27 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
                                                                     MakeRespBulkString vv
                                                         | false ->  nilByteStr ) 
                                                 let allValStr = String.concat "" vals
-                                                sprintf "*%d\r\n%s" vals.Length allValStr |> StrToBytes
+                                                (sprintf "*%d\r\n%s" vals.Length allValStr) |> StrToBytes
 
     | FredisCmd.Ping                        ->  pongBytes
-    | FredisCmd.GetRange (_, _)             ->  errorBytes
 
-
+    | FredisCmd.GetRange (key, range)       ->  match hashMap.ContainsKey(key) with 
+                                                | false ->  emptyBytes
+                                                | true  ->  let bs = hashMap.[key]
+                                                            let upperBound = bs.GetUpperBound(0)
+                                                            let lower,upper = 
+                                                                    match range with
+                                                                    | All                   -> 0,   upperBound
+                                                                    | Lower ll              -> ll,  upperBound
+                                                                    | LowerUpper (ll, uu)   -> ll,  uu
+                                                            
+                                                            let optBounds = RationaliseArrayBounds lower upper upperBound
+                                                            
+                                                            match optBounds with
+                                                            | Some (lower1, upper1) -> 
+                                                                                        let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
+                                                                                        let bs2 = Array.sub bs lower1 count 
+                                                                                        let retStr = bs2 |> BytesToStr
+                                                                                        let ret = retStr |> MakeSingleArrayRespBulkString |> StrToBytes
+                                                                                        ret
+                                                            | None                  ->  CmdCommon.emptyBytes

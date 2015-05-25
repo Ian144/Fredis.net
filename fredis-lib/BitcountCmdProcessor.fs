@@ -12,19 +12,20 @@ let private bitCountLookup = [|0L; 1L; 1L; 2L; 1L; 2L; 2L; 3L; 1L; 2L; 2L; 3L; 2
 
 let CountSetBitsInRange ((arr:Bytes), (ll:int32), (uu:int32)) =
     let maxIndex = arr.Length - 1
+    
+    match arr, (ll, uu) with
+    |[||], (_, _)                          ->   0L    // arr is empty
+    | _, (ll1, _  )  when ll1 > maxIndex   ->   0L    // lower index > max
+    | _, (_  , uu1)  when uu1 < 0          ->   0L    // upper index < 0
+    | _, (ll1, uu1)  when ll1 > uu1        ->   0L    // lower > upper
+    | arr, (ll1, uu1)                      ->   let ll2 = if (ll1 < 0) then 0 else ll1
+                                                let uu2 = if (uu1 > maxIndex) then maxIndex else uu1
+                                                let bitCounts = seq{    for ctr in ll2 .. uu2 do
+                                                                        let bb = arr.[ctr]
+                                                                        let index = int32 bb
+                                                                        yield bitCountLookup.[index]    }
+                                                Seq.sum bitCounts    
 
-    let ll2 = if ll > maxIndex then maxIndex else ll
-    let ll3 = if ll2 < 0 then 0 else ll2
-    let uu2 = if uu > maxIndex then maxIndex else uu
-    let uu3 = if uu2 < 0 then 0 else uu2
-
-    match arr with
-    |[||]   ->  0L
-    | _     ->  let bitCounts = seq{    for ctr in ll3 .. uu3 do
-                                        let bb = arr.[ctr]
-                                        let index = int32 bb
-                                        yield bitCountLookup.[index]    }
-                Seq.sum bitCounts
 
 
 
@@ -38,9 +39,11 @@ let Process key (optIntPair:optIntPair) (hashMap:HashMap) =
                                                         
             | (None, true)            ->    let bs = hashMap.[key]       
                                             CountSetBitsInRange (bs, 0, (bs.Length-1)) // no bounds supplied, so consider all bytes
-
+                                            
             | (Some (ll,uu), true)    ->    let bs = hashMap.[key] 
-                                            let arrayUBound = bs.Length - 1
-                                            let lower2, upper2 = CmdCommon.RationaliseArrayBounds ll uu arrayUBound
-                                            CountSetBitsInRange (bs, lower2, upper2)
+                                            let arrayUBound = bs.GetUpperBound(0)
+                                            let optBounds = CmdCommon.RationaliseArrayBounds ll uu arrayUBound
+                                            match optBounds with
+                                            | Some (lower2, upper2) -> CountSetBitsInRange (bs, lower2, upper2)
+                                            | None                  -> 0L  
     MakeRespIntegerArr numSetBits

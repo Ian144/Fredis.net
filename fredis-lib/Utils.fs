@@ -65,7 +65,7 @@ type System.Net.Sockets.NetworkStream with
 
 let MakeRespBulkString (ss:string) = sprintf "$%d\r\n%s\r\n" ss.Length ss
 
-let MakeSingleArrRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
+let MakeSingleArrayRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
 
 
 let MakeRespIntegerArr (ii:int64) = 

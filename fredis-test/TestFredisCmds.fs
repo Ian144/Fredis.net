@@ -2,9 +2,6 @@
 
 
 open NUnit.Framework
-open FsCheck
-open FsCheck.NUnit
-//open FsCheck.NUnit.Addin
 open Swensen.Unquote
 
 
@@ -13,60 +10,68 @@ open FredisTypes
 
 
 
-//[<Property>]
-//let `` first test`` (letter:char) =
-//    printfn "%c" letter
-//    true
+[<TestFixture>]
+type ``Execute GETRANGE`` () =
+    let key = Key "key"
+    let bs  = "This is a string" |> Utils.StrToBytes
 
-//namespace FsCheck.NUnit.Examples
-
-//open NUnit.Core.Extensibility
-////open FsCheck.NUnit
-//
-
-
-//[<NUnitAddin(Description = "FsCheck addin")>]
-//type FsCheckAddin() =        
-//    interface IAddin with
-//        override x.Install host = 
-//            let tcBuilder = new FsCheckTestCaseBuilder()
-//            host.GetExtensionPoint("TestCaseBuilders").Install(tcBuilder)
-//            true
-
-//module PropertyExamples    
-////    
-////    open NUnit.Framework
-////    open FsCheck
-////    open FsCheck.NUnit
-//    
-//[<Property>]
-//let revUnit (x:char) = 
-//    List.rev [x] = [x]
-//
-//// Note: should fail
-//[<Property( Verbose = true )>]
-//let revIdVerbose_shouldFail (xs:int[]) = 
-//    Array.rev xs = xs
-//
-//[<Property(QuietOnSuccess = true)>]
-//let noOutputOnSuccess (x:char) = 
-//    List.rev [x] = [x]
+    [<Test>]
+    member this.``GETRANGE key start end returns empty string when key does not exist`` () = 
+        let hashMap = HashMap()
+        let range = ArrayRange.LowerUpper (0,2)
+        let cmd = FredisCmd.GetRange (key, range)
+        test <@ CmdCommon.emptyBytes = FredisCmdProcessor.Execute hashMap cmd @>
 
 
-//[<Property(MaxTest = 1000)>]
-//[<Property>]
-//let revSingleton1000 (x:char) = 
-//    List.rev [x] = [x]
+    [<Test>]
+    member this.``GETRANGE key 0 3 returns 'This' when key contains 'This is a string'`` () = 
+        let hashMap = HashMap()
+        let setCmd = FredisCmd.Set (key, bs)
+        let _ = FredisCmdProcessor.Execute hashMap setCmd
+        let range = ArrayRange.LowerUpper (0,3)
+        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let expected = "This" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
+
+
+    [<Test>]
+    member this.``GETRANGE key -3 -1 returns 'ing' when key contains 'This is a string'`` () = 
+        let hashMap = HashMap()
+        let setCmd = FredisCmd.Set (key, bs)
+        let _ = FredisCmdProcessor.Execute hashMap setCmd
+
+        let range = ArrayRange.LowerUpper (-3,-1)
+        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
+        test <@ expected = ret @>
+
+
+    [<Test>]
+    member this.``GETRANGE key upper bound < 0'`` () = 
+        let hashMap = HashMap()
+        let setCmd = FredisCmd.Set (key, bs)
+        let _ = FredisCmdProcessor.Execute hashMap setCmd
+
+        let range = ArrayRange.LowerUpper (-3,-1)
+        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
+        test <@ expected = ret @>
+
+
+
 
 
 
 [<TestFixture>]
 type ``Execute GETSET`` () =
+
+    let key = Key "key"
     
     [<Test>]
     member this.``getset, new key sets value and returns nil``() =
         let hashMap = HashMap()
-        let key = Key "key"
         let bsVal = (Utils.StrToBytes "val")
         let cmd = FredisCmd.GetSet (key, bsVal)
         let result = FredisCmdProcessor.Execute hashMap cmd
@@ -76,10 +81,8 @@ type ``Execute GETSET`` () =
     [<Test>]
     member this.``getset, existing key sets new value and returns old``() =
         let hashMap = HashMap()
-        let key = Key"key"
-        
         let bsOldVal = (Utils.StrToBytes "oldVal")
-        let strOldVal = Utils.MakeSingleArrRespBulkString "oldVal"
+        let strOldVal = Utils.MakeSingleArrayRespBulkString "oldVal"
         let bsNewVal = (Utils.StrToBytes "newVal")
         hashMap.[key] <- bsOldVal
         let cmd = FredisCmd.GetSet (key, bsNewVal)
@@ -104,7 +107,7 @@ type ``Execute SET GET`` () =
         let setResult = FredisCmdProcessor.Execute hashMap setCmd
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
-        let expectedBulkStrVal = Utils.MakeSingleArrRespBulkString rawVal 
+        let expectedBulkStrVal = Utils.MakeSingleArrayRespBulkString rawVal 
         let getResultStr = Utils.BytesToStr getResult
         test <@ setResult = CmdCommon.okBytes && expectedBulkStrVal = getResultStr @>
 
@@ -125,10 +128,11 @@ type ``Execute SET GET`` () =
 [<TestFixture>]
 type ``Execute SETBIT`` () =
 
+    let key = Key "key"
+
     [<Test>]
     member this.``"SETBIT key 7 true" then "SETBIT key 8 false" creates byte array len 2`` () =
         let hashMap = HashMap()
-        let key = Key "key"
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
                     (FredisCmd.SetBit (key, 7, true))
@@ -143,7 +147,6 @@ type ``Execute SETBIT`` () =
     [<Test>]
     member this.``"SETBIT key 7 true" then "SETBIT key 7 false" returns 1 and resets to 0`` () =
         let hashMap = HashMap()
-        let key = Key "key"
         let offset = 0
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
@@ -427,7 +430,7 @@ type ``Execute BITOP`` () =
         let getCmd = FredisCmd.Get destKey
         let xx = Utils.BytesToStr [|0uy; 0uy; 0uy|]
         let yy = sprintf "aba%s" xx
-        let expected = Utils.MakeSingleArrRespBulkString yy // confirmed by trying this in redis
+        let expected = Utils.MakeSingleArrayRespBulkString yy // confirmed by trying this in redis
         test <@ expected =(FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -447,7 +450,7 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let expected = Utils.MakeSingleArrRespBulkString "qwgdef" // confirmed by trying this in redis
+        let expected = Utils.MakeSingleArrayRespBulkString "qwgdef" // confirmed by trying this in redis
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -469,7 +472,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
         let expectedBytes = Utils.BytesToStr [|16uy; 21uy; 6uy; 100uy; 101uy; 102uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeSingleArrRespBulkString expectedBytes 
+        let expected = Utils.MakeSingleArrayRespBulkString expectedBytes 
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -487,7 +490,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
         let expectedBytes = Utils.BytesToStr [|0x9euy; 0x9duy; 0x9cuy; 0x9buy; 0x9auy; 0x99uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeSingleArrRespBulkString expectedBytes
+        let expected = Utils.MakeSingleArrayRespBulkString expectedBytes
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -518,7 +521,7 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        test <@ Utils.MakeSingleArrRespBulkString "val"  = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        test <@ Utils.MakeSingleArrayRespBulkString "val"  = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
 
@@ -536,6 +539,12 @@ type ``Parse GETRANGE`` () =
     let endIdx      = "2"         |> StrToBulkStr
 
     [<Test>]
+    member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
+        let range = ArrayRange.LowerUpper (0,2)
+        let expected = FredisCmd.GetRange (kkey, range)
+        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
+
+    [<Test>]
     member this.``parse GETRANGE fails when no params supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange|] @>
 
@@ -547,11 +556,8 @@ type ``Parse GETRANGE`` () =
     member this.``parse GETRANGE key start fails when no 'end' param supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key; startIdx|] @>
 
-    [<Test>]
-    member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
-        let range = ArrayRange.LowerUpper (0,2)
-        let expected = FredisCmd.GetRange (kkey, range)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
+
+
 
 
 
