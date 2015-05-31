@@ -92,7 +92,6 @@ let GetBit (bs:byte []) (index:int) : bool =
 
 
 
-
 let OptionToChoiceAdaptor (optFunc:'a -> 'b option) choice2Of2Val (xx:'a) = 
     match optFunc xx with
     | Some yy   -> Choice1Of2 yy

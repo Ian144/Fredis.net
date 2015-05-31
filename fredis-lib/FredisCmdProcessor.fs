@@ -123,8 +123,8 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
                                                             let lower,upper = 
                                                                     match range with
                                                                     | All                   -> 0,   upperBound
-                                                                    | Lower ll              -> ll,  upperBound
-                                                                    | LowerUpper (ll, uu)   -> ll,  uu
+                                                                    | Lower ll              -> ll.Value,  upperBound
+                                                                    | LowerUpper (ll, uu)   -> ll.Value,  uu.Value
                                                             
                                                             let optBounds = RationaliseArrayBounds lower upper upperBound
                                                             

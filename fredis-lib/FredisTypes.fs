@@ -14,7 +14,36 @@
 // Simple String:    "+"
 // Arrays:           "*"
 
-type optIntPair = (int*int) option
+// redis cant store 'strings' larger than 512mb, fredis copy this behaviour
+let private maxByteOffset = (pown 2 29) - 1 // zero based, hence the -1
+let private minByteOffset = (pown 2 29) * -1 // -1 represents the last element, so not zero based, and so there is no -1 
+
+// constrained single case discriminated union
+type ByteOffset = private ByteOffset of int with
+    static member private isValid (ii:int) = (ii >= minByteOffset) && (ii <= maxByteOffset)
+    
+    static member create (ii:int) = 
+        if ByteOffset.isValid ii
+        then Some (ByteOffset ii) 
+        else None
+
+    static member createChoice (ii:int) (err: byte []) = 
+        if ByteOffset.isValid ii
+        then Choice1Of2 (ByteOffset ii) 
+        else Choice2Of2 err
+
+    // don't supply this property if it is a requirement to be opaque
+    member this.Value with get () = 
+                        let (ByteOffset ii) = this
+                        ii
+
+
+
+// bit offsets range of values is 32 bits (byte offset 2^29 * 2 ^ 3), so no constraint is required
+//type BitOffset = private BitOffsetvalCtor of int with
+
+
+type optByteOffsetPair = (ByteOffset*ByteOffset) option
 type Bytes = byte array
 type Key = Key of string
 
@@ -28,8 +57,8 @@ type BitOpInner =
 
 type ArrayRange =
     | All
-    | Lower of int
-    | LowerUpper of int * int
+    | Lower of ByteOffset
+    | LowerUpper of ByteOffset * ByteOffset
 
 
 
@@ -41,7 +70,7 @@ type FredisCmd =
         |MSet       of (Key*Bytes) list
         |MGet       of Key list
         |Append     of Key*Bytes
-        |Bitcount   of Key*optIntPair
+        |Bitcount   of Key*optByteOffsetPair
         |BitOp      of BitOpInner
         |Decr       of Key
         |Incr       of Key
@@ -52,6 +81,7 @@ type FredisCmd =
         |GetSet     of Key*Bytes
         |Bitpos     of Key*bool*ArrayRange
         |GetRange   of Key*ArrayRange
+//        |SetRange   of Key*int*Bytes
 
 type RESPMsg =
         | SimpleString   of Bytes

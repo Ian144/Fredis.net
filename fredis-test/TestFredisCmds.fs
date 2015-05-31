@@ -10,6 +10,16 @@ open FredisTypes
 
 
 
+let private ``byteOffset 0`` = (ByteOffset.create 0).Value
+let private ``byteOffset 3`` = (ByteOffset.create 3).Value
+let private ``byteOffset -1`` = (ByteOffset.create -1).Value
+let private ``byteOffset -3`` = (ByteOffset.create -3).Value
+let private ``range (0,3)`` = ArrayRange.LowerUpper (``byteOffset 0``, ``byteOffset 3``)
+let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteOffset -1``)
+
+
+
+
 [<TestFixture>]
 type ``Execute GETRANGE`` () =
     let key = Key "key"
@@ -18,8 +28,7 @@ type ``Execute GETRANGE`` () =
     [<Test>]
     member this.``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
-        let range = ArrayRange.LowerUpper (0,2)
-        let cmd = FredisCmd.GetRange (key, range)
+        let cmd = FredisCmd.GetRange (key, ``range (0,3)``)
         test <@ CmdCommon.emptyBytes = FredisCmdProcessor.Execute hashMap cmd @>
 
 
@@ -28,8 +37,7 @@ type ``Execute GETRANGE`` () =
         let hashMap = HashMap()
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
-        let range = ArrayRange.LowerUpper (0,3)
-        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let getRangeCmd = FredisCmd.GetRange (key, ``range (0,3)``)
         let expected = "This" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
         test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
 
@@ -40,8 +48,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
-        let range = ArrayRange.LowerUpper (-3,-1)
-        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
         let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
@@ -53,8 +60,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
-        let range = ArrayRange.LowerUpper (-3,-1)
-        let getRangeCmd = FredisCmd.GetRange (key, range)
+        let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
         let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
@@ -536,12 +542,11 @@ type ``Parse GETRANGE`` () =
     let key         = "key"       |> StrToBulkStr
     let kkey        = Key "key"
     let startIdx    = "0"         |> StrToBulkStr
-    let endIdx      = "2"         |> StrToBulkStr
+    let endIdx      = "3"         |> StrToBulkStr
 
     [<Test>]
     member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
-        let range = ArrayRange.LowerUpper (0,2)
-        let expected = FredisCmd.GetRange (kkey, range)
+        let expected = FredisCmd.GetRange (kkey, ``range (0,3)``)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
 
     [<Test>]
@@ -569,12 +574,14 @@ type ``Parse BITPOS`` () =
     let kkey        = Key "key"
     let bitArg0     = "0"       |> StrToBulkStr
     let bitArg1     = "1"       |> StrToBulkStr
-    let startByte   = "9"       |> StrToBulkStr
-    let endByte     = "99"      |> StrToBulkStr
+    let startByte   = "0"       |> StrToBulkStr
+    let endByte     = "3"      |> StrToBulkStr
 
     let badStartByte   = "not an int"   |> StrToBulkStr
     let badEndByte     = "not an int"   |> StrToBulkStr
     let badBit         = "9"            |> StrToBulkStr
+
+
 
 
     //BITPOS key bit [start] [end]
@@ -603,12 +610,15 @@ type ``Parse BITPOS`` () =
 
     [<Test>]
     member this.``parse BITPOS key bitArg1 startByte succeeds`` () = 
-        let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.Lower 9)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte|] @>
+        let nineByteOffset = (ByteOffset.create 9).Value
+        let nineBlkStr   = "9" |> StrToBulkStr
+        let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.Lower nineByteOffset)
+        let actual = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|]
+        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|] @>
 
     [<Test>]
     member this.``parse BITPOS key bitArg1 startByte endByte succeeds`` () = 
-        let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.LowerUpper (9, 99))
+        let expected = FredisCmd.Bitpos (kkey, true, ``range (0,3)``)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte; endByte|] @>
 
     [<Test>]

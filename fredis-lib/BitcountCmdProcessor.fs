@@ -32,7 +32,7 @@ let CountSetBitsInRange ((arr:Bytes), (ll:int32), (uu:int32)) =
 
 
 
-let Process key (optIntPair:optIntPair) (hashMap:HashMap) =
+let Process key (optIntPair:optByteOffsetPair) (hashMap:HashMap) =
     let numSetBits =
             match (optIntPair, hashMap.ContainsKey(key)) with
             | (_, false)              ->    0L                          // key not in map
@@ -42,7 +42,7 @@ let Process key (optIntPair:optIntPair) (hashMap:HashMap) =
                                             
             | (Some (ll,uu), true)    ->    let bs = hashMap.[key] 
                                             let arrayUBound = bs.GetUpperBound(0)
-                                            let optBounds = CmdCommon.RationaliseArrayBounds ll uu arrayUBound
+                                            let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu.Value arrayUBound
                                             match optBounds with
                                             | Some (lower2, upper2) -> CountSetBitsInRange (bs, lower2, upper2)
                                             | None                  -> 0L  
