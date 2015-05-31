@@ -5,8 +5,6 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-server", "fredis-server\fredis-server.fsproj", "{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fsTCPClient", "TCPClient\fsTCPClient.fsproj", "{E2EB2DAB-2AF9-4F10-B289-5AB63F30ECF8}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "StackExchangeRedis", "StackExchangeRedis\StackExchangeRedis.fsproj", "{56003D92-42CA-44E6-BC1B-5D17FFCCF704}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "scratch", "scratch\scratch.fsproj", "{076C00B1-B983-4162-801C-90790BCA43A5}"
@@ -20,8 +18,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{40CC5A
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-test-xunit-fscheck", "fredis-test-xunit-fscheck\fredis-test-xunit-fscheck.fsproj", "{7EDBAED8-3BD9-42E5-BC51-CC2EF527421A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,10 +28,6 @@ Global
 		{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E2EB2DAB-2AF9-4F10-B289-5AB63F30ECF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E2EB2DAB-2AF9-4F10-B289-5AB63F30ECF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E2EB2DAB-2AF9-4F10-B289-5AB63F30ECF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E2EB2DAB-2AF9-4F10-B289-5AB63F30ECF8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{56003D92-42CA-44E6-BC1B-5D17FFCCF704}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{56003D92-42CA-44E6-BC1B-5D17FFCCF704}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56003D92-42CA-44E6-BC1B-5D17FFCCF704}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -52,10 +44,6 @@ Global
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7EDBAED8-3BD9-42E5-BC51-CC2EF527421A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7EDBAED8-3BD9-42E5-BC51-CC2EF527421A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7EDBAED8-3BD9-42E5-BC51-CC2EF527421A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7EDBAED8-3BD9-42E5-BC51-CC2EF527421A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

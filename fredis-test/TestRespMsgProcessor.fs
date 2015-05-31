@@ -2,14 +2,14 @@
 
 
 
-open NUnit.Framework
+open Xunit
 open Swensen.Unquote
 
 
 // https://code.google.com/p/fsunit/
 
 
-[<Test>]
+[<Fact>]
 let ``ReadUntilCRLF basic`` () =
     use strm = new System.IO.MemoryStream()
     let bs = Utils.StrToBytes "678\r\n"
@@ -19,7 +19,7 @@ let ``ReadUntilCRLF basic`` () =
 
 
 
-[<Test>]
+[<Fact>]
 let ``ReadUntilCRLF not empty after CRLF`` () =
     use strm = new System.IO.MemoryStream()
     let bs = Utils.StrToBytes "678\r\n123"
@@ -29,14 +29,14 @@ let ``ReadUntilCRLF not empty after CRLF`` () =
 
 
 
-[<Test>]
+[<Fact>]
 let ``ReadUntilCRLF at end of stream returns empty list`` () =
     use strm = new System.IO.MemoryStream()
     test <@ [] = RespMsgProcessor.ReadUntilCRLF( strm ) @>
     
 
 
-[<Test>]
+[<Fact>]
 let ``ReadInt32 basic`` () =
     use strm = new System.IO.MemoryStream()
     let bs = Utils.StrToBytes "678\r\n"
@@ -46,7 +46,7 @@ let ``ReadInt32 basic`` () =
 
 
 
-[<Test>]
+[<Fact>]
 let ``ReadInt32 at end of stream returns zero`` () =
     use strm = new System.IO.MemoryStream()
     test <@ 0 = RespMsgProcessor.ReadInt32( strm ) @>

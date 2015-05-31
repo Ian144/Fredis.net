@@ -1,4 +1,4 @@
-﻿module TestFredisCmdsXunit
+﻿module TestFredisCmdsFSCheck
 
 
 open System
@@ -9,7 +9,6 @@ open FsCheck.Xunit
 open CmdCommon
 open FredisTypes
 
-open Swensen.Unquote
 
 
 
@@ -108,13 +107,13 @@ let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx
 
 
 // this test fails, 'OS X' redis returns 12, fredis returns 8 due to byte endianess
-//[<Fact>]
-//let ``Bitpos FindFirstBitIndex returns 12`` () =
-//    let bs = Array.zeroCreate<byte>(3)
-//    bs.[0] <- 0xFFuy
-//    bs.[1] <- 0xF0uy
-//    let uIndx = bs.GetUpperBound(0)
-//    <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
+[<Fact>]
+let ``Bitpos FindFirstBitIndex returns 12`` () =
+    let bs = Array.zeroCreate<byte>(3)
+    bs.[0] <- 0xFFuy
+    bs.[1] <- 0xF0uy
+    let uIndx = bs.GetUpperBound(0)
+    <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
 
     
 

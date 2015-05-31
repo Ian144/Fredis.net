@@ -1,8 +1,8 @@
 module FsCheckAddInx
 
-open NUnit.Core.Extensibility
-open FsCheck.NUnit
-open FsCheck.NUnit.Addin
+//open NUnit.Core.Extensibility
+//open FsCheck.NUnit
+//open FsCheck.NUnit.Addin
 
 
 //[<NUnitAddin(Description = "FsCheck addin")>]

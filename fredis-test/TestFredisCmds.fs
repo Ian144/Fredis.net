@@ -1,7 +1,7 @@
 ﻿module TestFredisCmds
 
 
-open NUnit.Framework
+open Xunit
 open Swensen.Unquote
 
 
@@ -17,23 +17,22 @@ let private ``byteOffset -3`` = (ByteOffset.create -3).Value
 let private ``range (0,3)`` = ArrayRange.LowerUpper (``byteOffset 0``, ``byteOffset 3``)
 let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteOffset -1``)
 
+let private key = Key "key"
+let private bs  = "This is a string" |> Utils.StrToBytes
 
 
 
-[<TestFixture>]
 type ``Execute GETRANGE`` () =
-    let key = Key "key"
-    let bs  = "This is a string" |> Utils.StrToBytes
 
-    [<Test>]
-    member this.``GETRANGE key start end returns empty string when key does not exist`` () = 
+    [<Fact>]
+    static member ``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
         let cmd = FredisCmd.GetRange (key, ``range (0,3)``)
         test <@ CmdCommon.emptyBytes = FredisCmdProcessor.Execute hashMap cmd @>
 
 
-    [<Test>]
-    member this.``GETRANGE key 0 3 returns 'This' when key contains 'This is a string'`` () = 
+    [<Fact>]
+    static member ``GETRANGE key 0 3 returns 'This' when key contains 'This is a string'`` () = 
         let hashMap = HashMap()
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -42,8 +41,8 @@ type ``Execute GETRANGE`` () =
         test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
 
 
-    [<Test>]
-    member this.``GETRANGE key -3 -1 returns 'ing' when key contains 'This is a string'`` () = 
+    [<Fact>]
+    static member ``GETRANGE key -3 -1 returns 'ing' when key contains 'This is a string'`` () = 
         let hashMap = HashMap()
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -54,8 +53,8 @@ type ``Execute GETRANGE`` () =
         test <@ expected = ret @>
 
 
-    [<Test>]
-    member this.``GETRANGE key upper bound < 0'`` () = 
+    [<Fact>]
+    static member ``GETRANGE key upper bound < 0'`` () = 
         let hashMap = HashMap()
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -70,13 +69,10 @@ type ``Execute GETRANGE`` () =
 
 
 
-[<TestFixture>]
 type ``Execute GETSET`` () =
 
-    let key = Key "key"
-    
-    [<Test>]
-    member this.``getset, new key sets value and returns nil``() =
+    [<Fact>]
+    static member ``getset, new key sets value and returns nil``() =
         let hashMap = HashMap()
         let bsVal = (Utils.StrToBytes "val")
         let cmd = FredisCmd.GetSet (key, bsVal)
@@ -84,8 +80,8 @@ type ``Execute GETSET`` () =
         test <@ bsVal = hashMap.[key] && CmdCommon.nilBytes = result @>
 
 
-    [<Test>]
-    member this.``getset, existing key sets new value and returns old``() =
+    [<Fact>]
+    static member ``getset, existing key sets new value and returns old``() =
         let hashMap = HashMap()
         let bsOldVal = (Utils.StrToBytes "oldVal")
         let strOldVal = Utils.MakeSingleArrayRespBulkString "oldVal"
@@ -100,11 +96,10 @@ type ``Execute GETSET`` () =
 
 
 
-[<TestFixture>]
 type ``Execute SET GET`` () =
 
-    [<Test>]
-    member this.``set get cmds, roundtrip``() =
+    [<Fact>]
+    static member ``set get cmds, roundtrip``() =
         let hashMap = HashMap()
         let hkey = Key "key"
         let rawVal = "val"
@@ -118,8 +113,8 @@ type ``Execute SET GET`` () =
         test <@ setResult = CmdCommon.okBytes && expectedBulkStrVal = getResultStr @>
 
 
-    [<Test>]
-    member this.``get cmd, returns nil string when key does not exist``() =
+    [<Fact>]
+    static member ``get cmd, returns nil string when key does not exist``() =
         let hashMap = HashMap()
         let key = Key "key"
         let getCmd = FredisCmd.Get key
@@ -131,13 +126,10 @@ type ``Execute SET GET`` () =
 
 
 
-[<TestFixture>]
 type ``Execute SETBIT`` () =
 
-    let key = Key "key"
-
-    [<Test>]
-    member this.``"SETBIT key 7 true" then "SETBIT key 8 false" creates byte array len 2`` () =
+    [<Fact>]
+    static member ``"SETBIT key 7 true" then "SETBIT key 8 false" creates byte array len 2`` () =
         let hashMap = HashMap()
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
@@ -150,8 +142,8 @@ type ``Execute SETBIT`` () =
         test <@ 2 = hashMap.[key].Length @>
 
 
-    [<Test>]
-    member this.``"SETBIT key 7 true" then "SETBIT key 7 false" returns 1 and resets to 0`` () =
+    [<Fact>]
+    static member ``"SETBIT key 7 true" then "SETBIT key 7 false" returns 1 and resets to 0`` () =
         let hashMap = HashMap()
         let offset = 0
         let _ = FredisCmdProcessor.Execute 
@@ -167,8 +159,8 @@ type ``Execute SETBIT`` () =
 
 //replaced with fscheck property (fscheck.xunit tests)
 //
-//    [<Test>]
-//    member this.``"SETBIT key 7 true",  when key does not exist returns integer 0`` () =
+//    [<Fact>]
+//    static member ``"SETBIT key 7 true",  when key does not exist returns integer 0`` () =
 //        let hashMap = HashMap()
 //        let key = Key "key"
 //        let offset = 7
@@ -177,8 +169,8 @@ type ``Execute SETBIT`` () =
 //        test <@ Utils.MakeRespIntegerArr 0L = (FredisCmdProcessor.ExecuteRedisCmds hashMap cmd) @>
 //
 //
-//    [<Test>]
-//    member this.``"SETBIT key 0 true", byteArray created is one byte long`` () =
+//    [<Fact>]
+//    static member ``"SETBIT key 0 true", byteArray created is one byte long`` () =
 //        let hashMap = HashMap()
 //        let key = Key "key"
 //        let offset = 0
@@ -188,8 +180,8 @@ type ``Execute SETBIT`` () =
 //        test <@ 1 = hashMap.[key].Length @>
 //
 //
-//    [<Test>]
-//    member this.``"SETBIT key 7 true", byteArray created is one byte long`` () =
+//    [<Fact>]
+//    static member ``"SETBIT key 7 true", byteArray created is one byte long`` () =
 //        let hashMap = HashMap()
 //        let key = Key "key"
 //        let offset = 7
@@ -199,7 +191,7 @@ type ``Execute SETBIT`` () =
 //        test <@ 1 = hashMap.[key].Length @>
 //
 //
-//    member this.``"SETBIT key 8 true", byteArray created is three bytes long`` () =
+//    static member ``"SETBIT key 8 true", byteArray created is three bytes long`` () =
 //        let hashMap = HashMap()
 //        let key = Key "key"
 //        let offset = 8
@@ -209,8 +201,8 @@ type ``Execute SETBIT`` () =
 //        test <@ 1 = hashMap.[key].Length @>
 //
 //
-//    [<Test>]
-//    member this.``"SETBIT key 8 true", byteArray created is two bytes long`` () =
+//    [<Fact>]
+//    static member ``"SETBIT key 8 true", byteArray created is two bytes long`` () =
 //        let hashMap = HashMap()
 //        let key = Key "key"
 //        let offset = 8
@@ -220,11 +212,10 @@ type ``Execute SETBIT`` () =
 //        test <@ 2 = hashMap.[key].Length @>
 
 
-[<TestFixture>]
 type ``Execute INCRBY`` () =
 
-//    [<Test>]
-//    member this.``"INCRBY key 0" returns resp integer 0 when key does not exist`` () =
+//    [<Fact>]
+//    static member ``"INCRBY key 0" returns resp integer 0 when key does not exist`` () =
 //        let hashMap = HashMap()
 //        let cmd = FredisCmd.IncrBy ("key", 0L)
 //        let actual = FredisCmdProcessor.Execute hashMap cmd 
@@ -233,8 +224,8 @@ type ``Execute INCRBY`` () =
 //        test <@ Utils.StrToBytes "0" = hashMap.["key"] @>
 //
 //
-//    [<Test>]
-//    member this.``"INCRBY key 89" returns resp integer 99 when key is "10"`` () =
+//    [<Fact>]
+//    static member ``"INCRBY key 89" returns resp integer 99 when key is "10"`` () =
 //        let hashMap = HashMap()
 //        let bVal = Utils.StrToBytes "10"
 //        let key = Key "key"
@@ -244,16 +235,16 @@ type ``Execute INCRBY`` () =
 //        test <@ Utils.MakeRespIntegerArr 99L = FredisCmdProcessor.Execute hashMap incrCmd @>
 //
 //
-//    [<Test>]
-//    member this.``"INCRBY key 99" returns resp integer 99 when key does not exist`` () =
+//    [<Fact>]
+//    static member ``"INCRBY key 99" returns resp integer 99 when key does not exist`` () =
 //        let hashMap = HashMap()
 //        let cmd = FredisCmd.IncrBy ("key", 99L)
 //        test <@ Utils.MakeRespIntegerArr 99L = FredisCmdProcessor.Execute hashMap cmd @>
 //        test <@ Utils.StrToBytes "99" = hashMap.["key"] @>
 
 
-    [<Test>]
-    member this.``"INCRBY key 99" returns error when value is "234293482390480948029348230948"`` () =
+    [<Fact>]
+    static member ``"INCRBY key 99" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "234293482390480948029348230948"
         let key = Key "key"
@@ -263,8 +254,8 @@ type ``Execute INCRBY`` () =
         test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap cmd) @>
 
 
-    [<Test>]
-    member this.``"INCRBY key 99"not an int" returns error`` () =
+    [<Fact>]
+    static member ``"INCRBY key 99"not an int" returns error`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "not an int"
         let key = Key "key"
@@ -276,12 +267,10 @@ type ``Execute INCRBY`` () =
 
 
 
-
-[<TestFixture>]
 type ``Execute INCR`` () =
 
-    [<Test>]
-    member this.``"INCR key" returns resp integer 11 when key is "10"`` () =
+    [<Fact>]
+    static member ``"INCR key" returns resp integer 11 when key is "10"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "10"
         let key = Key "key"
@@ -291,8 +280,8 @@ type ``Execute INCR`` () =
         test <@ Utils.MakeRespIntegerArr 11L = FredisCmdProcessor.Execute hashMap decrCmd @>
 
 
-    [<Test>]
-    member this.``"INCR key" returns resp integer 1 when key does not exist`` () =
+    [<Fact>]
+    static member ``"INCR key" returns resp integer 1 when key does not exist`` () =
         let hashMap = HashMap()
         let key = Key "key"
         let decrCmd = FredisCmd.Incr key
@@ -300,8 +289,8 @@ type ``Execute INCR`` () =
         test <@ Utils.StrToBytes "1" = hashMap.[key] @>
 
 
-    [<Test>]
-    member this.``"INCR key" returns error when value is "234293482390480948029348230948"`` () =
+    [<Fact>]
+    static member ``"INCR key" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "234293482390480948029348230948"
         let key = Key "key"
@@ -311,8 +300,8 @@ type ``Execute INCR`` () =
         test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
-    [<Test>]
-    member this.``"INCR key" returns error when value is "not an int"`` () =
+    [<Fact>]
+    static member ``"INCR key" returns error when value is "not an int"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "not an int"
         let key = Key "key"
@@ -322,11 +311,10 @@ type ``Execute INCR`` () =
         test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
-[<TestFixture>]
 type ``Execute DECR`` () =
 
-    [<Test>]
-    member this.``"DECR key" returns resp integer 9 when key is "10"`` () =
+    [<Fact>]
+    static member ``"DECR key" returns resp integer 9 when key is "10"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "10"
         let key = Key "key"
@@ -336,8 +324,8 @@ type ``Execute DECR`` () =
         test <@ Utils.MakeRespIntegerArr 9L = FredisCmdProcessor.Execute hashMap decrCmd @>
 
 
-    [<Test>]
-    member this.``"DECR key" returns -1 when key does not exist`` () =
+    [<Fact>]
+    static member ``"DECR key" returns -1 when key does not exist`` () =
         let hashMap = HashMap()
         let key = Key "key"
         let decrCmd = FredisCmd.Decr key
@@ -345,8 +333,8 @@ type ``Execute DECR`` () =
         test <@ Utils.StrToBytes "-1" = hashMap.[key] @>
 
 
-    [<Test>]
-    member this.``"DECR key" returns error when value is "234293482390480948029348230948"`` () =
+    [<Fact>]
+    static member ``"DECR key" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "234293482390480948029348230948"
         let key = Key "key"
@@ -356,8 +344,8 @@ type ``Execute DECR`` () =
         test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
-    [<Test>]
-    member this.``"DECR key" returns error when value is "not an int"`` () =
+    [<Fact>]
+    static member ``"DECR key" returns error when value is "not an int"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "not an int"
         let key = Key "key"
@@ -369,11 +357,10 @@ type ``Execute DECR`` () =
 
 
 
-[<TestFixture>]
 type ``Execute BITOP`` () =
 
-    [<Test>]
-    member this.``"BITOP AND destKey srcKey" returns resp integer 3 when val is "val"`` () =
+    [<Fact>]
+    static member ``"BITOP AND destKey srcKey" returns resp integer 3 when val is "val"`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "val"
         let srcKey = Key "srcKey"
@@ -386,8 +373,8 @@ type ``Execute BITOP`` () =
 
 
 
-    [<Test>]
-    member this.``"BITOP AND destKey srcKey1 srcKey2" result is length of longest value`` () =
+    [<Fact>]
+    static member ``"BITOP AND destKey srcKey1 srcKey2" result is length of longest value`` () =
         let hashMap = HashMap()
         let bVal1 = Utils.StrToBytes "abcdef"
         let bVal2 = Utils.StrToBytes "qwe"
@@ -403,8 +390,8 @@ type ``Execute BITOP`` () =
         test <@ Utils.MakeRespIntegerArr 6L = FredisCmdProcessor.Execute hashMap bitopCmd@>
 
 
-    [<Test>]
-    member this.``"BITOP AND destKey srcKey" srcKey not set, does not set destKey`` () =
+    [<Fact>]
+    static member ``"BITOP AND destKey srcKey" srcKey not set, does not set destKey`` () =
         let hashMap = HashMap()
         let srcKey = Key "srcKey"
         let destKey = Key "destKey"
@@ -418,8 +405,8 @@ type ``Execute BITOP`` () =
 
     // may replace/augment the "... matches redis" tests with fscheck tests calling fredis and redis
 
-    [<Test>]
-    member this.``"BITOP AND destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
+    [<Fact>]
+    static member ``"BITOP AND destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
         let hashMap = HashMap()
         let bVal1 = Utils.StrToBytes "abcdef"
         let bVal2 = Utils.StrToBytes "qwe"
@@ -440,8 +427,8 @@ type ``Execute BITOP`` () =
         test <@ expected =(FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
-    [<Test>]
-    member this.``"BITOP OR destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
+    [<Fact>]
+    static member ``"BITOP OR destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
         let hashMap = HashMap()
         let bVal1 = Utils.StrToBytes "abcdef"
         let bVal2 = Utils.StrToBytes "qwe"
@@ -461,8 +448,8 @@ type ``Execute BITOP`` () =
 
 
 
-    [<Test>]
-    member this.``"BITOP XOR destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
+    [<Fact>]
+    static member ``"BITOP XOR destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
         let hashMap = HashMap()
         let destKey = Key "destKey"
         let srcKey1 = Key "srcKey1"
@@ -483,8 +470,8 @@ type ``Execute BITOP`` () =
 
 
 
-    [<Test>]
-    member this.``"BITOP NOT destKey srcKey" result matches redis`` () =
+    [<Fact>]
+    static member ``"BITOP NOT destKey srcKey" result matches redis`` () =
         let hashMap = HashMap()
         let destKey = Key "destKey"
         let srcKey  = Key "srcKey"
@@ -501,8 +488,8 @@ type ``Execute BITOP`` () =
 
 
 
-    [<Test>]
-    member this.``"BITOP NOT destKey srcKey" srcKey does not exist, does not set destKey and returns (integer)0`` () =
+    [<Fact>]
+    static member ``"BITOP NOT destKey srcKey" srcKey does not exist, does not set destKey and returns (integer)0`` () =
         let hashMap = HashMap()
         let destKey = Key "destKey"
         let srcKey = Key "srcKey"
@@ -515,8 +502,8 @@ type ``Execute BITOP`` () =
 
 
 
-    [<Test>]
-    member this.``"BITOP AND destKey srcKey" destKey contains copy of srcKey val`` () =
+    [<Fact>]
+    static member ``"BITOP AND destKey srcKey" destKey contains copy of srcKey val`` () =
         let hashMap = HashMap()
         let bVal = Utils.StrToBytes "val"
         let destKey = Key "destKey"
@@ -536,7 +523,6 @@ let StrToBulkStr = Utils.StrToBytes >> RESPMsg.BulkString
 
 
 
-[<TestFixture>]
 type ``Parse GETRANGE`` () =
     let getRange    = "GETRANGE"  |> StrToBulkStr
     let key         = "key"       |> StrToBulkStr
@@ -544,20 +530,20 @@ type ``Parse GETRANGE`` () =
     let startIdx    = "0"         |> StrToBulkStr
     let endIdx      = "3"         |> StrToBulkStr
 
-    [<Test>]
+    [<Fact>]
     member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
         let expected = FredisCmd.GetRange (kkey, ``range (0,3)``)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse GETRANGE fails when no params supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse GETRANGE key fails when no 'start end' params supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse GETRANGE key start fails when no 'end' param supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key; startIdx|] @>
 
@@ -565,9 +551,6 @@ type ``Parse GETRANGE`` () =
 
 
 
-
-
-[<TestFixture>]
 type ``Parse BITPOS`` () =
     let bitPos      = "BITPOS"  |> StrToBulkStr
     let key         = "key"     |> StrToBulkStr
@@ -586,29 +569,29 @@ type ``Parse BITPOS`` () =
 
     //BITPOS key bit [start] [end]
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS fails when no params supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.Parse [|bitPos|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key fails when no bit supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.Parse [|bitPos; key|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key 9 fails as 9 is not convertable to a bit`` () = 
         test <@ Choice2Of2 ErrorMsgs.badBitArgBitpos = FredisCmdParser.Parse [|bitPos; key; badBit|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key 0 succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, false, ArrayRange.All)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg0|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key 1 succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.All)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key bitArg1 startByte succeeds`` () = 
         let nineByteOffset = (ByteOffset.create 9).Value
         let nineBlkStr   = "9" |> StrToBulkStr
@@ -616,23 +599,22 @@ type ``Parse BITPOS`` () =
         let actual = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|]
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key bitArg1 startByte endByte succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, true, ``range (0,3)``)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte; endByte|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key true "not and int" fails with 'value not integer'`` () = 
         test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.Parse [|bitPos; key; bitArg1; badStartByte|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITPOS key true 9 "not an int" fails with 'value not integer'`` () = 
         test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte; badEndByte|] @>
 
 
 
 
-[<TestFixture>]
 type ``Parse INCRBY`` () =
 
     let incrBy   = "INCRBY"   |> StrToBulkStr
@@ -640,15 +622,15 @@ type ``Parse INCRBY`` () =
     let kkey = Key "key"
     let increment = "9" |> StrToBulkStr
 
-    [<Test>]
+    [<Fact>]
     member this.``parse INCRBY fails when no params supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.Parse [|incrBy|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse INCRBY fails when no increment supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.Parse [|incrBy; skey|] @>
 
-    [<Test>]
+    [<Fact>]
     member this.``parse INCRBY key incr succeeds`` () = 
         let expected = FredisCmd.IncrBy (kkey, 9L)
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|incrBy; skey; increment |] @>
@@ -658,7 +640,6 @@ type ``Parse INCRBY`` () =
 
 
 
-[<TestFixture>]
 type ``Parse BITOP`` () =
 
     let bitop   = "BITOP"   |> StrToBulkStr
@@ -681,12 +662,12 @@ type ``Parse BITOP`` () =
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse BITOP fails when no inner op supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [|bitop|] @>
 
 //  the unquote version of this test, above, requires less type annotation and has better compile time type safety
-//    [<Test>]
+//    [<Fact>]
 //    member this.``parse BITOP fails when no inner op supplied fsunit`` () =
 //        let expected:Choice<FredisCmd,byte []> = Choice2Of2 FredisErrorMsgs.numArgsBitop
 //        expected |> should equal (BitopCmdProcessor.Parse [|bitop|])
@@ -694,52 +675,52 @@ type ``Parse BITOP`` () =
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP NOT destKey" fails with missing source key`` () =
         test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [| bitop; notOp; destKey |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP NOT destKey srcKey1 srcKey1" fails with num keys error`` () =
         test <@ Choice2Of2 ErrorMsgs.numKeysBitopNot = FredisCmdParser.Parse  [| bitop; notOp; destKey; srcKey1; srcKey2 |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP OR destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.OR (kDestKey,[kSrcKey1]))
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; orOp; destKey; srcKey1 |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP NOT destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.NOT (kDestKey,kSrcKey1))
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; notOp; destKey; srcKey1 |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP AND destKey" fails with num keys error`` () =
         test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [| bitop; andOp; destKey |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP AND destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey,[kSrcKey1]))
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; andOp; destKey; srcKey1 |] @>
 
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP AND destKey 4 src keys" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey, [kSrcKey1; kSrcKey2; kSrcKey3; kSrcKey4]))
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; andOp; destKey; srcKey1; srcKey2; srcKey3; srcKey4 |] @>
 
 
-    [<Test>]
+    [<Fact>]
     member this.``parse "BITOP XOR destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.XOR (kDestKey,[kSrcKey1]))
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; xorOp; destKey; srcKey1 |] @>

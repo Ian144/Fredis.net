@@ -60,12 +60,8 @@
       <HintPath>..\packages\FsCheck.1.0.4\lib\net45\FsCheck.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="FsCheck.NUnit">
-      <HintPath>..\packages\FsCheck.Nunit.1.0.4\lib\net45\FsCheck.NUnit.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FsCheck.NUnit.Addin">
-      <HintPath>..\packages\FsCheck.Nunit.1.0.4\lib\net45\FsCheck.NUnit.Addin.dll</HintPath>
+    <Reference Include="FsCheck.Xunit">
+      <HintPath>..\packages\FsCheck.Xunit.1.0.4\lib\net45\FsCheck.Xunit.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
@@ -78,10 +74,6 @@
     <Reference Include="nunit.core.interfaces">
       <HintPath>..\packages\NUnit.Runners.2.6.3\tools\lib\nunit.core.interfaces.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\packages\NUnit.2.6.4\lib\nunit.framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -89,14 +81,18 @@
       <HintPath>..\packages\Unquote.3.0.0\lib\net45\Unquote.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="xunit">
+      <HintPath>..\packages\xunit.1.9.2\lib\net20\xunit.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FsCheckAddin.fs" />
     <Compile Include="NUnitRunner.fs" />
     <Compile Include="fredis_test.fs" />
-    <Compile Include="PropertyExamples.fs" />
     <Compile Include="TestRespMsgProcessor.fs" />
     <Compile Include="TestFredisCmds.fs" />
+    <Compile Include="TestFredisCmdsFSCheck.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />
     <None Include="Script.fsx" />

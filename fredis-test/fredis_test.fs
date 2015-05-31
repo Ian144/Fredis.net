@@ -14,7 +14,7 @@
 //// Note on FsCheck tests: The NUnit test runner will still green-light failing tests with Check.Quick 
 //// even though it reports them as failing. Use Check.QuickThrowOnFailure instead.
 //
-////[<Test>]
+////[<Fact>]
 ////let ``FsCheck test 1``() =
 ////    Check.QuickThrowOnFailure (true = false |@ sprintf "true = false")
 ////
@@ -23,7 +23,7 @@
 //
 //open NUnitRunner
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 2 (string generator)``() =
 //    let genString = 
 //        gen {
@@ -57,18 +57,18 @@
 //        |> Arb.filter (fun i -> i % 2 = 0) 
 //        |> Arb.convert EvenInt int
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 3 (registering an arbitrary type for generation)``() =
 //    Arb.register<ArbitraryModifiers>() |> ignore
 //
 //    let ``generated even ints should be even`` (EvenInt i) = i % 2 = 1
 //    Check.QuickThrowOnFailure ``generated even ints should be even``
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 4 (and properties)``() =
 //    Check.QuickThrowOnFailure ((1 = 1) |@ sprintf "1 = 1" .&. (2 = 3) |@ sprintf "2 != 3")
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 5 (or properties)``() =
 //    Check.QuickThrowOnFailure ((1 = 2) |@ sprintf "1 != 2" .|. (2 = 3) |@ sprintf "2 != 3")
 //
@@ -100,7 +100,7 @@
 //        member x.Initial() = (new Counter(), 0)
 //        member x.GenCommand _ = Gen.elements [inc;dec] }
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 6a (stateful testing spec)``() =
 //    Check.QuickThrowOnFailure (asProperty spec)
 //
@@ -132,27 +132,27 @@
 //        member x.GenCommand _ = Gen.elements genList }
 //
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsCheck test 6b (stateful testing command series)``() =
 //    let ``inc, dec, reset`` = [inc2; dec2; reset]
 //    Check.QuickThrowOnFailure (asProperty (spec2 ``inc, dec, reset``))
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsUnit test 1``() =
 //    [1; 2; 3] |> should equal [1; 2; 3; 4]
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsUnit test 2``() =
 //    1 |> should not' (equal 1)
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsUnit test 3``() =
 //    10.1 |> should (equalWithin 0.1) 10.22
 //
-//[<Test>]
+//[<Fact>]
 //let ``FsUnit test 4 (should throw exception)``() =
 //    (fun () -> 1 + 2 |> ignore) |> should throw typeof<System.Exception>
 //
-//[<Test>]
+//[<Fact>]
 //let ``Unquote test 1``() =
 //    test <@ ([3; 2; 1; 0] |> List.map ((+) 1)) = [1 + 3..1 + 0] @>

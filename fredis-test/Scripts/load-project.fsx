@@ -4,6 +4,6 @@
 #load @"..\FsCheckAddin.fs"
       @"..\NUnitRunner.fs"
       @"..\fredis_test.fs"
-      @"..\PropertyExamples.fs"
       @"..\TestRespMsgProcessor.fs"
       @"..\TestFredisCmds.fs"
+      @"..\TestFredisCmdsFSCheck.fs"
