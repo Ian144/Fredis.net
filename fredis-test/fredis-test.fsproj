@@ -87,13 +87,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="fredis_test.fs" />
     <Compile Include="TestRespMsgProcessor.fs" />
     <Compile Include="TestFredisCmds.fs" />
     <Compile Include="TestFredisCmdsFSCheck.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />
-    <None Include="Script.fsx" />
     <None Include="Scripts\load-references.fsx" />
     <None Include="Scripts\load-project.fsx" />
   </ItemGroup>
