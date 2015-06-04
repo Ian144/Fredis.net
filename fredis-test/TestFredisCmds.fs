@@ -596,7 +596,6 @@ type ``Parse BITPOS`` () =
         let nineByteOffset = (ByteOffset.create 9).Value
         let nineBlkStr   = "9" |> StrToBulkStr
         let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.Lower nineByteOffset)
-        let actual = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|]
         test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|] @>
 
     [<Fact>]

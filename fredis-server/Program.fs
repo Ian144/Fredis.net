@@ -17,7 +17,7 @@ let hashMap = HashMap()
 
 
 
-let HandleError (name:string) (ex:System.Exception) = 
+let HandleSocketError (name:string) (ex:System.Exception) = 
     let rec HandleExInner (ex:System.Exception) = 
         let msg = ex.Message
         let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException    
@@ -30,12 +30,46 @@ let HandleError (name:string) (ex:System.Exception) =
     let msg = HandleExInner ex
     printfn "%s --> %s" name msg
 
-let ClientError ex =  HandleError "client error" ex
-let ConnectionListenerError ex = HandleError "connection listener error" ex
+let ClientError ex =  HandleSocketError "client error" ex
+let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
 
 
 let ClientListenerLoop (client:TcpClient) =
     printfn "new connection"
+
+    let asyncProcessClientRequestsSimple =
+        //let mutable (loopAgain:bool) = true
+        let loopAgain = ref true
+        async{
+            use client = client // without this Dispose would not be called on client
+            use ns = client.GetStream() 
+            while (client.Connected && !loopAgain) do
+                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
+                printfn "handle new command"
+                match optRespTypeByte with
+                | None              -> loopAgain := false
+                | Some respTypeByte ->
+                                        // instead of 100 could have a number representing 512mb/receive buffer size
+                                        let buffers = Array.create<byte[]> 10000 [||]
+                                        let totalBytesRead = ref 0
+                                        let ctr = ref 0
+                                        while client.Available > 0 do
+                                            let availToRead = client.Available
+                                            let buffer = Array.zeroCreate<byte> availToRead
+                                            let numBytesRead = ns.Read(buffer,0,availToRead) 
+                                            let idx:int = !ctr
+                                            buffers.[idx] <- buffer    
+                                            totalBytesRead := !totalBytesRead + numBytesRead 
+                                            ctr := !ctr + 1
+                                            printfn "numBytesRead: %d" numBytesRead
+                                        let allBytes:byte[] =  buffers |> Array.collect id
+                                        let ss = Utils.BytesToStr allBytes
+                                        printfn "read: %s" ss
+                                        printfn "total numBytesRead: %d" !totalBytesRead
+                do! (ns.AsyncWrite okBytes)
+        }
+
+
 
     let asyncProcessClientRequests =
         //let mutable (loopAgain:bool) = true
@@ -45,15 +79,16 @@ let ClientListenerLoop (client:TcpClient) =
             use ns = client.GetStream() 
             while (client.Connected && !loopAgain) do
                 let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
-
+                printfn "handle new command"
                 match optRespTypeByte with
                 | None -> loopAgain := false
                 | Some respTypeByte -> 
                     let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                    
                     let procResultBytes = choose{
                         let!    respMsg = RespMsgProcessor.LoadRESPMsgOuterChoice respTypeInt ns
                         let!    cmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                        let xx = client.Available
+                        printfn "cmd processed, avail: %d" xx
                         return FredisCmdProcessor.Execute hashMap cmd
                         }
 
@@ -69,7 +104,7 @@ let ClientListenerLoop (client:TcpClient) =
         }
 
     Async.StartWithContinuations(
-         asyncProcessClientRequests,
+         asyncProcessClientRequestsSimple,
          (fun _     -> printfn "ClientListener completed" ),
          ClientError,
          (fun ct    -> printfn "######## ClientListener cancelled: %A" ct)
