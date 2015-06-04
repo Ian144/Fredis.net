@@ -8,12 +8,30 @@ open Utils
 
 
 
-let host = """127.0.0.1"""
+//let host = """127.0.0.1"""
+let host = """0.0.0.0"""
 let port = 6379
 
 
 let hashMap = HashMap()
 
+
+
+let HandleError (name:string) (ex:System.Exception) = 
+    let rec HandleExInner (ex:System.Exception) = 
+        let msg = ex.Message
+        let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException    
+
+        match optInnerEx with
+        | None  ->          ""
+        | Some innerEx ->   let innerMsg = HandleExInner innerEx
+                            sprintf "%s | %s" msg innerMsg
+    
+    let msg = HandleExInner ex
+    printfn "%s --> %s" name msg
+
+let ClientError ex =  HandleError "client error" ex
+let ConnectionListenerError ex = HandleError "connection listener error" ex
 
 
 let ClientListenerLoop (client:TcpClient) =
@@ -42,16 +60,19 @@ let ClientListenerLoop (client:TcpClient) =
                     let replyBytes = 
                             match procResultBytes with 
                             | Choice1Of2 procCompleteBytes  -> procCompleteBytes
-                            | Choice2Of2 errBytes           -> errBytes
+                            | Choice2Of2 _                  -> CmdCommon.errorBytes
                     
+//                    let xx = Utils.BytesToStr replyBytes
+//                    printfn "reply: %s" xx
+
                     do! (ns.AsyncWrite replyBytes)
         }
 
     Async.StartWithContinuations(
          asyncProcessClientRequests,
          (fun _     -> printfn "ClientListener completed" ),
-         (fun ex    -> printfn "ClientListener failed: %s" ex.Message),
-         (fun ct    -> printfn "ClientListener cancelled: %A" ct)
+         ClientError,
+         (fun ct    -> printfn "######## ClientListener cancelled: %A" ct)
     )
 
 let ConnectionListenerLoop (listener:TcpListener) =
@@ -64,19 +85,28 @@ let ConnectionListenerLoop (listener:TcpListener) =
         }  
     
     Async.StartWithContinuations(
-         asyncConnectionListener,
-         (fun _     -> printfn "ConnectionListener completed"),
-         (fun ex    -> printfn "ConnectionListener failed: %s" ex.Message),
-         (fun ct    -> printfn "ConnectionListener cancelled: %A" ct)
+        asyncConnectionListener,
+        (fun _  -> printfn "ConnectionListener completed"),
+        (fun ex -> ConnectionListenerError ex),
+        (fun ct -> printfn "######## ConnectionListener cancelled: %A" ct)
     )
 
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
+do listener.AllowNatTraversal(true) 
+
+
 listener.Start()
 ConnectionListenerLoop listener
 printfn "fredis startup complete\nawaiting incoming connection requests"
 System.Console.ReadKey() |> ignore
-//asyncConnectionListener.Cancel //#### shutdown all the clients, how? cancellationToken?
+do Async.CancelDefaultToken()
+printfn "cancelling asyncs"
+System.Console.ReadKey() |> ignore
 listener.Stop()
+
+do System.Threading.Thread.Sleep(2000) 
+
+
 
 

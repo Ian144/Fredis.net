@@ -27,7 +27,8 @@ let Parse (msgArr:RESPMsg []) =
     let msgStr      = BytesToStr(msgBytes)
     let arrLen      = Array.length msgArr
 
-//    printfn "%A - %s" msgArr msgStr
+    //printfn "%A - %s" msgArr msgStr
+    printfn "%s" msgStr
 
     //#### consider replacing this ever growing match statement with a map of string to function
     match msgStr.ToUpper() with
