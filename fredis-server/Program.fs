@@ -36,11 +36,11 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 let ClientListenerLoop (client:TcpClient) =
 
-    client.ReceiveBufferSize <- 128 * 1024
-    client.SendBufferSize <- 128 * 1024
-
-    client.ReceiveTimeout <- 9999
-
+    client.ReceiveBufferSize <- 16 * 1024
+//    client.NoDelay <- false
+//    client.ReceiveTimeout <- 10000
+//    client.SendBufferSize <- 128 * 1024
+    
     printfn "new connection"
 
 
@@ -57,8 +57,8 @@ let ClientListenerLoop (client:TcpClient) =
                 let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
                 printfn "handle new command"
                 match optRespTypeByte with
-                | None      -> loopAgain := false
-                | Some _    ->
+                | None              -> loopAgain := false
+                | Some firstByte    ->
                                 // instead of 100 could have a number representing 512mb/receive buffer size
                                 let buffers = Array.create<byte[]> 100000 [||]
                                 let ctr = ref 0
@@ -73,7 +73,8 @@ let ClientListenerLoop (client:TcpClient) =
                                     printfn "numBytesRead: %d" numBytesRead
                                 let allBytes:byte[] =  buffers |> Array.collect id
                                 let ss = Utils.BytesToStr allBytes
-                                printfn "read: %s" ss
+                                let firstChar = System.Convert.ToChar firstByte
+                                printfn "read:\n%c%s" firstChar  ss
                                 printfn "total numBytesRead: %d" !totalBytesRead
                 do! (ns.AsyncWrite okBytes)
         }
@@ -88,25 +89,23 @@ let ClientListenerLoop (client:TcpClient) =
             use ns = client.GetStream() 
             while (client.Connected && !loopAgain) do
                 let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
-                printfn "handle new command"
-                match optRespTypeByte with
-                | None -> loopAgain := false
-                | Some respTypeByte -> 
-                    let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                    let procResultBytes = choose{
-                        let!    respMsg = RespMsgProcessor.LoadRESPMsgOuterChoice client.ReceiveBufferSize respTypeInt ns 
-                        let!    cmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                        let xx = client.Available
-                        printfn "cmd processed, avail: %d" xx
-                        return FredisCmdProcessor.Execute hashMap cmd
-                        }
 
-                    let replyBytes = 
-                            match procResultBytes with 
-                            | Choice1Of2 procCompleteBytes  -> procCompleteBytes
-                            | Choice2Of2 _                  -> CmdCommon.errorBytes
+                match optRespTypeByte with
+                | None ->   loopAgain := false
+                | Some respTypeByte -> 
+                            let respTypeInt = System.Convert.ToInt32(respTypeByte)
+                            let procResultBytes = choose{
+                                    let!    respMsg = RespMsgProcessor.LoadRESPMsgOuterChoice client.ReceiveBufferSize respTypeInt ns 
+                                    let!    cmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                                    return FredisCmdProcessor.Execute hashMap cmd 
+                                }
+
+                            let replyBytes = 
+                                    match procResultBytes with 
+                                    | Choice1Of2 procCompleteBytes  -> procCompleteBytes
+                                    | Choice2Of2 _                  -> CmdCommon.errorBytes
                     
-                    do! (ns.AsyncWrite replyBytes)
+                            do! (ns.AsyncWrite replyBytes)
         }
 
     Async.StartWithContinuations(
@@ -148,9 +147,7 @@ do Async.CancelDefaultToken()
 printfn "cancelling asyncs"
 System.Console.ReadKey() |> ignore
 listener.Stop()
-
-do System.Threading.Thread.Sleep(2000) 
-
+printfn "stopped"
 
 
 
