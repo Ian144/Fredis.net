@@ -43,41 +43,40 @@ let ClientListenerLoop (client:TcpClient) =
     
     printfn "new connection"
 
-
-    let asyncProcessClientRequestsSimple =
-        //let mutable (loopAgain:bool) = true
-        let loopAgain = ref true
-
-        let totalBytesRead = ref 0
-
-        async{
-            use client = client // without this Dispose would not be called on client
-            use ns = client.GetStream() 
-            while (client.Connected && !loopAgain) do
-                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
-                printfn "handle new command"
-                match optRespTypeByte with
-                | None              -> loopAgain := false
-                | Some firstByte    ->
-                                // instead of 100 could have a number representing 512mb/receive buffer size
-                                let buffers = Array.create<byte[]> 100000 [||]
-                                let ctr = ref 0
-                                while client.Available > 0 do
-                                    let availToRead = client.Available
-                                    let buffer = Array.zeroCreate<byte> availToRead
-                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
-                                    let idx:int = !ctr
-                                    buffers.[idx] <- buffer    
-                                    totalBytesRead := !totalBytesRead + numBytesRead 
-                                    ctr := !ctr + 1
-                                    printfn "numBytesRead: %d" numBytesRead
-                                let allBytes:byte[] =  buffers |> Array.collect id
-                                let ss = Utils.BytesToStr allBytes
-                                let firstChar = System.Convert.ToChar firstByte
-                                printfn "read:\n%c%s" firstChar  ss
-                                printfn "total numBytesRead: %d" !totalBytesRead
-                do! (ns.AsyncWrite okBytes)
-        }
+//    let asyncProcessClientRequestsSimple =
+//        //let mutable (loopAgain:bool) = true
+//        let loopAgain = ref true
+//
+//        let totalBytesRead = ref 0
+//
+//        async{
+//            use client = client // without this Dispose would not be called on client
+//            use ns = client.GetStream() 
+//            while (client.Connected && !loopAgain) do
+//                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
+//                printfn "handle new command"
+//                match optRespTypeByte with
+//                | None              -> loopAgain := false
+//                | Some firstByte    ->
+//                                // instead of 100 could have a number representing 512mb/receive buffer size
+//                                let buffers = Array.create<byte[]> 100000 [||]
+//                                let ctr = ref 0
+//                                while client.Available > 0 do
+//                                    let availToRead = client.Available
+//                                    let buffer = Array.zeroCreate<byte> availToRead
+//                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
+//                                    let idx:int = !ctr
+//                                    buffers.[idx] <- buffer    
+//                                    totalBytesRead := !totalBytesRead + numBytesRead 
+//                                    ctr := !ctr + 1
+//                                    printfn "numBytesRead: %d" numBytesRead
+//                                let allBytes:byte[] =  buffers |> Array.collect id
+//                                let ss = Utils.BytesToStr allBytes
+//                                let firstChar = System.Convert.ToChar firstByte
+//                                printfn "read:\n%c%s" firstChar  ss
+//                                printfn "total numBytesRead: %d" !totalBytesRead
+//                do! (ns.AsyncWrite okBytes)
+//        }
 
 
 
@@ -112,7 +111,7 @@ let ClientListenerLoop (client:TcpClient) =
          asyncProcessClientRequests,
          (fun _     -> printfn "ClientListener completed" ),
          ClientError,
-         (fun ct    -> printfn "######## ClientListener cancelled: %A" ct)
+         (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )
 
 let ConnectionListenerLoop (listener:TcpListener) =
@@ -128,19 +127,13 @@ let ConnectionListenerLoop (listener:TcpListener) =
         asyncConnectionListener,
         (fun _  -> printfn "ConnectionListener completed"),
         (fun ex -> ConnectionListenerError ex),
-        (fun ct -> printfn "######## ConnectionListener cancelled: %A" ct)
+        (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
     )
 
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
-//do listener.AllowNatTraversal(true) 
-
-
 listener.Start ()
-
 ConnectionListenerLoop listener
-
-
 printfn "fredis startup complete\nawaiting incoming connection requests"
 System.Console.ReadKey() |> ignore
 do Async.CancelDefaultToken()
