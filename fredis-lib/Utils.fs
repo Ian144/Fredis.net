@@ -1,10 +1,8 @@
 ﻿module Utils
 
-//#### use less generic name than Utils 
+//#### use less generic name than Utils and/or separate into multiple files
 
-open System.Net
-open System.Text
-open System.Net.Sockets
+open System
 open System.IO
 
 open FredisTypes
@@ -25,6 +23,10 @@ let EatCRLF (ns:Stream) =
     ns.ReadByte() |> ignore
 
 
+let Eat1 (ns:Stream) = 
+    ns.ReadByte() |> ignore
+
+
 let Eat3 (ns:Stream) = 
     ns.ReadByte() |> ignore
     ns.ReadByte() |> ignore
@@ -40,7 +42,7 @@ let EatNBytes (len) (ns:Stream) =
 let Eat5Bytes ns = EatNBytes 5 ns
 
 // async extension methods on NetworkStream
-type System.Net.Sockets.NetworkStream with
+type Net.Sockets.NetworkStream with
 
     // read a single byte, throw if client disconnected
     member ns.AsyncReadByte () = async{
@@ -65,13 +67,11 @@ type System.Net.Sockets.NetworkStream with
 
 let MakeRespBulkString (ss:string) = sprintf "$%d\r\n%s\r\n" ss.Length ss
 
-let MakeSingleArrayRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
-
+let MakeArraySingleRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
 
 let MakeRespIntegerArr (ii:int64) = 
         let ss = sprintf "*1\r\n:%d\r\n" ii
         StrToBytes ss
-
 
 
 let SetBit (bs:byte []) (index:int) (value:bool) =
@@ -84,6 +84,7 @@ let SetBit (bs:byte []) (index:int) (value:bool) =
     | false ->  bs.[byteIndex] <- bs.[byteIndex] &&& (~~~mask)
                 ()
 
+
 let GetBit (bs:byte []) (index:int) : bool =
     let byteIndex   = index / 8
     let bitIndex    = index % 8
@@ -92,23 +93,23 @@ let GetBit (bs:byte []) (index:int) : bool =
 
 
 
-let OptionToChoiceAdaptor (optFunc:'a -> 'b option) choice2Of2Val (xx:'a) = 
+let OptionToChoice (optFunc:'a -> 'b option) (xx:'a) choice2Of2Val  = 
     match optFunc xx with
     | Some yy   -> Choice1Of2 yy
     | None      -> Choice2Of2 choice2Of2Val
                     
                     
-let ParseChoiceInteger (bs:byte[]) (str:string) :Choice<int,byte[]>  = OptionToChoiceAdaptor FSharpx.FSharpOption.ParseInt bs str 
+let ChoiceParseInt failureMsg str :Choice<int,byte[]> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
 
-let ParseChoiceBoolFromInt (errorMsg:byte[]) (ii:int) = 
+
+let ChoiceParseBoolFromInt (errorMsg:byte[]) (ii:int) = 
         match ii with
         | 1 -> Choice1Of2 true
         | 0 -> Choice1Of2 false
         | _ -> Choice2Of2 errorMsg
 
 
-
-let ParseChoiceBoolFromStr (errorMsg) (ss) = 
+let ChoiceParseBool (errorMsg) (ss) = 
         match ss with
         | "1"   -> Choice1Of2 true
         | "0"   -> Choice1Of2 false

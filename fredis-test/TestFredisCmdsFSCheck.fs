@@ -35,7 +35,7 @@ type PositiveInt32SmallRange =
 //[<Property(Arbitrary = [| typeof<Offsets> |] )>]
 //[<Property(Arbitrary = [| typeof<Offsets> |], Verbose=true)>]
 //[<Property(Arbitrary = [| typeof<Offsets> |], MaxTest = 9999, Verbose=true, QuietOnSuccess = true)>]
-[<Property(Arbitrary = [| typeof<PositiveInt32> |], Verbose=true)>]
+[<  Property(Arbitrary = [| typeof<PositiveInt32> |]) >]
 let ``SETBIT, array len created is never more than 8 longer than the bit offset`` (offset:int) =
     let key = Key "key"
     let value  = true

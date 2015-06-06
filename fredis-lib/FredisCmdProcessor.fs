@@ -88,13 +88,13 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
 
     | FredisCmd.Get kk                      ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let vv = hashMap.[kk] |> BytesToStr
-                                                            MakeSingleArrayRespBulkString vv |> StrToBytes
+                                                            MakeArraySingleRespBulkString vv |> StrToBytes
                                                 | false ->  nilBytes
 
     | FredisCmd.GetSet (kk,newVal)          ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let oldVal = hashMap.[kk] |> BytesToStr
                                                             hashMap.[kk] <- newVal
-                                                            let ret = MakeSingleArrayRespBulkString oldVal |> StrToBytes
+                                                            let ret = MakeArraySingleRespBulkString oldVal |> StrToBytes
                                                             ret
                                                 | false ->  hashMap.[kk] <- newVal
                                                             nilBytes
@@ -133,6 +133,6 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
                                                                                         let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
                                                                                         let bs2 = Array.sub bs lower1 count 
                                                                                         let retStr = bs2 |> BytesToStr
-                                                                                        let ret = retStr |> MakeSingleArrayRespBulkString |> StrToBytes
+                                                                                        let ret = retStr |> MakeArraySingleRespBulkString |> StrToBytes
                                                                                         ret
                                                             | None                  ->  CmdCommon.emptyBytes

@@ -40,81 +40,60 @@ let pingBytes   = Utils.StrToBytes "PING"
 
 
 
-//#### this function is partial, so are all funcs which use it
-let ReadUntilCRLF (ns:Stream) : int list = 
+let ReadUntilCRLF (strm:Stream) : int list = 
     let rec ReadInner (ns:Stream) bs : int list = 
         match ns.ReadByte() with
-        | -1    ->  []                      // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  ns.ReadByte() |> ignore //#### assuming the next char is LF
+        | -1    ->  []       // end of stream, #### reconsider if returning an empty list is correct
+        | CR    ->  Eat1 ns  //#### assuming the next char is LF
                     bs
         | b     ->  b :: (ReadInner ns bs) 
-    ReadInner ns []
+    ReadInner strm []
 
 
 
-let ReadUntilCRLF2 (makeRESPMsg:Bytes -> RESPMsg) (ns:Stream) : RESPMsg = 
-
+let ReadStringCRLF (makeRESPMsg:Bytes -> RESPMsg) (strm:Stream) : RESPMsg = 
     let rec ReadInner (ns:Stream) bs : byte list = 
         match ns.ReadByte() with
-        | -1    ->  []                      // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  ns.ReadByte() |> ignore //#### assuming the next char is LF
+        | -1    ->  []      // end of stream, #### reconsider if returning an empty list is correct
+        | CR    ->  Eat1 ns //#### assuming the next char is LF
                     bs
         | ii    ->  let bb = System.Convert.ToByte ii
                     bb :: (ReadInner ns bs) 
-    let bs:Bytes = ReadInner ns [] |> Array.ofList 
-    makeRESPMsg bs
+    ReadInner strm [] |> Array.ofList |> makeRESPMsg
 
 
-// array length, string length etc 
-//#### reconsider if it is correct behaviour to return zero when at end of the input stream
-//#### this is a partial function, it must be able to fail, return an option?
-let ReadInt32 (ns:Stream) = 
+// read a CRLF terminated int, such as a BulkString length, from a stream
+let ReadInt32 (strm:Stream) = 
     let foldInt = (fun cur nxt -> cur * 10 + nxt)
     let AsciiDigitToDigit asciiCode = asciiCode - 48
-    let raw = ReadUntilCRLF ns
-    let digits = raw |> List.map AsciiDigitToDigit // convert ascii codes representing integer digits to the digits themselves
-    List.fold foldInt 0 digits
+    let asciiCodes = ReadUntilCRLF strm
+    asciiCodes |> List.map AsciiDigitToDigit |> List.fold foldInt 0 
 
 
 
+// copies from the stream directly into the array that will be used as a key or value
+let ReadBulkString (rcvBufSz:int) (strm:Stream) = 
 
-let ReadBulkString (rcvBufSz:int) (ns:Stream) = 
-    
-    let rec ReadInner (numBytesReadSoFar:int) (totalBytesToRead:int) (ns:Stream) (byteArray:byte array) =
+    let rec ReadInner (strm:Stream) (numBytesReadSoFar:int) (totalBytesToRead:int) (byteArray:byte array) =
         let numBytesRemainingToRead = totalBytesToRead - numBytesReadSoFar 
-
-        let numBytesToReadThisTime =
-            if numBytesRemainingToRead > rcvBufSz
-            then rcvBufSz
-            else numBytesRemainingToRead
-        
-        let numBytesRead = ns.Read (byteArray, numBytesReadSoFar, numBytesToReadThisTime)
-
+        let numBytesToReadThisTime = if numBytesRemainingToRead > rcvBufSz then rcvBufSz else numBytesRemainingToRead
+        let numBytesRead = strm.Read (byteArray, numBytesReadSoFar, numBytesToReadThisTime)
         let numBytesReadSoFar2 = numBytesReadSoFar + numBytesRead
-
         match numBytesReadSoFar2 with
-        | num when num > totalBytesToRead ->    failwith "ReadBulkString did not read the expected number of bytes"
+        | num when num > totalBytesToRead ->    failwith "ReadBulkString read more bytes than expected"
         | num when num = totalBytesToRead ->    ()
-        | _                               ->    ReadInner numBytesReadSoFar2 totalBytesToRead ns byteArray // ####TCO?
+        | _                               ->    ReadInner strm numBytesReadSoFar2 totalBytesToRead byteArray // ####TCO?
 
-//    let sw = System.Diagnostics.Stopwatch.StartNew()
+    let lenToRead = ReadInt32 strm
+    let byteArr = Array.zeroCreate<byte> lenToRead
+    do ReadInner strm  0 lenToRead byteArr
+    EatCRLF strm
+    RESPMsg.BulkString byteArr
 
-    let length = ReadInt32 ns
-    let bs = Array.zeroCreate<byte> length
-
-//    bs.[length - 1] <- 255uy
-
-    do ReadInner 0 length ns bs
-
-//    let elapsedMs = sw.ElapsedMilliseconds
-//    printfn "ReadBulkString bytes read: %d in: %d(ms)" numRead elapsedMs
-    
-    EatCRLF ns
-    RESPMsg.BulkString bs
 
 
 let ReadRESPInteger (ns:Stream) = 
-    let ii = ReadInt32 ns  // will ParseLength read an int?
+    let ii = ReadInt32 ns  
     RESPMsg.Integer ( System.Convert.ToInt64(ii) )
 
 
@@ -133,14 +112,14 @@ and LoadRESPMsg (rcvBuffSz:int) (ns:Stream)  =
 
 and LoadRESPMsgOuter (rcvBufSz:int) (respTypeByte:int) (ns:Stream) = 
     match respTypeByte with
-    | SimpleStringL -> ReadUntilCRLF2 RESPMsg.SimpleString ns
-    | ErrorL        -> ReadUntilCRLF2 RESPMsg.Error ns
+    | SimpleStringL -> ReadStringCRLF RESPMsg.SimpleString ns
+    | ErrorL        -> ReadStringCRLF RESPMsg.Error ns
     | IntegerL      -> ReadRESPInteger ns
     | BulkStringL   -> ReadBulkString rcvBufSz ns
     | ArrayL        -> LoadRESPMsgArray rcvBufSz ns
     | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
                        RESPMsg.BulkString pingBytes
-    | _             -> failwith "invalid resp stream" //#### replace with an option or choice - how will this work with the mutual recursion??
+    | _             -> failwith "invalid resp stream" 
 
 
 // wraps LoadRESPMsgOuter so as to return a choice of 'processing complete' or failure (exception thrown) byte arrays

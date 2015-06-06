@@ -37,7 +37,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let getRangeCmd = FredisCmd.GetRange (key, ``range (0,3)``)
-        let expected = "This" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        let expected = "This" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
         test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
 
 
@@ -48,7 +48,7 @@ type ``Execute GETRANGE`` () =
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
         let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
-        let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        let expected = "ing" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
 
@@ -60,7 +60,7 @@ type ``Execute GETRANGE`` () =
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
         let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
-        let expected = "ing" |> Utils.MakeSingleArrayRespBulkString |> Utils.StrToBytes 
+        let expected = "ing" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
 
@@ -84,7 +84,7 @@ type ``Execute GETSET`` () =
     static member ``getset, existing key sets new value and returns old``() =
         let hashMap = HashMap()
         let bsOldVal = (Utils.StrToBytes "oldVal")
-        let strOldVal = Utils.MakeSingleArrayRespBulkString "oldVal"
+        let strOldVal = Utils.MakeArraySingleRespBulkString "oldVal"
         let bsNewVal = (Utils.StrToBytes "newVal")
         hashMap.[key] <- bsOldVal
         let cmd = FredisCmd.GetSet (key, bsNewVal)
@@ -108,7 +108,7 @@ type ``Execute SET GET`` () =
         let setResult = FredisCmdProcessor.Execute hashMap setCmd
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
-        let expectedBulkStrVal = Utils.MakeSingleArrayRespBulkString rawVal 
+        let expectedBulkStrVal = Utils.MakeArraySingleRespBulkString rawVal 
         let getResultStr = Utils.BytesToStr getResult
         test <@ setResult = CmdCommon.okBytes && expectedBulkStrVal = getResultStr @>
 
@@ -423,7 +423,7 @@ type ``Execute BITOP`` () =
         let getCmd = FredisCmd.Get destKey
         let xx = Utils.BytesToStr [|0uy; 0uy; 0uy|]
         let yy = sprintf "aba%s" xx
-        let expected = Utils.MakeSingleArrayRespBulkString yy // confirmed by trying this in redis
+        let expected = Utils.MakeArraySingleRespBulkString yy // confirmed by trying this in redis
         test <@ expected =(FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -443,7 +443,7 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let expected = Utils.MakeSingleArrayRespBulkString "qwgdef" // confirmed by trying this in redis
+        let expected = Utils.MakeArraySingleRespBulkString "qwgdef" // confirmed by trying this in redis
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -465,7 +465,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
         let expectedBytes = Utils.BytesToStr [|16uy; 21uy; 6uy; 100uy; 101uy; 102uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeSingleArrayRespBulkString expectedBytes 
+        let expected = Utils.MakeArraySingleRespBulkString expectedBytes 
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -483,7 +483,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
         let expectedBytes = Utils.BytesToStr [|0x9euy; 0x9duy; 0x9cuy; 0x9buy; 0x9auy; 0x99uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeSingleArrayRespBulkString expectedBytes
+        let expected = Utils.MakeArraySingleRespBulkString expectedBytes
         test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
@@ -514,7 +514,7 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        test <@ Utils.MakeSingleArrayRespBulkString "val"  = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        test <@ Utils.MakeArraySingleRespBulkString "val"  = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
 
 
 
