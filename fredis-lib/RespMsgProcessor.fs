@@ -39,6 +39,7 @@ let LF = 10
 let pingBytes   = Utils.StrToBytes "PING"
 
 
+
 //#### this function is partial, so are all funcs which use it
 let ReadUntilCRLF (ns:Stream) : int list = 
     let rec ReadInner (ns:Stream) bs : int list = 
@@ -48,6 +49,20 @@ let ReadUntilCRLF (ns:Stream) : int list =
                     bs
         | b     ->  b :: (ReadInner ns bs) 
     ReadInner ns []
+
+
+
+let ReadUntilCRLF2 (makeRESPMsg:Bytes -> RESPMsg) (ns:Stream) : RESPMsg = 
+
+    let rec ReadInner (ns:Stream) bs : byte list = 
+        match ns.ReadByte() with
+        | -1    ->  []                      // end of stream, #### reconsider if returning an empty list is correct
+        | CR    ->  ns.ReadByte() |> ignore //#### assuming the next char is LF
+                    bs
+        | ii    ->  let bb = System.Convert.ToByte ii
+                    bb :: (ReadInner ns bs) 
+    let bs:Bytes = ReadInner ns [] |> Array.ofList 
+    makeRESPMsg bs
 
 
 // array length, string length etc 
@@ -62,12 +77,40 @@ let ReadInt32 (ns:Stream) =
 
 
 
-let ReadLenPrefixedString (makeRESPMsg:Bytes -> RESPMsg) (ns:Stream) = 
+
+let ReadBulkString (rcvBufSz:int) (ns:Stream) = 
+    
+    let rec ReadInner (numBytesReadSoFar:int) (totalBytesToRead:int) (ns:Stream) (byteArray:byte array) =
+        let numBytesRemainingToRead = totalBytesToRead - numBytesReadSoFar 
+
+        let numBytesToReadThisTime =
+            if numBytesRemainingToRead > rcvBufSz
+            then rcvBufSz
+            else numBytesRemainingToRead
+        
+        let numBytesRead = ns.Read (byteArray, numBytesReadSoFar, numBytesToReadThisTime)
+
+        let numBytesReadSoFar2 = numBytesReadSoFar + numBytesRead
+
+        match numBytesReadSoFar2 with
+        | num when num > totalBytesToRead ->    failwith "ReadBulkString did not read the expected number of bytes"
+        | num when num = totalBytesToRead ->    ()
+        | _                               ->    ReadInner numBytesReadSoFar2 totalBytesToRead ns byteArray // ####TCO?
+
+//    let sw = System.Diagnostics.Stopwatch.StartNew()
+
     let length = ReadInt32 ns
     let bs = Array.zeroCreate<byte> length
-    ns.Read (bs, 0, length) |> ignore //#### consider checking length read equals length expected
+
+//    bs.[length - 1] <- 255uy
+
+    do ReadInner 0 length ns bs
+
+//    let elapsedMs = sw.ElapsedMilliseconds
+//    printfn "ReadBulkString bytes read: %d in: %d(ms)" numRead elapsedMs
+    
     EatCRLF ns
-    makeRESPMsg bs
+    RESPMsg.BulkString bs
 
 
 let ReadRESPInteger (ns:Stream) = 
@@ -77,30 +120,30 @@ let ReadRESPInteger (ns:Stream) =
 
 // LoadRESPMsgArray, LoadRESPMsgArray and LoadRESPMsgOuter are mutually recursive
 // LoadRESPMsgOuter is the parsing 'entry point' and is called after ns.AsyncReadByte fires (indicating there is a new RESP msg to parse)
-let rec LoadRESPMsgArray (ns:Stream) = 
+let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) = 
     let numArrayElements = ReadInt32 ns
     let msgs = 
         [|  for _ in 0 .. (numArrayElements - 1) do
-            yield (LoadRESPMsg ns) |] 
+            yield (LoadRESPMsg rcvBuffSz ns) |] 
     RESPMsg.Array msgs
 
-and LoadRESPMsg (ns:Stream) = 
+and LoadRESPMsg (rcvBuffSz:int) (ns:Stream)  = 
     let respTypeByte = ns.ReadByte()
-    LoadRESPMsgOuter respTypeByte ns
+    LoadRESPMsgOuter rcvBuffSz respTypeByte ns 
 
-and LoadRESPMsgOuter (respTypeByte:int) (ns:Stream) = 
+and LoadRESPMsgOuter (rcvBufSz:int) (respTypeByte:int) (ns:Stream) = 
     match respTypeByte with
-    | SimpleStringL -> ReadLenPrefixedString RESPMsg.SimpleString ns
-    | ErrorL        -> ReadLenPrefixedString RESPMsg.Error ns
+    | SimpleStringL -> ReadUntilCRLF2 RESPMsg.SimpleString ns
+    | ErrorL        -> ReadUntilCRLF2 RESPMsg.Error ns
     | IntegerL      -> ReadRESPInteger ns
-    | BulkStringL   -> ReadLenPrefixedString RESPMsg.BulkString ns
-    | ArrayL        -> LoadRESPMsgArray ns
-    | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP as i understand it
+    | BulkStringL   -> ReadBulkString rcvBufSz ns
+    | ArrayL        -> LoadRESPMsgArray rcvBufSz ns
+    | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
                        RESPMsg.BulkString pingBytes
     | _             -> failwith "invalid resp stream" //#### replace with an option or choice - how will this work with the mutual recursion??
 
 
 // wraps LoadRESPMsgOuter so as to return a choice of 'processing complete' or failure (exception thrown) byte arrays
-let LoadRESPMsgOuterChoice (respTypeByte:int) (ns:Stream) = 
-        let funcx = FSharpx.Choice.protect (LoadRESPMsgOuter respTypeByte) 
+let LoadRESPMsgOuterChoice (rcvBuffSz:int) (respTypeByte:int) (ns:Stream)  = 
+        let funcx = FSharpx.Choice.protect (LoadRESPMsgOuter rcvBuffSz respTypeByte) 
         (funcx ns) |> FSharpx.Choice.mapSecond (fun exc -> StrToBytes exc.Message )
