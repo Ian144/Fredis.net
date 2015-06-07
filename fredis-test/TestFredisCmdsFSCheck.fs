@@ -194,7 +194,7 @@ let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:int) =
 
 
 [<Property>]
-let ``INCRBY when key does not exist, value equals increment `` (increment:int64) =
+let ``INCRBY when key does not exist, value equals increment`` (increment:int64) =
     let hashMap = HashMap()
     let key = Key "key"
     let cmd = FredisCmd.IncrBy (key, increment)
@@ -205,7 +205,7 @@ let ``INCRBY when key does not exist, value equals increment `` (increment:int64
 
 
 [<Property>]
-let ``INCRBY when key does exist, value equals old + new `` (oldValue:int64) (increment:int64) =
+let ``INCRBY when key does exist, value equals old + new`` (oldValue:int64) (increment:int64) =
     let hashMap = HashMap()
     let key = Key "key"
     let bsOldValue = int64ToBytes oldValue

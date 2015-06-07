@@ -108,8 +108,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : byte array =
     | FredisCmd.MGet keys                   ->  let vals = 
                                                     keys |> List.map (fun kk -> 
                                                         match hashMap.ContainsKey(kk) with 
-                                                        | true  ->  let vv = hashMap.[kk] |> BytesToStr
-                                                                    MakeRespBulkString vv
+                                                        | true  ->  hashMap.[kk] |> BytesToStr
                                                         | false ->  nilByteStr ) 
                                                 let allValStr = String.concat "" vals
                                                 (sprintf "*%d\r\n%s" vals.Length allValStr) |> StrToBytes

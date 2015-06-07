@@ -3,4 +3,5 @@
 #load @"load-references.fsx"
 #load @"..\TestRespMsgProcessor.fs"
       @"..\TestFredisCmds.fs"
+      @"..\TestRESPParsingFSCheck.fs"
       @"..\TestFredisCmdsFSCheck.fs"

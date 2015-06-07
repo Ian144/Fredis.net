@@ -64,8 +64,25 @@ type Net.Sockets.NetworkStream with
 
 
 
+let MakeBulkString (contents:byte array) =
+    let lenStr = contents.Length.ToString()
+    let numLenDigits = lenStr.Length
+    let lenBytes = lenStr |> StrToBytes
+    let bulkStrLen = numLenDigits + 5 + contents.Length     //  '$' + lenBytes + CRLF + contents + CRLF
+    let destination = Array.zeroCreate bulkStrLen
+    destination.[0] <- 36uy // $
+    System.Buffer.BlockCopy (lenBytes, 0, destination, 1, numLenDigits)
+    destination.[numLenDigits + 1] <- 13uy // CR
+    destination.[numLenDigits + 2] <- 10uy // LF
+    let contentsOffset = 1 + numLenDigits + 2
+    System.Buffer.BlockCopy (contents, 0, destination, contentsOffset, contents.Length)
+    destination.[destination.Length - 2] <- 13uy // CR
+    destination.[destination.Length - 1] <- 10uy // LF
+    destination
 
-let MakeRespBulkString (ss:string) = sprintf "$%d\r\n%s\r\n" ss.Length ss
+
+
+let MakeRespBulkStringOld (ss:string) = sprintf "$%d\r\n%s\r\n" ss.Length ss
 
 let MakeArraySingleRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
 
