@@ -19,8 +19,10 @@ let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteO
 
 let private key = Key "key"
 let private bs  = "This is a string" |> Utils.StrToBytes
+let StrToBulkStr = Utils.StrToBytes >> Resp.BulkString
 
-
+let emptyBulkStr = Resp.BulkString [||] // i.e. an empty byte array
+let nilBulkStr = CmdCommon.nilBytes |> Resp.BulkString 
 
 type ``Execute GETRANGE`` () =
 
@@ -28,7 +30,7 @@ type ``Execute GETRANGE`` () =
     static member ``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
         let cmd = FredisCmd.GetRange (key, ``range (0,3)``)
-        test <@ CmdCommon.emptyBytes = FredisCmdProcessor.Execute hashMap cmd @>
+        test <@ emptyBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
 
 
     [<Fact>]
@@ -37,7 +39,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let getRangeCmd = FredisCmd.GetRange (key, ``range (0,3)``)
-        let expected = "This" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
+        let expected = "This" |> StrToBulkStr
         test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
 
 
@@ -48,7 +50,7 @@ type ``Execute GETRANGE`` () =
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
         let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
-        let expected = "ing" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
+        let expected = "ing" |> StrToBulkStr
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
 
@@ -60,7 +62,7 @@ type ``Execute GETRANGE`` () =
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
         let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
-        let expected = "ing" |> Utils.MakeArraySingleRespBulkString |> Utils.StrToBytes 
+        let expected = "ing"|>  StrToBulkStr
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
 
@@ -77,18 +79,18 @@ type ``Execute GETSET`` () =
         let bsVal = (Utils.StrToBytes "val")
         let cmd = FredisCmd.GetSet (key, bsVal)
         let result = FredisCmdProcessor.Execute hashMap cmd
-        test <@ bsVal = hashMap.[key] && CmdCommon.nilBytes = result @>
+        test <@ bsVal = hashMap.[key] && emptyBulkStr = result @>
 
 
     [<Fact>]
     static member ``getset, existing key sets new value and returns old``() =
         let hashMap = HashMap()
-        let bsOldVal = (Utils.StrToBytes "oldVal")
-        let strOldVal = Utils.MakeArraySingleRespBulkString "oldVal"
-        let bsNewVal = (Utils.StrToBytes "newVal")
+        let bsOldVal = "oldVal" |> Utils.StrToBytes 
+        let strOldVal = bsOldVal  |> Resp.BulkString
+        let bsNewVal = "newVal" |> Utils.StrToBytes
         hashMap.[key] <- bsOldVal
         let cmd = FredisCmd.GetSet (key, bsNewVal)
-        let result = FredisCmdProcessor.Execute hashMap cmd |> Utils.BytesToStr
+        let result = FredisCmdProcessor.Execute hashMap cmd 
 
         test <@ bsNewVal = hashMap.[key] && strOldVal = result @>
 
@@ -108,9 +110,8 @@ type ``Execute SET GET`` () =
         let setResult = FredisCmdProcessor.Execute hashMap setCmd
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
-        let expectedBulkStrVal = Utils.MakeArraySingleRespBulkString rawVal 
-        let getResultStr = Utils.BytesToStr getResult
-        test <@ setResult = CmdCommon.okBytes && expectedBulkStrVal = getResultStr @>
+        let expected =  rawVal |> StrToBulkStr
+        test <@ setResult = Resp.BulkString CmdCommon.okBytes && expected = getResult @>
 
 
     [<Fact>]
@@ -119,7 +120,7 @@ type ``Execute SET GET`` () =
         let key = Key "key"
         let getCmd = FredisCmd.Get key
         let _ = FredisCmdProcessor.Execute hashMap getCmd 
-        test <@ CmdCommon.nilByteStr = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        test <@ nilBulkStr = FredisCmdProcessor.Execute hashMap getCmd @>
 
 
 
@@ -151,7 +152,7 @@ type ``Execute SETBIT`` () =
                     (FredisCmd.SetBit (key, offset, true))
 
         let resetCmd = FredisCmd.SetBit (key, offset, false)
-        test <@ Utils.MakeRespIntegerArr 1L = FredisCmdProcessor.Execute hashMap resetCmd &&
+        test <@ Resp.Integer 1L = FredisCmdProcessor.Execute hashMap resetCmd &&
                 [|0uy|] = hashMap.[key] @>
 
 
@@ -166,7 +167,7 @@ type ``Execute SETBIT`` () =
 //        let offset = 7
 //        let value  = true
 //        let cmd = FredisCmd.SetBit (key, offset, value)
-//        test <@ Utils.MakeRespIntegerArr 0L = (FredisCmdProcessor.ExecuteRedisCmds hashMap cmd) @>
+//        test <@ Resp.Integer 0L = (FredisCmdProcessor.ExecuteRedisCmds hashMap cmd) @>
 //
 //
 //    [<Fact>]
@@ -219,7 +220,7 @@ type ``Execute INCRBY`` () =
 //        let hashMap = HashMap()
 //        let cmd = FredisCmd.IncrBy ("key", 0L)
 //        let actual = FredisCmdProcessor.Execute hashMap cmd 
-//        let expected = Utils.MakeRespIntegerArr 0L
+//        let expected = Resp.Integer 0L
 //        test <@ expected = actual @>
 //        test <@ Utils.StrToBytes "0" = hashMap.["key"] @>
 //
@@ -232,14 +233,14 @@ type ``Execute INCRBY`` () =
 //        let setCmd = FredisCmd.Set (key, bVal)
 //        let _ = FredisCmdProcessor.Execute hashMap setCmd
 //        let incrCmd = FredisCmd.IncrBy (key,89L)
-//        test <@ Utils.MakeRespIntegerArr 99L = FredisCmdProcessor.Execute hashMap incrCmd @>
+//        test <@ Resp.Integer 99L = FredisCmdProcessor.Execute hashMap incrCmd @>
 //
 //
 //    [<Fact>]
 //    static member ``"INCRBY key 99" returns resp integer 99 when key does not exist`` () =
 //        let hashMap = HashMap()
 //        let cmd = FredisCmd.IncrBy ("key", 99L)
-//        test <@ Utils.MakeRespIntegerArr 99L = FredisCmdProcessor.Execute hashMap cmd @>
+//        test <@ Resp.Integer 99L = FredisCmdProcessor.Execute hashMap cmd @>
 //        test <@ Utils.StrToBytes "99" = hashMap.["key"] @>
 
 
@@ -251,7 +252,7 @@ type ``Execute INCRBY`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let cmd = FredisCmd.IncrBy (key, 99L)
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap cmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap cmd) @>
 
 
     [<Fact>]
@@ -262,7 +263,7 @@ type ``Execute INCRBY`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let cmd = FredisCmd.IncrBy (key, 99L)
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap cmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap cmd) @>
 
 
 
@@ -277,7 +278,7 @@ type ``Execute INCR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Incr key
-        test <@ Utils.MakeRespIntegerArr 11L = FredisCmdProcessor.Execute hashMap decrCmd @>
+        test <@ Resp.Integer 11L = FredisCmdProcessor.Execute hashMap decrCmd @>
 
 
     [<Fact>]
@@ -285,7 +286,7 @@ type ``Execute INCR`` () =
         let hashMap = HashMap()
         let key = Key "key"
         let decrCmd = FredisCmd.Incr key
-        test <@ Utils.MakeRespIntegerArr 1L = FredisCmdProcessor.Execute hashMap decrCmd @>
+        test <@ Resp.Integer 1L = FredisCmdProcessor.Execute hashMap decrCmd @>
         test <@ Utils.StrToBytes "1" = hashMap.[key] @>
 
 
@@ -297,7 +298,7 @@ type ``Execute INCR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Incr key
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
     [<Fact>]
@@ -308,7 +309,7 @@ type ``Execute INCR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Incr key
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
 type ``Execute DECR`` () =
@@ -321,7 +322,7 @@ type ``Execute DECR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Decr key
-        test <@ Utils.MakeRespIntegerArr 9L = FredisCmdProcessor.Execute hashMap decrCmd @>
+        test <@ Resp.Integer 9L = FredisCmdProcessor.Execute hashMap decrCmd @>
 
 
     [<Fact>]
@@ -329,7 +330,7 @@ type ``Execute DECR`` () =
         let hashMap = HashMap()
         let key = Key "key"
         let decrCmd = FredisCmd.Decr key
-        test <@ Utils.MakeRespIntegerArr -1L = FredisCmdProcessor.Execute hashMap decrCmd @>
+        test <@ Resp.Integer -1L = FredisCmdProcessor.Execute hashMap decrCmd @>
         test <@ Utils.StrToBytes "-1" = hashMap.[key] @>
 
 
@@ -341,7 +342,7 @@ type ``Execute DECR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Decr key
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
     [<Fact>]
@@ -352,7 +353,7 @@ type ``Execute DECR`` () =
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let decrCmd = FredisCmd.Decr key
-        test <@ ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
+        test <@ Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange = (FredisCmdProcessor.Execute hashMap decrCmd) @>
 
 
 
@@ -369,7 +370,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap setCmd
         let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey])
         let bitopCmd = FredisCmd.BitOp boi
-        test <@ Utils.MakeRespIntegerArr 3L = FredisCmdProcessor.Execute hashMap bitopCmd @>
+        test <@ Resp.Integer 3L = FredisCmdProcessor.Execute hashMap bitopCmd @>
 
 
 
@@ -387,7 +388,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap set2
         let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey1; srcKey2])
         let bitopCmd = FredisCmd.BitOp boi
-        test <@ Utils.MakeRespIntegerArr 6L = FredisCmdProcessor.Execute hashMap bitopCmd@>
+        test <@ Resp.Integer 6L = FredisCmdProcessor.Execute hashMap bitopCmd@>
 
 
     [<Fact>]
@@ -399,8 +400,8 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let actual = FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr
-        test <@ not (hashMap.ContainsKey(destKey)) && (nilByteStr = actual) @>
+        let actual = FredisCmdProcessor.Execute hashMap getCmd 
+        test <@ not (hashMap.ContainsKey(destKey)) && (nilBulkStr = actual) @>
 
 
     // may replace/augment the "... matches redis" tests with fscheck tests calling fredis and redis
@@ -422,9 +423,8 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
         let xx = Utils.BytesToStr [|0uy; 0uy; 0uy|]
-        let yy = sprintf "aba%s" xx
-        let expected = Utils.MakeArraySingleRespBulkString yy // confirmed by trying this in redis
-        test <@ expected =(FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        let expected = sprintf "aba%s" xx |> StrToBulkStr
+        test <@ expected =(FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
     [<Fact>]
@@ -443,8 +443,8 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let expected = Utils.MakeArraySingleRespBulkString "qwgdef" // confirmed by trying this in redis
-        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        let expected = "qwgdef" |> StrToBulkStr // confirmed by trying this in redis
+        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
 
@@ -464,9 +464,8 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let expectedBytes = Utils.BytesToStr [|16uy; 21uy; 6uy; 100uy; 101uy; 102uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeArraySingleRespBulkString expectedBytes 
-        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        let expected = Resp.BulkString [|16uy; 21uy; 6uy; 100uy; 101uy; 102uy|] 
+        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
 
@@ -482,9 +481,8 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        let expectedBytes = Utils.BytesToStr [|0x9euy; 0x9duy; 0x9cuy; 0x9buy; 0x9auy; 0x99uy|] // confirmed by trying this in redis
-        let expected = Utils.MakeArraySingleRespBulkString expectedBytes
-        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        let expected = Resp.BulkString [|0x9euy; 0x9duy; 0x9cuy; 0x9buy; 0x9auy; 0x99uy|] // confirmed by trying this in redis
+        test <@ expected = (FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
 
@@ -495,9 +493,9 @@ type ``Execute BITOP`` () =
         let srcKey = Key "srcKey"
         let boi = FredisTypes.BitOpInner.NOT (destKey, srcKey)
         let bitopCmd = FredisCmd.BitOp boi
-        let _ = FredisCmdProcessor.Execute hashMap bitopCmd |> Utils.BytesToInt64
+        let _ = FredisCmdProcessor.Execute hashMap bitopCmd 
         let getCmd = FredisCmd.Get destKey
-        test <@ CmdCommon.nilByteStr = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        test <@ nilBulkStr = (FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
 
@@ -514,12 +512,13 @@ type ``Execute BITOP`` () =
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
-        test <@ Utils.MakeArraySingleRespBulkString "val"  = (FredisCmdProcessor.Execute hashMap getCmd |> Utils.BytesToStr) @>
+        let expected = "val" |> StrToBulkStr
+        test <@ expected  = (FredisCmdProcessor.Execute hashMap getCmd ) @>
 
 
 
 
-let StrToBulkStr = Utils.StrToBytes >> RESPMsg.BulkString
+
 
 
 
