@@ -27,47 +27,34 @@ type BufferSizes =
 
 
 
-//[<Property(Arbitrary = [|typeof<BufferSizes>|], Verbose=true)>]
+
+
+
+
 [<Property(Arbitrary = [|typeof<BufferSizes>|])>]
-let ``ReadBulkString output matches content`` (bufSize:int) (content:byte array) =
-    //let bulkStrFormatBytes = content |> Utils.BytesToStr |> Utils.MakeRespBulkString |> Utils.StrToBytes
-    let bulkStrFormatBytes = Utils.MakeBulkString content
-
-    // drop the '$' that indicates that the contents of bulkStrFormatBytes is a BulkString
-    let bulkStrFormatBytes2 = bulkStrFormatBytes |> Array.toList |> List.tail |> List.toArray
-
+let ``ReadBulkString from stream always consumes final CRLF`` (bufSize:int) (content:byte array) =
     use strm = new MemoryStream()
-    strm.Write( bulkStrFormatBytes2, 0, bulkStrFormatBytes2.Length)
-    let _ = strm.Seek(0L, System.IO.SeekOrigin.Begin)
+    do Utils.AsyncSendBulkString strm content |> Async.RunSynchronously
+    strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore
+    let rm = RespMsgProcessor.ReadBulkString bufSize strm
+    match rm with
+    | SimpleString _ | Error _ | Integer _ | Array _ -> false
+    | BulkString _  -> strm.Length = strm.Position // there should be nothing left to read 
 
-    let _ = strm.Seek(0L, System.IO.SeekOrigin.Begin)
 
+
+
+[<Property(Arbitrary = [|typeof<BufferSizes>|])>]
+let ``ReadBulkString from stream output matches content`` (bufSize:int) (content:byte array) =
+    use strm = new MemoryStream()
+    do Utils.AsyncSendBulkString strm content |> Async.RunSynchronously
+    strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore // seek to after the '$' RESP type character, as this will have been consumed before ReadBulkString is called
     let rm = RespMsgProcessor.ReadBulkString bufSize strm
     match rm with
     | SimpleString _ | Error _ | Integer _ | Array _ -> false
     | BulkString contentsOut   -> 
-            let contentsInList = content |> List.ofArray
+            let contentsInList = content |> List.ofArray    // convert to list as arrays do reference equality not value equality
             let contentsOutList = contentsOut |> List.ofArray
-            let ret = contentsInList = contentsOutList
-            ret
+            contentsInList = contentsOutList
+    
 
-
-//[<Property(Arbitrary = [|typeof<BufferSizes>|])>]
-//let ``ReadBulkString always reads all of the streamed BulkString`` (bufSize:int) (content:byte array) =
-////    let bulkStrFormatBytes = content |> Utils.BytesToStr |> Utils.MakeRespBulkString |> Utils.StrToBytes
-////    use strm = new MemoryStream()
-////    strm.Write( bulkStrFormatBytes, 0, bulkStrFormatBytes.Length)
-////    let rm = RespMsgProcessor.ReadBulkString bufSize strm
-////    match rm with
-////    | SimpleString _ | Error _ | Integer _ | Array _ -> false
-////    | BulkString contentsOut   -> 
-////            let contentsInList = content |> List.ofArray
-////            let contentsOutList = contentsOut |> List.ofArray
-////            let ret = contentsInList = contentsOutList
-////            ret
-//    false
-
-
-
-//let ``MakeBulkString byte manim equals MakeBulkStringOld string manip`` (content:byte array) =
-//    let bs1 = Utils.MakeBulkString
