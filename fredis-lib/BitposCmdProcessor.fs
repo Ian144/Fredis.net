@@ -51,4 +51,4 @@ let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
                                                             | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary
                                                             | None                  -> -1L
 
-    MakeRespIntegerArr numSetBits
+    Resp.Integer numSetBits

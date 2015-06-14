@@ -59,12 +59,10 @@ let private BytesToInt64 (bs:Bytes) =
 
 
 
-//#### this function is a hack, replace with something which properly parses byte arrays containing RESP
-//#### consider fsparsec
-let private ReadRESPInteger (bs:Bytes) =
-    let xx = bs.Length - 7 // xx holds the length of the numeric component
-    let bs2 = Array.sub bs 5 xx   
-    BytesToInt64 bs2
+let private ReadRESPInteger (msg:Resp) = 
+    match msg with
+    | Resp.Integer ii   ->  ii
+    | _                 ->  failwith "non integer RESP passed to ReadRESPInteger" 
 
 
 let private CountSetBits (bs:Bytes) =
@@ -146,9 +144,11 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
     FredisCmdProcessor.Execute hashMap setCmd |> ignore
 
     let bitPosCmd = FredisCmd.Bitpos (key, value, ArrayRange.All)
-    let bitPosFound = FredisCmdProcessor.Execute hashMap bitPosCmd |> ReadRESPInteger |> int
+    let ret = FredisCmdProcessor.Execute hashMap bitPosCmd 
     
-    offset = bitPosFound
+    match ret with
+    | Resp.Integer bitPosFound  -> (int bitPosFound) = offset
+    | _                         -> false
 
 
 
@@ -167,11 +167,11 @@ let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one
     FredisCmdProcessor.Execute hashMap setBitCmd |> ignore
 
     let bitPosCmd = FredisCmd.Bitpos (key, false, ArrayRange.All)
-    let bitPosFound = FredisCmdProcessor.Execute hashMap bitPosCmd |> ReadRESPInteger |> int
+    let ret = FredisCmdProcessor.Execute hashMap bitPosCmd 
     
-    let ok = bitOffset = bitPosFound
-
-    ok
+    match ret with
+    | Resp.Integer bitPosFound  -> (int bitPosFound) = bitOffset
+    | _                         -> false
 
 
 

@@ -25,13 +25,13 @@ let IncrementBy (hashMap:HashMap) kk increment =
                 | Some ii   ->  let newVal = ii + increment 
                                 let bs = newVal |> System.Convert.ToString |> StrToBytes
                                 hashMap.[kk] <- bs
-                                MakeRespIntegerArr newVal
-                | None      ->  ErrorMsgs.valueNotIntegerOrOutOfRange
+                                Resp.Integer newVal
+                | None      ->  Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange
                                                 
     | false ->  let newVal = increment
                 let bs = newVal |> System.Convert.ToString |> StrToBytes
                 hashMap.[kk] <- bs
-                MakeRespIntegerArr newVal
+                Resp.Integer increment
     
 
 

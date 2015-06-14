@@ -33,17 +33,16 @@ let CountSetBitsInRange ((arr:Bytes), (ll:int32), (uu:int32)) =
 
 
 let Process key (optIntPair:optByteOffsetPair) (hashMap:HashMap) =
-    let numSetBits =
-            match (optIntPair, hashMap.ContainsKey(key)) with
-            | (_, false)              ->    0L                          // key not in map
+    match (optIntPair, hashMap.ContainsKey(key)) with
+    | (_, false)              ->    Resp.Integer 0L                          // key not in map
                                                         
-            | (None, true)            ->    let bs = hashMap.[key]       
-                                            CountSetBitsInRange (bs, 0, (bs.Length-1)) // no bounds supplied, so consider all bytes
-                                            
-            | (Some (ll,uu), true)    ->    let bs = hashMap.[key] 
-                                            let arrayUBound = bs.GetUpperBound(0)
-                                            let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu.Value arrayUBound
-                                            match optBounds with
-                                            | Some (lower2, upper2) -> CountSetBitsInRange (bs, lower2, upper2)
-                                            | None                  -> 0L  
-    MakeRespIntegerArr numSetBits
+    | (None, true)            ->    let bs = hashMap.[key]       
+                                    let ret = CountSetBitsInRange (bs, 0, (bs.Length-1)) // no bounds supplied, so consider all bytes
+                                    Resp.Integer ret
+
+    | (Some (ll,uu), true)    ->    let bs = hashMap.[key] 
+                                    let arrayUBound = bs.GetUpperBound(0)
+                                    let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu.Value arrayUBound
+                                    match optBounds with
+                                    | Some (lower2, upper2) -> CountSetBitsInRange (bs, lower2, upper2) |> Resp.Integer
+                                    | None                  -> Resp.Integer 0L  

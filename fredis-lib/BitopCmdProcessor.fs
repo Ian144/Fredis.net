@@ -13,7 +13,7 @@ open CmdCommon
 
 
 
-let Parse (msgArr:RESPMsg []) =
+let Parse (msgArr:Resp []) =
 
     let arrLen = Array.length msgArr
 
@@ -88,8 +88,8 @@ let private applyBitOp (destKey:Key) (srcKeys:Key list) (hashMap:HashMap) (byteA
     | true ->
                 let res = srcKeys |> List.map (GetValOrEmpty hashMap)   |> List.reduce (fun bs cs -> byteArrayBitOp bs cs)
                 hashMap.[destKey] <- res
-                MakeRespIntegerArr  res.LongLength
-    |false ->   MakeRespIntegerArr  0L 
+                Resp.Integer res.LongLength
+    |false ->   Resp.Integer  0L 
 
 let Process (op:BitOpInner) (hashMap:HashMap) =
     match op with
@@ -99,6 +99,6 @@ let Process (op:BitOpInner) (hashMap:HashMap) =
     | BitOpInner.NOT (destKey, srcKey)    ->    match hashMap.TryGetValue(srcKey) with
                                                 | true, vv  ->  let res = ByteArrayNot vv
                                                                 hashMap.[destKey] <- res
-                                                                MakeRespIntegerArr  res.LongLength
-                                                | false, _  ->  MakeRespIntegerArr  0L
+                                                                Resp.Integer res.LongLength
+                                                | false, _  ->  Resp.Integer  0L
 

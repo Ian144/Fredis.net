@@ -51,7 +51,7 @@ let ReadUntilCRLF (strm:Stream) : int list =
 
 
 
-let ReadStringCRLF (makeRESPMsg:Bytes -> RESPMsg) (strm:Stream) : RESPMsg = 
+let ReadStringCRLF (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp = 
     let rec ReadInner (ns:Stream) bs : byte list = 
         match ns.ReadByte() with
         | -1    ->  []      // end of stream, #### reconsider if returning an empty list is correct
@@ -88,13 +88,13 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
     let byteArr = Array.zeroCreate<byte> lenToRead
     do ReadInner strm  0 lenToRead byteArr
     EatCRLF strm
-    RESPMsg.BulkString byteArr
+    Resp.BulkString byteArr
 
 
 
 let ReadRESPInteger (ns:Stream) = 
     let ii = ReadInt32 ns  
-    RESPMsg.Integer ( System.Convert.ToInt64(ii) )
+    Resp.Integer ( System.Convert.ToInt64(ii) )
 
 
 // LoadRESPMsgArray, LoadRESPMsgArray and LoadRESPMsgOuter are mutually recursive
@@ -104,7 +104,7 @@ let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) =
     let msgs = 
         [|  for _ in 0 .. (numArrayElements - 1) do
             yield (LoadRESPMsg rcvBuffSz ns) |] 
-    RESPMsg.Array msgs
+    Resp.Array msgs
 
 and LoadRESPMsg (rcvBuffSz:int) (ns:Stream)  = 
     let respTypeByte = ns.ReadByte()
@@ -112,13 +112,13 @@ and LoadRESPMsg (rcvBuffSz:int) (ns:Stream)  =
 
 and LoadRESPMsgOuter (rcvBufSz:int) (respTypeByte:int) (ns:Stream) = 
     match respTypeByte with
-    | SimpleStringL -> ReadStringCRLF RESPMsg.SimpleString ns
-    | ErrorL        -> ReadStringCRLF RESPMsg.Error ns
+    | SimpleStringL -> ReadStringCRLF Resp.SimpleString ns
+    | ErrorL        -> ReadStringCRLF Resp.Error ns
     | IntegerL      -> ReadRESPInteger ns
     | BulkStringL   -> ReadBulkString rcvBufSz ns
     | ArrayL        -> LoadRESPMsgArray rcvBufSz ns
     | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
-                       RESPMsg.BulkString pingBytes
+                       Resp.BulkString pingBytes
     | _             -> failwith "invalid resp stream" 
 
 

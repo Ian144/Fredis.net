@@ -33,13 +33,14 @@ let Eat3 (ns:Stream) =
     ns.ReadByte() |> ignore
 
 
-
 let EatNBytes (len) (ns:Stream) = 
     let bs = Array.zeroCreate<byte> len
     ns.Read(bs, 0, len) |> ignore
     ()
 
+
 let Eat5Bytes ns = EatNBytes 5 ns
+
 
 // async extension methods on NetworkStream
 type Net.Sockets.NetworkStream with
@@ -64,31 +65,25 @@ type Net.Sockets.NetworkStream with
 
 
 
-let MakeBulkString (contents:byte array) =
-    let lenStr = contents.Length.ToString()
-    let numLenDigits = lenStr.Length
-    let lenBytes = lenStr |> StrToBytes
-    let bulkStrLen = numLenDigits + 5 + contents.Length     //  '$' + lenBytes + CRLF + contents + CRLF
-    let destination = Array.zeroCreate bulkStrLen
-    destination.[0] <- 36uy // $
-    System.Buffer.BlockCopy (lenBytes, 0, destination, 1, numLenDigits)
-    destination.[numLenDigits + 1] <- 13uy // CR
-    destination.[numLenDigits + 2] <- 10uy // LF
-    let contentsOffset = 1 + numLenDigits + 2
-    System.Buffer.BlockCopy (contents, 0, destination, contentsOffset, contents.Length)
-    destination.[destination.Length - 2] <- 13uy // CR
-    destination.[destination.Length - 1] <- 10uy // LF
-    destination
+
+let AsyncSendBulkString (strm:Stream) (contents:byte array) =
+    let bulkStrPrefixAndLength = (sprintf "$%d\r\n" contents.Length) |> StrToBytes
+    let crlf = [|13uy; 10uy |]
+    async{
+        do! strm.AsyncWrite( bulkStrPrefixAndLength ) 
+        do! strm.AsyncWrite( contents )
+        do! strm.AsyncWrite( crlf )
+    }
 
 
 
-let MakeRespBulkStringOld (ss:string) = sprintf "$%d\r\n%s\r\n" ss.Length ss
 
 let MakeArraySingleRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
 
-let MakeRespIntegerArr (ii:int64) = 
-        let ss = sprintf "*1\r\n:%d\r\n" ii
-        StrToBytes ss
+
+//let MakeRespIntegerArr (ii:int64) = 
+//    let ss = sprintf "*1\r\n:%d\r\n" ii
+//    StrToBytes ss
 
 
 let SetBit (bs:byte []) (index:int) (value:bool) =
@@ -120,16 +115,16 @@ let ChoiceParseInt failureMsg str :Choice<int,byte[]> = OptionToChoice FSharpx.F
 
 
 let ChoiceParseBoolFromInt (errorMsg:byte[]) (ii:int) = 
-        match ii with
-        | 1 -> Choice1Of2 true
-        | 0 -> Choice1Of2 false
-        | _ -> Choice2Of2 errorMsg
+    match ii with
+    | 1 -> Choice1Of2 true
+    | 0 -> Choice1Of2 false
+    | _ -> Choice2Of2 errorMsg
 
 
 let ChoiceParseBool (errorMsg) (ss) = 
-        match ss with
-        | "1"   -> Choice1Of2 true
-        | "0"   -> Choice1Of2 false
-        | _     -> Choice2Of2 errorMsg
+    match ss with
+    | "1"   -> Choice1Of2 true
+    | "0"   -> Choice1Of2 false
+    | _     -> Choice2Of2 errorMsg
 
 

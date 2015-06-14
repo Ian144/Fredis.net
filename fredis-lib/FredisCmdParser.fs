@@ -15,14 +15,14 @@ open Utils
 
 
 // extract the list of key-value pair mset params
-let GetMSetParamPairs (msgArr:RESPMsg []) = 
+let GetMSetParamPairs (msgArr:Resp []) = 
     let msetParams = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload // throw away the first element, which will be the string MSET
     let keys, vals = List.foldBack (fun x (l,r) -> x::r, l) msetParams ([],[]) // note the (l,r) -> (r,l) switch see: http://stackoverflow.com/questions/7942630/splitting-a-list-of-items-into-two-lists-of-odd-and-even-indexed-items
     List.zip keys vals |> List.map (fun (rawKey, vv) -> (BytesToKey rawKey), vv )
 
 
 
-let Parse (msgArr:RESPMsg []) =
+let Parse (msgArr:Resp []) =
     let msgBytes    = RespUtils.PartialGetMsgPayload msgArr.[0]
     let msgStr      = BytesToStr(msgBytes)
     let arrLen      = Array.length msgArr
@@ -233,10 +233,10 @@ let Parse (msgArr:RESPMsg []) =
 
 
 
-let RespMsgToRedisCmds (respMsg:RESPMsg) =
+let RespMsgToRedisCmds (respMsg:Resp) =
     match respMsg with
-    | RESPMsg.Array msgArray    -> Parse msgArray
-    | RESPMsg.BulkString _      -> Choice2Of2 RespUtils.errorBytes 
-    | RESPMsg.Error _           -> Choice2Of2 RespUtils.errorBytes
-    | RESPMsg.Integer _         -> Choice2Of2 RespUtils.errorBytes
-    | RESPMsg.SimpleString _    -> Choice2Of2 RespUtils.errorBytes
+    | Resp.Array msgArray    -> Parse msgArray
+    | Resp.BulkString _      -> Choice2Of2 RespUtils.errorBytes 
+    | Resp.Error _           -> Choice2Of2 RespUtils.errorBytes
+    | Resp.Integer _         -> Choice2Of2 RespUtils.errorBytes
+    | Resp.SimpleString _    -> Choice2Of2 RespUtils.errorBytes
