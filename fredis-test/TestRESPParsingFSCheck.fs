@@ -34,7 +34,8 @@ type BufferSizes =
 [<Property(Arbitrary = [|typeof<BufferSizes>|])>]
 let ``ReadBulkString from stream always consumes final CRLF`` (bufSize:int) (content:byte array) =
     use strm = new MemoryStream()
-    do Utils.AsyncSendBulkString strm content |> Async.RunSynchronously
+    let bulkStr = Resp.BulkString content
+    do Utils.AsyncSendResp strm bulkStr |> Async.RunSynchronously
     strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore
     let rm = RespMsgProcessor.ReadBulkString bufSize strm
     match rm with
@@ -47,7 +48,7 @@ let ``ReadBulkString from stream always consumes final CRLF`` (bufSize:int) (con
 [<Property(Arbitrary = [|typeof<BufferSizes>|])>]
 let ``ReadBulkString from stream output matches content`` (bufSize:int) (content:byte array) =
     use strm = new MemoryStream()
-    do Utils.AsyncSendBulkString strm content |> Async.RunSynchronously
+    do Utils.AsyncSendResp strm (Resp.BulkString content) |> Async.RunSynchronously
     strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore // seek to after the '$' RESP type character, as this will have been consumed before ReadBulkString is called
     let rm = RespMsgProcessor.ReadBulkString bufSize strm
     match rm with

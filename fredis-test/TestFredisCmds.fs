@@ -21,8 +21,7 @@ let private key = Key "key"
 let private bs  = "This is a string" |> Utils.StrToBytes
 let StrToBulkStr = Utils.StrToBytes >> Resp.BulkString
 
-let emptyBulkStr = Resp.BulkString [||] // i.e. an empty byte array
-let nilBulkStr = CmdCommon.nilBytes |> Resp.BulkString 
+//let emptyBulkStr = Resp.BulkString [||] // i.e. an empty byte array
 
 type ``Execute GETRANGE`` () =
 
@@ -30,7 +29,7 @@ type ``Execute GETRANGE`` () =
     static member ``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
         let cmd = FredisCmd.GetRange (key, ``range (0,3)``)
-        test <@ emptyBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
+        test <@ CmdCommon.nilBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
 
 
     [<Fact>]
@@ -79,7 +78,7 @@ type ``Execute GETSET`` () =
         let bsVal = (Utils.StrToBytes "val")
         let cmd = FredisCmd.GetSet (key, bsVal)
         let result = FredisCmdProcessor.Execute hashMap cmd
-        test <@ bsVal = hashMap.[key] && emptyBulkStr = result @>
+        test <@ bsVal = hashMap.[key] && CmdCommon.nilBulkStr = result @>
 
 
     [<Fact>]
@@ -111,7 +110,7 @@ type ``Execute SET GET`` () =
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
         let expected =  rawVal |> StrToBulkStr
-        test <@ setResult = Resp.BulkString CmdCommon.okBytes && expected = getResult @>
+        test <@ setResult = Resp.SimpleString CmdCommon.okBytes && expected = getResult @>
 
 
     [<Fact>]
@@ -119,7 +118,6 @@ type ``Execute SET GET`` () =
         let hashMap = HashMap()
         let key = Key "key"
         let getCmd = FredisCmd.Get key
-        let _ = FredisCmdProcessor.Execute hashMap getCmd 
         test <@ nilBulkStr = FredisCmdProcessor.Execute hashMap getCmd @>
 
 
@@ -491,11 +489,11 @@ type ``Execute BITOP`` () =
         let hashMap = HashMap()
         let destKey = Key "destKey"
         let srcKey = Key "srcKey"
+        let integerZero = Resp.Integer 0L
         let boi = FredisTypes.BitOpInner.NOT (destKey, srcKey)
         let bitopCmd = FredisCmd.BitOp boi
-        let _ = FredisCmdProcessor.Execute hashMap bitopCmd 
-        let getCmd = FredisCmd.Get destKey
-        test <@ nilBulkStr = (FredisCmdProcessor.Execute hashMap getCmd ) @>
+        let bitOpActual = FredisCmdProcessor.Execute hashMap bitopCmd 
+        test <@ integerZero = bitOpActual && not (hashMap.ContainsKey destKey) @>
 
 
 
@@ -545,6 +543,8 @@ type ``Parse GETRANGE`` () =
     [<Fact>]
     member this.``parse GETRANGE key start fails when no 'end' param supplied`` () = 
         test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key; startIdx|] @>
+
+
 
 
 

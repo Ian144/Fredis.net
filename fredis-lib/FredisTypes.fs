@@ -85,7 +85,6 @@ type FredisCmd =
 
 
 
-//[<NoEquality;NoComparison>]
 type Resp =
     | SimpleString   of Bytes
     | Error          of Bytes

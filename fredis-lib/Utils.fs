@@ -64,26 +64,50 @@ type Net.Sockets.NetworkStream with
         }
 
 
+let private crlf = [|13uy; 10uy |]
 
-
-let AsyncSendBulkString (strm:Stream) (contents:byte array) =
+let private AsyncSendBulkString (strm:Stream) (contents:byte array) =
     let bulkStrPrefixAndLength = (sprintf "$%d\r\n" contents.Length) |> StrToBytes
-    let crlf = [|13uy; 10uy |]
     async{
         do! strm.AsyncWrite( bulkStrPrefixAndLength ) 
         do! strm.AsyncWrite( contents )
         do! strm.AsyncWrite( crlf )
     }
 
+let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
+    async{
+        do! strm.AsyncWrite (contents)
+    }
+
+let private AsyncSendError (strm:Stream) (contents:byte array) =
+    async{
+        do! strm.AsyncWrite (contents)
+    }
+
+let private AsyncSendInteger (strm:Stream) (ii:int64) =
+    let integerBytes = sprintf ":%d\r\n" ii |> StrToBytes
+    async{
+        do! strm.AsyncWrite (integerBytes)
+    }
 
 
+let rec AsyncSendResp (strm:Stream) (msg:Resp) = 
+    match msg with
+    | Resp.Array arr        -> AsyncSendArray strm arr
+    | Resp.BulkString bs    -> AsyncSendBulkString strm bs
+    | Resp.SimpleString bs  -> AsyncSendSimpleString strm bs
+    | Resp.Error err        -> AsyncSendError strm err
+    | Resp.Integer ii       -> AsyncSendInteger strm ii
+and private AsyncSendArray (strm:Stream) (arr:Resp []) =
+    let lenBytes = sprintf "*%d\r\n" arr.Length |> StrToBytes  
+    let ctr = ref 0
+    async{
+        do! strm.AsyncWrite( lenBytes)
+        while !ctr < arr.Length do
+            do! AsyncSendResp strm arr.[!ctr]
+            ctr := !ctr + 1
+    }
 
-let MakeArraySingleRespBulkString (ss:string) = sprintf "*1\r\n$%d\r\n%s\r\n" ss.Length ss
-
-
-//let MakeRespIntegerArr (ii:int64) = 
-//    let ss = sprintf "*1\r\n:%d\r\n" ii
-//    StrToBytes ss
 
 
 let SetBit (bs:byte []) (index:int) (value:bool) =

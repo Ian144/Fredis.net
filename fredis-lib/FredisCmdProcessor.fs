@@ -22,6 +22,9 @@ let ExtendBytes (lenRequired:int) (bs:Bytes) =
         bs.CopyTo(bs2, 0)
         bs2
 
+
+
+
 //#### consider replacing this with a hashmap of commands to handlers
 let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp = 
 
@@ -89,14 +92,14 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.Get kk                      ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  Resp.BulkString hashMap.[kk] 
-                                                | false ->  Resp.BulkString [||]
+                                                | false ->  nilBulkStr
 
     | FredisCmd.GetSet (kk,newVal)          ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let oldVal = hashMap.[kk]
                                                             hashMap.[kk] <- newVal
                                                             Resp.BulkString oldVal
                                                 | false ->  hashMap.[kk] <- newVal
-                                                            Resp.BulkString [||]
+                                                            nilBulkStr
 
 
     | FredisCmd.Strlen kk                   ->  match hashMap.ContainsKey(kk) with 
@@ -108,13 +111,13 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                     keys |> List.map (fun kk -> 
                                                         match hashMap.ContainsKey(kk) with 
                                                         | true  ->  hashMap.[kk] |> Resp.BulkString
-                                                        | false ->  Resp.BulkString [||] ) 
+                                                        | false ->  nilBulkStr ) 
                                                 vals |> List.toArray |> Resp.Array
 
     | FredisCmd.Ping                        ->  Resp.SimpleString pongBytes
 
     | FredisCmd.GetRange (key, range)       ->  match hashMap.ContainsKey(key) with 
-                                                | false ->  Resp.BulkString [||]
+                                                | false ->  nilBulkStr
                                                 | true  ->  let bs = hashMap.[key]
                                                             let upperBound = bs.GetUpperBound(0)
                                                             let lower,upper = 
@@ -129,4 +132,4 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                             | Some (lower1, upper1) -> 
                                                                                         let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
                                                                                         Resp.BulkString (Array.sub bs lower1 count)
-                                                            | None                  ->  Resp.BulkString [||]
+                                                            | None                  ->  nilBulkStr
