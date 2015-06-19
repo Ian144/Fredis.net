@@ -65,30 +65,46 @@ type Net.Sockets.NetworkStream with
 
 
 let private crlf = [|13uy; 10uy |]
+let private simpStrType = "+" |> StrToBytes
+let private errStrType = "-" |> StrToBytes
+let private intType = ":" |> StrToBytes
+
 
 let private AsyncSendBulkString (strm:Stream) (contents:byte array) =
     let bulkStrPrefixAndLength = (sprintf "$%d\r\n" contents.Length) |> StrToBytes
     async{
-        do! strm.AsyncWrite( bulkStrPrefixAndLength ) 
-        do! strm.AsyncWrite( contents )
-        do! strm.AsyncWrite( crlf )
+        do! strm.AsyncWrite bulkStrPrefixAndLength
+        do! strm.AsyncWrite contents
+        do! strm.AsyncWrite crlf
     }
 
 let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
     async{
-        do! strm.AsyncWrite (contents)
+        do! strm.AsyncWrite simpStrType
+        do! strm.AsyncWrite contents
+        do! strm.AsyncWrite crlf
     }
 
 let private AsyncSendError (strm:Stream) (contents:byte array) =
     async{
-        do! strm.AsyncWrite (contents)
+        do! strm.AsyncWrite errStrType
+        do! strm.AsyncWrite contents
+        do! strm.AsyncWrite crlf
     }
 
+
+// resp does not work this way, it sends a string representation of the bytes
+//let private AsyncSendInteger (strm:Stream) (ii:int64) =
+//    let intBytes = System.BitConverter.GetBytes(ii)
+//    async{
+//        do! strm.AsyncWrite (intType)
+//        do! strm.AsyncWrite (intBytes)
+//        do! strm.AsyncWrite crlf
+//    }
+
 let private AsyncSendInteger (strm:Stream) (ii:int64) =
-    let integerBytes = sprintf ":%d\r\n" ii |> StrToBytes
-    async{
-        do! strm.AsyncWrite (integerBytes)
-    }
+    let bs = sprintf ":%d\r\n" ii |> StrToBytes
+    strm.AsyncWrite bs
 
 
 let rec AsyncSendResp (strm:Stream) (msg:Resp) = 

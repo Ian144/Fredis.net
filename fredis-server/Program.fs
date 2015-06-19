@@ -102,7 +102,7 @@ let ClientListenerLoop (client:TcpClient) =
                             let resp = 
                                     match choiceResp with 
                                     | Choice1Of2 resp  -> resp
-                                    | Choice2Of2 _     -> FredisTypes.Resp.Error CmdCommon.errorBytes
+                                    | Choice2Of2 err     -> FredisTypes.Resp.Error err
                     
                             do! Utils.AsyncSendResp ns resp
         }

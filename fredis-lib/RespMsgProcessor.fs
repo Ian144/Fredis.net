@@ -42,7 +42,7 @@ let pingBytes   = Utils.StrToBytes "PING"
 
 let ReadUntilCRLF (strm:Stream) : int list = 
     let rec ReadInner (ns:Stream) bs : int list = 
-        match ns.ReadByte() with
+        match ns.ReadByte() with    // annoyingly ReadByte returns an int32
         | -1    ->  []       // end of stream, #### reconsider if returning an empty list is correct
         | CR    ->  Eat1 ns  //#### assuming the next char is LF
                     bs
@@ -62,12 +62,49 @@ let ReadStringCRLF (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp =
     ReadInner strm [] |> Array.ofList |> makeRESPMsg
 
 
-// read a CRLF terminated int, such as a BulkString length, from a stream
+
+
+//let ReadInt32 (strm:Stream) = 
+//    let byteArray = ReadUntilCRLF strm |> List.map byte |> List.toArray
+//    System.BitConverter.ToInt32 (byteArray, 0)
+//
+//let ReadInt64 (strm:Stream) = 
+//    let byteArray = ReadUntilCRLF strm |> List.map byte |> List.toArray
+//    System.BitConverter.ToInt64 (byteArray, 0)
+
+
+// resp integers are streamed as delimited strings, not the byte array representing an int
 let ReadInt32 (strm:Stream) = 
     let foldInt = (fun cur nxt -> cur * 10 + nxt)
     let AsciiDigitToDigit asciiCode = asciiCode - 48
     let asciiCodes = ReadUntilCRLF strm
-    asciiCodes |> List.map AsciiDigitToDigit |> List.fold foldInt 0 
+
+    if asciiCodes.IsEmpty
+    then    0
+    else
+            let sign, asciiCodes2 = 
+                match asciiCodes.Head with
+                | 45    -> -1, asciiCodes.Tail
+                | _     ->  1, asciiCodes
+            let ii1 = asciiCodes2 |> List.map AsciiDigitToDigit |> List.fold foldInt 0 
+            ii1 * sign
+
+let ReadInt64 (strm:Stream) = 
+    let foldInt = (fun cur nxt -> cur * 10L + nxt)
+    let AsciiDigitToDigit (asciiCode:int32) = (int64 asciiCode) - 48L
+    let asciiCodes = ReadUntilCRLF strm
+
+    if asciiCodes.IsEmpty
+    then    0L
+    else
+            let sign, asciiCodes2 = 
+                match asciiCodes.Head with
+                | 45    -> -1L, asciiCodes.Tail
+                | _     ->  1L, asciiCodes
+            let ii1 = asciiCodes2 |> List.map AsciiDigitToDigit |> List.fold foldInt 0L
+            ii1 * sign
+
+
 
 
 
@@ -93,16 +130,17 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
 
 
 let ReadRESPInteger (ns:Stream) = 
-    let ii = ReadInt32 ns  
-    Resp.Integer ( System.Convert.ToInt64(ii) )
+    let ii = ReadInt64 ns  
+    Resp.Integer ii
+
 
 
 // LoadRESPMsgArray, LoadRESPMsgArray and LoadRESPMsgOuter are mutually recursive
 // LoadRESPMsgOuter is the parsing 'entry point' and is called after ns.AsyncReadByte fires (indicating there is a new RESP msg to parse)
 let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) = 
-    let numArrayElements = ReadInt32 ns
+    let numArrayElements = ReadInt64 ns 
     let msgs = 
-        [|  for _ in 0 .. (numArrayElements - 1) do
+        [|  for _ in 0L .. (numArrayElements - 1L) do
             yield (LoadRESPMsg rcvBuffSz ns) |] 
     Resp.Array msgs
 
