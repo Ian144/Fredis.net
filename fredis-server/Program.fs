@@ -12,6 +12,11 @@ open Utils
 let host = """0.0.0.0"""
 let port = 6379
 
+// for responding to 'raw' non-RESP pings
+[<Literal>]
+let PingL = 80          // P - redis-benchmark just sends PING\r\n, i.e. a raw string, not RESP as i understood it
+let pongBytes  = Utils.StrToBytes "+PONG\r\n"
+
 
 let hashMap = HashMap()
 
@@ -36,47 +41,49 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 let ClientListenerLoop (client:TcpClient) =
 
-//    client.ReceiveBufferSize <- 16 * 1024
-//    client.NoDelay <- false
-//    client.ReceiveTimeout <- 10000
-    client.SendBufferSize <- 128 * 1024
+    //#### todo set from config
+    client.NoDelay <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
+    client.ReceiveBufferSize <- 64 * 1024
+    client.SendBufferSize <- 64 * 1024
     
     printfn "new connection"
 
-//    let asyncProcessClientRequestsSimple =
-//        //let mutable (loopAgain:bool) = true
-//        let loopAgain = ref true
-//
-//        let totalBytesRead = ref 0
-//
-//        async{
-//            use client = client // without this Dispose would not be called on client
-//            use ns = client.GetStream() 
-//            while (client.Connected && !loopAgain) do
-//                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
-//                printfn "handle new command"
-//                match optRespTypeByte with
-//                | None              -> loopAgain := false
-//                | Some firstByte    ->
-//                                // instead of 100 could have a number representing 512mb/receive buffer size
-//                                let buffers = Array.create<byte[]> 100000 [||]
-//                                let ctr = ref 0
-//                                while client.Available > 0 do
-//                                    let availToRead = client.Available
-//                                    let buffer = Array.zeroCreate<byte> availToRead
-//                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
-//                                    let idx:int = !ctr
-//                                    buffers.[idx] <- buffer    
-//                                    totalBytesRead := !totalBytesRead + numBytesRead 
-//                                    ctr := !ctr + 1
-//                                    printfn "numBytesRead: %d" numBytesRead
-//                                let allBytes:byte[] =  buffers |> Array.collect id
-//                                let ss = Utils.BytesToStr allBytes
-//                                let firstChar = System.Convert.ToChar firstByte
-//                                printfn "read:\n%c%s" firstChar  ss
-//                                printfn "total numBytesRead: %d" !totalBytesRead
-//                do! (ns.AsyncWrite okBytes)
-//        }
+
+    let asyncProcessClientRequestsSimple =
+        //let mutable (loopAgain:bool) = true
+        let loopAgain = ref true
+
+        let pongBytes  = Utils.StrToBytes "+PONG\r\n"
+        let totalBytesRead = ref 0
+        let buffers = Array.create<byte[]> 100000 [||]
+
+
+        async{
+            use client = client // without this Dispose would not be called on client
+            use ns = client.GetStream() 
+            while (client.Connected && !loopAgain) do
+                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
+                printfn "handle new command"
+                match optRespTypeByte with
+                | None              -> loopAgain := false
+                | Some firstByte    ->
+                                let ctr = ref 0
+                                while client.Available > 0 do
+                                    let availToRead = client.Available
+                                    let buffer = Array.zeroCreate<byte> availToRead
+                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
+                                    let idx:int = !ctr
+                                    buffers.[idx] <- buffer    
+                                    totalBytesRead := !totalBytesRead + numBytesRead 
+                                    ctr := !ctr + 1
+                                    printfn "numBytesRead: %d" numBytesRead
+                                let allBytes:byte[] =  buffers |> Array.collect id
+                                let ss = Utils.BytesToStr allBytes
+                                let firstChar = System.Convert.ToChar firstByte
+                                printfn "read:\n%c%s" firstChar  ss
+                                printfn "total numBytesRead: %d" !totalBytesRead
+                do! (ns.AsyncWrite pongBytes)
+        }
 
 
 
@@ -85,29 +92,31 @@ let ClientListenerLoop (client:TcpClient) =
         let loopAgain = ref true
         async{
             use client = client // without this Dispose would not be called on client
-            use ns = client.GetStream() 
+            use strm = client.GetStream() 
             while (client.Connected && !loopAgain) do
-                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
 
+                // reading from the socket is synchronous after this point, until current redis msg is processed
+                let! optRespTypeByte = strm.AsyncReadByte2()  
                 match optRespTypeByte with
-                | None ->   loopAgain := false
+                | None ->   loopAgain := false  // client disconnected
                 | Some respTypeByte -> 
                             let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                            let choiceResp = choose{
-                                    let!    respMsg = RespMsgProcessor.LoadRESPMsgOuterChoice client.ReceiveBufferSize respTypeInt ns 
-                                    let!    cmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                                    return FredisCmdProcessor.Execute hashMap cmd 
-                                }
-
-                            let resp = 
-                                    match choiceResp with 
-                                    | Choice1Of2 resp  -> resp
-                                    | Choice2Of2 err     -> FredisTypes.Resp.Error err
-                    
-                            do! Utils.AsyncSendResp ns resp
+                            if respTypeInt = PingL then 
+                                Eat5NoArray strm  // redis-cli and redis-benchmark send pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
+                                do! strm.AsyncWrite pongBytes
+                            else
+                                let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm // invalid RESP will cause an exception here which will kill the client connection
+                                let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                                match choiceFredisCmd with 
+                                | Choice1Of2 cmd    ->  let respReply = FredisCmdProcessor.Execute hashMap cmd 
+                                                        do! Utils.AsyncSendResp strm respReply        
+                                | Choice2Of2 err    ->  do! strm.AsyncWrite err // the err strings are already in RESP format
+                            
+                                                    
         }
 
     Async.StartWithContinuations(
+//         asyncProcessClientRequestsSimple,
          asyncProcessClientRequests,
          (fun _     -> printfn "ClientListener completed" ),
          ClientError,
@@ -129,6 +138,7 @@ let ConnectionListenerLoop (listener:TcpListener) =
         (fun ex -> ConnectionListenerError ex),
         (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
     )
+
 
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 

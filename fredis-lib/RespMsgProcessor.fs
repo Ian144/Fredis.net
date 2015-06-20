@@ -27,9 +27,6 @@ let BulkStringL = 36    // $
 let ArrayL = 42         // *
 
 [<Literal>]
-let PingL = 80          // P - redis-benchmark just sends PING\r\n, i.e. a raw string, not RESP as i understood it
-
-[<Literal>]
 let CR = 13
 
 [<Literal>]
@@ -144,26 +141,19 @@ let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) =
     let numArrayElements = ReadInt64 ns 
     let msgs = 
         [|  for _ in 0L .. (numArrayElements - 1L) do
-            yield (LoadRESPMsg rcvBuffSz ns) |] 
+            yield (LoadRESPMsgInner rcvBuffSz ns) |] 
     Resp.Array msgs
 
-and LoadRESPMsg (rcvBuffSz:int) (ns:Stream)  = 
-    let respTypeByte = ns.ReadByte()
-    LoadRESPMsgOuter rcvBuffSz respTypeByte ns 
+and LoadRESPMsgInner (rcvBuffSz:int) (strm:Stream)  = 
+    let respTypeByte = strm.ReadByte()
+    LoadRESPMsg rcvBuffSz respTypeByte strm 
 
-and LoadRESPMsgOuter (rcvBufSz:int) (respTypeByte:int) (ns:Stream) = 
-    match respTypeByte with
-    | SimpleStringL -> ReadStringCRLF Resp.SimpleString ns
-    | ErrorL        -> ReadStringCRLF Resp.Error ns
-    | IntegerL      -> ReadRESPInteger ns
-    | BulkStringL   -> ReadBulkString rcvBufSz ns
-    | ArrayL        -> LoadRESPMsgArray rcvBufSz ns
-    | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
-                       pingBytes |> Resp.SimpleString
-    | _             -> failwith "invalid resp stream" 
+and LoadRESPMsg (rcvBufSz:int) (respType:int) (strm:Stream) = 
+    match respType with
+    | SimpleStringL -> ReadStringCRLF Resp.SimpleString strm
+    | ErrorL        -> ReadStringCRLF Resp.Error strm
+    | IntegerL      -> ReadRESPInteger strm
+    | BulkStringL   -> ReadBulkString rcvBufSz strm
+    | ArrayL        -> LoadRESPMsgArray rcvBufSz strm
+    | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion
 
-
-// wraps LoadRESPMsgOuter so as to return a choice of 'processing complete' or failure (exception thrown) byte arrays
-let LoadRESPMsgOuterChoice (rcvBuffSz:int) (respTypeByte:int) (ns:Stream)  = 
-        let funcx = FSharpx.Choice.protect (LoadRESPMsgOuter rcvBuffSz respTypeByte) 
-        (funcx ns) |> FSharpx.Choice.mapSecond (fun exc -> StrToBytes exc.Message )

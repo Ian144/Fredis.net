@@ -13,6 +13,10 @@ let MakeBulkStr = BulkStrContents.Contents >> Resp.BulkString
 
 let nilBulkStr = Resp.BulkString BulkStrContents.Nil
 
+let okSimpleStr = "OK" |> Utils.StrToBytes |> Resp.SimpleString
+
+let pingSimpleStr = "PING" |> Utils.StrToBytes |> Resp.SimpleString
+let pongSimpleStr = "PONG" |> Utils.StrToBytes |> Resp.SimpleString
 
 
 

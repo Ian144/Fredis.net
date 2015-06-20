@@ -32,6 +32,13 @@ let Eat3 (ns:Stream) =
     ns.ReadByte() |> ignore
     ns.ReadByte() |> ignore
 
+let Eat5NoArray (ns:Stream) = 
+    ns.ReadByte() |> ignore
+    ns.ReadByte() |> ignore
+    ns.ReadByte() |> ignore
+    ns.ReadByte() |> ignore
+    ns.ReadByte() |> ignore
+
 
 let EatNBytes (len) (ns:Stream) = 
     let bs = Array.zeroCreate<byte> len
@@ -98,15 +105,6 @@ let private AsyncSendError (strm:Stream) (contents:byte array) =
         do! strm.AsyncWrite crlf
     }
 
-
-// resp does not work this way, it sends a string representation of the bytes
-//let private AsyncSendInteger (strm:Stream) (ii:int64) =
-//    let intBytes = System.BitConverter.GetBytes(ii)
-//    async{
-//        do! strm.AsyncWrite (intType)
-//        do! strm.AsyncWrite (intBytes)
-//        do! strm.AsyncWrite crlf
-//    }
 
 let private AsyncSendInteger (strm:Stream) (ii:int64) =
     let bs = sprintf ":%d\r\n" ii |> StrToBytes

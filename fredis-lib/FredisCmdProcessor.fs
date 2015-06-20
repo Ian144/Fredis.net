@@ -51,7 +51,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
     | FredisCmd.IncrBy (kk,incr)            ->  CmdCommon.IncrementBy hashMap kk incr
 
     | FredisCmd.Set (kk,vv)                 ->  hashMap.[kk] <- vv
-                                                Resp.SimpleString okBytes
+                                                RespUtils.okSimpleStr
 
     | FredisCmd.SetBit (key,offset,value)   ->  match hashMap.ContainsKey(key) with
                                                 | true  ->  let lengthRequired = offset/8 + 1 
@@ -84,7 +84,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
 
     | FredisCmd.MSet kvPairs                ->  kvPairs |> List.iter (fun (kk,vv) -> hashMap.[kk] <- vv)
-                                                Resp.SimpleString okBytes
+                                                RespUtils.okSimpleStr
 
     | FredisCmd.Get kk                      ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  hashMap.[kk] |> BulkStrContents.Contents |> Resp.BulkString
@@ -110,7 +110,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                         | false ->  RespUtils.nilBulkStr ) 
                                                 vals |> List.toArray |> Resp.Array
 
-    | FredisCmd.Ping                        ->  Resp.SimpleString pongBytes
+    | FredisCmd.Ping                        ->  RespUtils.pongSimpleStr
 
     | FredisCmd.GetRange (key, range)       ->  match hashMap.ContainsKey(key) with 
                                                 | false ->  RespUtils.nilBulkStr

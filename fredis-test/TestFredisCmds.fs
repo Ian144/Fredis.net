@@ -109,7 +109,8 @@ type ``Execute SET GET`` () =
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
         let expected =  rawVal |> StrToBulkStr
-        test <@ setResult = Resp.SimpleString CmdCommon.okBytes && expected = getResult @>
+        test <@ setResult = RespUtils.okSimpleStr && expected = getResult @>
+
 
 
     [<Fact>]

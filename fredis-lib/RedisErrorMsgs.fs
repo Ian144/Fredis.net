@@ -4,6 +4,9 @@ module ErrorMsgs
 
 //#### remove the duplication
 //#### use a single case DU / phantom type for this, other things in fredis.net are also byte arrays
+
+
+
 let numArgsSet                     = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'set' command\r\n")
 let numArgsGet                     = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'get' command\r\n")
 let numArgsMSet                    = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'mset' command\r\n")

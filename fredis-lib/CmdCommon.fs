@@ -10,8 +10,8 @@ type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
 
 
 let errorBytes      = Utils.StrToBytes "-Error\r\n"
-let pongBytes       = Utils.StrToBytes "+PONG\r\n"
-let okBytes         = Utils.StrToBytes "+OK\r\n"
+
+
 
 
 // used by DECR, INCR, DECRBY and INCRBY

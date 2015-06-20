@@ -27,9 +27,6 @@ let Parse (msgArr:Resp []) =
     let msgStr      = BytesToStr(msgBytes)
     let arrLen      = Array.length msgArr
 
-//    printfn "%A - %s" msgArr msgStr
-//    printfn "%s" msgStr
-
     //#### consider replacing this ever growing match statement with a map of string to function
     match msgStr.ToUpper() with
     | "APPEND" -> 
@@ -172,8 +169,6 @@ let Parse (msgArr:Resp []) =
                     }
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetRange
-
-
 
 
     | "SETBIT" -> 
