@@ -54,9 +54,9 @@
     <Compile Include="FredisTypes.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="RedisErrorMsgs.fs" />
+    <Compile Include="RespUtils.fs" />
     <Compile Include="RespMsgProcessor.fs" />
     <Content Include="packages.config" />
-    <Compile Include="RespUtils.fs" />
     <Compile Include="CmdCommon.fs" />
     <Compile Include="BitposCmdProcessor.fs" />
     <Compile Include="BitcountCmdProcessor.fs" />

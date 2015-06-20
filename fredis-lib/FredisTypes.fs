@@ -84,11 +84,15 @@ type FredisCmd =
 //        |SetRange   of Key*int*Bytes
 
 
+// an empty bulk string e.g. "" is not the same as a bulk string that was not found
+// without having this the Resp algebraic data type does not fully model RESP
+type BulkStrContents = Nil | Contents of Bytes
+
 
 type Resp =
     | SimpleString   of Bytes
     | Error          of Bytes
     | Integer        of int64
-    | BulkString     of Bytes
+    | BulkString     of BulkStrContents
     | Array          of Resp array
 

@@ -69,14 +69,20 @@ let private simpStrType = "+" |> StrToBytes
 let private errStrType = "-" |> StrToBytes
 let private intType = ":" |> StrToBytes
 
+let nilBulkStrBytes = "$-1\r\n" |> StrToBytes
 
-let private AsyncSendBulkString (strm:Stream) (contents:byte array) =
-    let bulkStrPrefixAndLength = (sprintf "$%d\r\n" contents.Length) |> StrToBytes
-    async{
-        do! strm.AsyncWrite bulkStrPrefixAndLength
-        do! strm.AsyncWrite contents
-        do! strm.AsyncWrite crlf
-    }
+
+let private AsyncSendBulkString (strm:Stream) (contents:BulkStrContents) =
+
+    match contents with
+    | BulkStrContents.Contents bs   ->  let bulkStrPrefixAndLength = (sprintf "$%d\r\n" bs.Length) |> StrToBytes
+                                        async{
+                                            do! strm.AsyncWrite bulkStrPrefixAndLength
+                                            do! strm.AsyncWrite bs
+                                            do! strm.AsyncWrite crlf
+                                        }
+    | BulkStrContents.Nil         ->    async{ do! strm.AsyncWrite nilBulkStrBytes }
+
 
 let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
     async{
@@ -109,11 +115,11 @@ let private AsyncSendInteger (strm:Stream) (ii:int64) =
 
 let rec AsyncSendResp (strm:Stream) (msg:Resp) = 
     match msg with
-    | Resp.Array arr        -> AsyncSendArray strm arr
-    | Resp.BulkString bs    -> AsyncSendBulkString strm bs
-    | Resp.SimpleString bs  -> AsyncSendSimpleString strm bs
-    | Resp.Error err        -> AsyncSendError strm err
-    | Resp.Integer ii       -> AsyncSendInteger strm ii
+    | Resp.Array arr            -> AsyncSendArray strm arr
+    | Resp.BulkString contents  -> AsyncSendBulkString strm contents
+    | Resp.SimpleString bs      -> AsyncSendSimpleString strm bs
+    | Resp.Error err            -> AsyncSendError strm err
+    | Resp.Integer ii           -> AsyncSendInteger strm ii
 and private AsyncSendArray (strm:Stream) (arr:Resp []) =
     let lenBytes = sprintf "*%d\r\n" arr.Length |> StrToBytes  
     let ctr = ref 0

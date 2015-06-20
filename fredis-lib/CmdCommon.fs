@@ -9,11 +9,9 @@ open Utils
 type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
 
 
-let nilBulkStr  = "$-1\r\n" |> Utils.StrToBytes |> Resp.BulkString
-let errorBytes  = Utils.StrToBytes "-Error\r\n"
-let pongBytes   = Utils.StrToBytes "+PONG\r\n"
-let okBytes     = Utils.StrToBytes "+OK\r\n"
-//let emptyBytes  = Utils.StrToBytes "+\r\n" 
+let errorBytes      = Utils.StrToBytes "-Error\r\n"
+let pongBytes       = Utils.StrToBytes "+PONG\r\n"
+let okBytes         = Utils.StrToBytes "+OK\r\n"
 
 
 // used by DECR, INCR, DECRBY and INCRBY

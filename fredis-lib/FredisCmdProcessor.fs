@@ -3,15 +3,13 @@ module FredisCmdProcessor
 
 open FredisTypes
 open Utils
-
 open CmdCommon
 
 
 
    
 
-let RespStrLen (str:string) = Resp.Integer (int64 str.Length)
-    
+  
 
 
 let ExtendBytes (lenRequired:int) (bs:Bytes) = 
@@ -21,8 +19,6 @@ let ExtendBytes (lenRequired:int) (bs:Bytes) =
         let bs2 = Array.zeroCreate<byte> lenRequired
         bs.CopyTo(bs2, 0)
         bs2
-
-
 
 
 //#### consider replacing this with a hashmap of commands to handlers
@@ -91,15 +87,15 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                 Resp.SimpleString okBytes
 
     | FredisCmd.Get kk                      ->  match hashMap.ContainsKey(kk) with 
-                                                | true  ->  Resp.BulkString hashMap.[kk] 
-                                                | false ->  nilBulkStr
+                                                | true  ->  hashMap.[kk] |> BulkStrContents.Contents |> Resp.BulkString
+                                                | false ->  BulkStrContents.Nil |> Resp.BulkString
 
     | FredisCmd.GetSet (kk,newVal)          ->  match hashMap.ContainsKey(kk) with 
                                                 | true  ->  let oldVal = hashMap.[kk]
                                                             hashMap.[kk] <- newVal
-                                                            Resp.BulkString oldVal
+                                                            oldVal |> RespUtils.MakeBulkStr
                                                 | false ->  hashMap.[kk] <- newVal
-                                                            nilBulkStr
+                                                            RespUtils.nilBulkStr
 
 
     | FredisCmd.Strlen kk                   ->  match hashMap.ContainsKey(kk) with 
@@ -110,14 +106,14 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
     | FredisCmd.MGet keys                   ->  let vals = 
                                                     keys |> List.map (fun kk -> 
                                                         match hashMap.ContainsKey(kk) with 
-                                                        | true  ->  hashMap.[kk] |> Resp.BulkString
-                                                        | false ->  nilBulkStr ) 
+                                                        | true  ->  hashMap.[kk] |> RespUtils.MakeBulkStr
+                                                        | false ->  RespUtils.nilBulkStr ) 
                                                 vals |> List.toArray |> Resp.Array
 
     | FredisCmd.Ping                        ->  Resp.SimpleString pongBytes
 
     | FredisCmd.GetRange (key, range)       ->  match hashMap.ContainsKey(key) with 
-                                                | false ->  nilBulkStr
+                                                | false ->  RespUtils.nilBulkStr
                                                 | true  ->  let bs = hashMap.[key]
                                                             let upperBound = bs.GetUpperBound(0)
                                                             let lower,upper = 
@@ -131,5 +127,5 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                             match optBounds with
                                                             | Some (lower1, upper1) -> 
                                                                                         let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
-                                                                                        Resp.BulkString (Array.sub bs lower1 count)
-                                                            | None                  ->  nilBulkStr
+                                                                                        (Array.sub bs lower1 count) |> RespUtils.MakeBulkStr
+                                                            | None                  ->  RespUtils.nilBulkStr

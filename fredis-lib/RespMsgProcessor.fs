@@ -122,10 +122,13 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
         | _                               ->    ReadInner strm numBytesReadSoFar2 totalBytesToRead byteArray // ####TCO?
 
     let lenToRead = ReadInt32 strm
-    let byteArr = Array.zeroCreate<byte> lenToRead
-    do ReadInner strm  0 lenToRead byteArr
-    EatCRLF strm
-    Resp.BulkString byteArr
+
+    match lenToRead with
+    | -1    ->  Resp.BulkString BulkStrContents.Nil
+    | len   ->  let byteArr = Array.zeroCreate<byte> len
+                do ReadInner strm  0 len byteArr
+                EatCRLF strm
+                byteArr |> RespUtils.MakeBulkStr
 
 
 
@@ -156,7 +159,7 @@ and LoadRESPMsgOuter (rcvBufSz:int) (respTypeByte:int) (ns:Stream) =
     | BulkStringL   -> ReadBulkString rcvBufSz ns
     | ArrayL        -> LoadRESPMsgArray rcvBufSz ns
     | PingL         -> Eat5Bytes ns // redis-cli sends pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
-                       Resp.BulkString pingBytes
+                       pingBytes |> Resp.SimpleString
     | _             -> failwith "invalid resp stream" 
 
 

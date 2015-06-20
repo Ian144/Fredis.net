@@ -43,11 +43,19 @@ let genAlphaByte = Gen.choose(65,122) |> Gen.map byte
 let genAlphaByteArray = Gen.arrayOf genAlphaByte 
 
 
-let genRespBulkString = 
+
+let genPopulatedRespBulkString = 
     gen{
         let! bytes = genAlphaByteArray    
-        return Resp.BulkString bytes
+        return RespUtils.MakeBulkStr bytes
     }
+
+let genNilRespBulkStr = gen{ return Resp.BulkString BulkStrContents.Nil }
+
+
+
+let genRespBulkString = Gen.frequency [10, genPopulatedRespBulkString; 
+                                       1,  genNilRespBulkStr]
 
 
 let genRespSimpleString = 
@@ -77,7 +85,7 @@ let rec genRespArray =
         let! elements = Gen.arrayOfLength 4 genResp
         return Resp.Array elements
     }
-and genResp = Gen.oneof [genRespSimpleString; genRespError; genRespInteger; genRespBulkString; genRespArray]
+and genResp = Gen.frequency [ 1, genRespSimpleString; 1, genRespError; 2, genRespInteger; 2, genRespBulkString; 2, genRespArray]
 
 type ArbResp = 
     static member Resp() = Arb.fromGen (genResp )
@@ -85,57 +93,18 @@ type ArbResp =
 
 
 
-// delimited strings cannot contain CR or LF
-//  create an Arbitrary that does not add them
-//  filter them out   
+//ArbResp makes valid RESP only
 
-// add buf size as a parameter one the rest work
-
-//[<Property(Verbose=true)>]
-//[<Property( Arbitrary=[|typeof<ArbResp>|], Verbose = true, MaxTest= 999 )>]
 [<Property( Arbitrary=[|typeof<BufferSizes>; typeof<ArbResp>|] )>]
+//[<Property( Arbitrary=[|typeof<BufferSizes>; typeof<ArbResp>|], MaxTest = 999 )>]
 let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
-    try
-        use strm = new MemoryStream()
-        Utils.AsyncSendResp strm respIn |> Async.RunSynchronously
-        strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-        let respTypeByte = strm.ReadByte() 
-        let respOut = RespMsgProcessor.LoadRESPMsgOuter bufSize respTypeByte strm
-        if respIn = respOut then
-            true
-        else
-            false
-    with
-    | ex    ->  printfn "%s" ex.Message
-                false
-
-
-
-
-
-
-[<Property(Arbitrary = [|typeof<BufferSizes>|])>]
-let ``ReadBulkString from stream output matches content`` (bufSize:int) (content:byte array) =
     use strm = new MemoryStream()
-    do Utils.AsyncSendResp strm (Resp.BulkString content) |> Async.RunSynchronously
-    strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore // seek to after the '$' RESP type character, as this will have been consumed before ReadBulkString is called
-    let rm = RespMsgProcessor.ReadBulkString bufSize strm
-    match rm with
-    | SimpleString _ | Error _ | Integer _ | Array _ -> false
-    | BulkString contentsOut   -> 
-            let contentsInList = content |> List.ofArray    // convert to list as arrays do reference equality not value equality
-            let contentsOutList = contentsOut |> List.ofArray
-            contentsInList = contentsOutList
+    Utils.AsyncSendResp strm respIn |> Async.RunSynchronously
+    strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
+    let respTypeByte = strm.ReadByte() 
+    let respOut = RespMsgProcessor.LoadRESPMsgOuter bufSize respTypeByte strm
+    let isEof = strm.Position = strm.Length
+    respIn = respOut && isEof   
+    
 
-
-[<Property(Arbitrary = [|typeof<BufferSizes>|])>]
-let ``ReadBulkString from stream always consumes final CRLF`` (bufSize:int) (content:byte array) =
-    use strm = new MemoryStream()
-    let bulkStr = Resp.BulkString content
-    do Utils.AsyncSendResp strm bulkStr |> Async.RunSynchronously
-    strm.Seek(1L, System.IO.SeekOrigin.Begin) |> ignore
-    let rm = RespMsgProcessor.ReadBulkString bufSize strm
-    match rm with
-    | SimpleString _ | Error _ | Integer _ | Array _ -> false
-    | BulkString _  -> strm.Length = strm.Position // there should be nothing left to read 
 
