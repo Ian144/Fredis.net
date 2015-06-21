@@ -45,6 +45,10 @@ let EatNBytes (len) (ns:Stream) =
     ns.Read(bs, 0, len) |> ignore
     ()
 
+let Eat5BytesX (bs:byte array) (ns:Stream) = 
+    ns.Read(bs, 0, 5) |> ignore
+    ()
+
 
 let Eat5Bytes ns = EatNBytes 5 ns
 

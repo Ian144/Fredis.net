@@ -99,3 +99,36 @@ let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     
 
 
+[<Property>]
+let ``ReadInt64 Write-Read roundtrip`` (ii:int64)  =
+    use strm = new MemoryStream()
+    let bytes = (sprintf "%d\r\n" ii) |> Utils.StrToBytes
+    let _ = strm.Write (bytes, 0, bytes.Length)
+    strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
+    let iiOut = RespMsgProcessor.ReadInt64(strm)
+    let isEof = strm.Position = strm.Length
+    ii = iiOut && isEof
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

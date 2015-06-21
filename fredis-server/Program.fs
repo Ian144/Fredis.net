@@ -1,7 +1,7 @@
 ﻿open System.Net
 open System.Net.Sockets
 
-open FSharpx.Choice
+//open FSharpx.Choice
 
 open CmdCommon
 open Utils
@@ -49,42 +49,40 @@ let ClientListenerLoop (client:TcpClient) =
     printfn "new connection"
 
 
-    let asyncProcessClientRequestsSimple =
-        //let mutable (loopAgain:bool) = true
-        let loopAgain = ref true
-
-        let pongBytes  = Utils.StrToBytes "+PONG\r\n"
-        let totalBytesRead = ref 0
-        let buffers = Array.create<byte[]> 100000 [||]
-
-
-        async{
-            use client = client // without this Dispose would not be called on client
-            use ns = client.GetStream() 
-            while (client.Connected && !loopAgain) do
-                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
-                printfn "handle new command"
-                match optRespTypeByte with
-                | None              -> loopAgain := false
-                | Some firstByte    ->
-                                let ctr = ref 0
-                                while client.Available > 0 do
-                                    let availToRead = client.Available
-                                    let buffer = Array.zeroCreate<byte> availToRead
-                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
-                                    let idx:int = !ctr
-                                    buffers.[idx] <- buffer    
-                                    totalBytesRead := !totalBytesRead + numBytesRead 
-                                    ctr := !ctr + 1
-                                    printfn "numBytesRead: %d" numBytesRead
-                                let allBytes:byte[] =  buffers |> Array.collect id
-                                let ss = Utils.BytesToStr allBytes
-                                let firstChar = System.Convert.ToChar firstByte
-                                printfn "read:\n%c%s" firstChar  ss
-                                printfn "total numBytesRead: %d" !totalBytesRead
-                do! (ns.AsyncWrite pongBytes)
-        }
-
+//    let asyncProcessClientRequestsSimple =
+//        //let mutable (loopAgain:bool) = true
+//        let loopAgain = ref true
+//
+//        let pongBytes  = Utils.StrToBytes "+PONG\r\n"
+//        let totalBytesRead = ref 0
+//        let buffers = Array.create<byte[]> 100000 [||]
+//
+//        async{
+//            use client = client // without this Dispose would not be called on client
+//            use ns = client.GetStream() 
+//            while (client.Connected && !loopAgain) do
+//                let! optRespTypeByte = ns.AsyncReadByte2()  // reading from the socket is synchronous after this point, until current redis msg is processed
+//                printfn "handle new command"
+//                match optRespTypeByte with
+//                | None              -> loopAgain := false
+//                | Some firstByte    ->
+//                                let ctr = ref 0
+//                                while client.Available > 0 do
+//                                    let availToRead = client.Available
+//                                    let buffer = Array.zeroCreate<byte> availToRead
+//                                    let numBytesRead = ns.Read(buffer,0,availToRead) 
+//                                    let idx:int = !ctr
+//                                    buffers.[idx] <- buffer    
+//                                    totalBytesRead := !totalBytesRead + numBytesRead 
+//                                    ctr := !ctr + 1
+//                                    printfn "numBytesRead: %d" numBytesRead
+//                                let allBytes:byte[] =  buffers |> Array.collect id
+//                                let ss = Utils.BytesToStr allBytes
+//                                let firstChar = System.Convert.ToChar firstByte
+//                                printfn "read:\n%c%s" firstChar  ss
+//                                printfn "total numBytesRead: %d" !totalBytesRead
+//                do! (ns.AsyncWrite pongBytes)
+//        }
 
 
     let asyncProcessClientRequests =
@@ -95,14 +93,16 @@ let ClientListenerLoop (client:TcpClient) =
             use strm = client.GetStream() 
             while (client.Connected && !loopAgain) do
 
-                // reading from the socket is synchronous after this point, until current redis msg is processed
+                // reading from the socket is mostly synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte2()  
                 match optRespTypeByte with
                 | None ->   loopAgain := false  // client disconnected
                 | Some respTypeByte -> 
                             let respTypeInt = System.Convert.ToInt32(respTypeByte)
                             if respTypeInt = PingL then 
-                                Eat5NoArray strm  // redis-cli and redis-benchmark send pings as PING\r\n - i.e. a raw string not RESP (PING_INLINE is RESP)
+//                                Eat5BytesX bs strm
+                                Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                                //Eat5Bytes strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                                 do! strm.AsyncWrite pongBytes
                             else
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm // invalid RESP will cause an exception here which will kill the client connection
@@ -111,9 +111,8 @@ let ClientListenerLoop (client:TcpClient) =
                                 | Choice1Of2 cmd    ->  let respReply = FredisCmdProcessor.Execute hashMap cmd 
                                                         do! Utils.AsyncSendResp strm respReply        
                                 | Choice2Of2 err    ->  do! strm.AsyncWrite err // the err strings are already in RESP format
-                            
-                                                    
         }
+
 
     Async.StartWithContinuations(
 //         asyncProcessClientRequestsSimple,
