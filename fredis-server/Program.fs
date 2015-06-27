@@ -1,11 +1,8 @@
 ﻿open System.Net
 open System.Net.Sockets
 
-//open FSharpx.Choice
-
-open CmdCommon
 open Utils
-
+open StreamFuncs
 
 
 //let host = """127.0.0.1"""
@@ -18,7 +15,7 @@ let PingL = 80          // P - redis-benchmark just sends PING\r\n, i.e. a raw s
 let pongBytes  = Utils.StrToBytes "+PONG\r\n"
 
 
-let hashMap = HashMap()
+let hashMap = CmdCommon.HashMap()
 
 
 
@@ -86,7 +83,7 @@ let ClientListenerLoop (client:TcpClient) =
 
 
     let asyncProcessClientRequests =
-        //let mutable (loopAgain:bool) = true
+        //let mutable (loopAgain:bool) = true // enable with F#4.0
         let loopAgain = ref true
         async{
             use client = client // without this Dispose would not be called on client
@@ -96,20 +93,18 @@ let ClientListenerLoop (client:TcpClient) =
                 // reading from the socket is mostly synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte2()  
                 match optRespTypeByte with
-                | None ->   loopAgain := false  // client disconnected
+                | None              ->   loopAgain := false  // client disconnected
                 | Some respTypeByte -> 
                             let respTypeInt = System.Convert.ToInt32(respTypeByte)
                             if respTypeInt = PingL then 
-//                                Eat5BytesX bs strm
                                 Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                                //Eat5Bytes strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                                 do! strm.AsyncWrite pongBytes
                             else
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm // invalid RESP will cause an exception here which will kill the client connection
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
                                 | Choice1Of2 cmd    ->  let respReply = FredisCmdProcessor.Execute hashMap cmd 
-                                                        do! Utils.AsyncSendResp strm respReply        
+                                                        do! StreamFuncs.AsyncSendResp strm respReply        
                                 | Choice2Of2 err    ->  do! strm.AsyncWrite err // the err strings are already in RESP format
         }
 
@@ -143,11 +138,10 @@ let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
 listener.Start ()
 ConnectionListenerLoop listener
-printfn "fredis startup complete\nawaiting incoming connection requests"
+printfn "fredis startup complete\nawaiting incoming connection requests\npress any key to exit"
 System.Console.ReadKey() |> ignore
 do Async.CancelDefaultToken()
 printfn "cancelling asyncs"
-System.Console.ReadKey() |> ignore
 listener.Stop()
 printfn "stopped"
 
