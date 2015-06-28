@@ -66,7 +66,7 @@ type Net.Sockets.NetworkStream with
 let private crlf = [|13uy; 10uy |]
 let private simpStrType = "+" |> Utils.StrToBytes
 let private errStrType = "-"  |> Utils.StrToBytes
-let private intType = ":"     |> Utils.StrToBytes
+
 
 let nilBulkStrBytes = "$-1\r\n" |> Utils.StrToBytes
 

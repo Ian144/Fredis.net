@@ -11,11 +11,14 @@ open FredisTypes
 
 
 
-
 type Offsets = 
     static member Ints() =
         Arb.Default.Int32()
-        |> Arb.filter (fun ii -> ii > 0)
+        |> Arb.filter (fun ii -> ii > 0 && ii < (pown 2 29) )
+
+
+
+
 
 
 type PositiveInt32 = 
@@ -26,7 +29,71 @@ type PositiveInt32 =
 // used to avoid creating very large byte arrays of length up to Int32.MaxValue in tests with an array or bit offset
 type PositiveInt32SmallRange = 
     static member Ints() =
-        Arb.fromGen (Gen.choose(0, 99999))
+        Arb.fromGen (Gen.choose(0, 999))
+
+
+//type MyPropertyAttribute() =
+//    inherit PropertyAttribute (Arbitrary=[| typeof<PositiveInt32SmallRange> |])
+//
+//type ArbKey =
+//    static member Create () = 
+//        Arb.Default.String () |> Arb.filter (fun s -> not (String.IsNullOrEmpty s) && not (String.exists ((=) '\000') s)) 
+//
+//type ArbKey2 =
+//    static member Create () = 
+//        Arb.Default.NonEmptyString () |> Arb.convert string NonEmptyString
+
+  
+
+// if key is not in the hashmap initially, then the first setrange call will execute a different code path to the second
+[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) (offset:int) = 
+    let hashMap = HashMap()
+    let cmd = FredisCmd.SetRange (key, offset, value)
+    FredisCmdProcessor.Execute hashMap cmd |> ignore
+    let valOut1 = hashMap.[key]
+    FredisCmdProcessor.Execute hashMap cmd |> ignore
+    let valOut2 = hashMap.[key]
+    valOut1 = valOut2
+
+
+[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+let ``SETRANGE when key does not exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
+    let hashMap = HashMap()
+    let cmd = FredisCmd.SetRange (key, offset, value)
+    let actual = FredisCmdProcessor.Execute hashMap cmd 
+    let expected = (offset + value.Length) |> int64 |> Resp.Integer
+    expected = actual
+
+
+
+// helper function to make ``GETRANGE SETRANGE round trip`` less ugly
+let private GetBulkStrVal (resp:Resp) =
+    match resp with
+    | Resp.BulkString contents ->   match contents with 
+                                    |BulkStrContents.Contents bs    -> bs
+                                    |BulkStrContents.Nil            -> failwith "failed to get byte array from bulkString"
+    | _ -> failwith "failed to get byte array from bulkString"
+    
+
+// if key is not in the hashmap initially, then the first setrange call will execute a different code path to the second
+[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |], Verbose = true) >]
+let ``GETRANGE SETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
+    let valueIn = neValue.Get
+    let skey = nesKey.Get
+    let key = Key skey
+    let hashMap = HashMap()
+    let setRange = FredisCmd.SetRange (key, offset, valueIn)
+    FredisCmdProcessor.Execute hashMap setRange |> ignore
+    let optByteOffset = ByteOffset.create offset
+    let byteOffset = optByteOffset.Value // its ok to assume optByteOffset is 'Some byteoffset' here, will throw and fail the test if this is not the case
+    let getRange = FredisCmd.GetRange (key, ArrayRange.Lower byteOffset)
+    let ret = FredisCmdProcessor.Execute hashMap getRange
+    let valueOut = GetBulkStrVal ret
+    valueOut = valueIn
+    
+
+
 
 
 

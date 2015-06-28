@@ -16,7 +16,7 @@
 
 // redis cant store 'strings' larger than 512mb, fredis copy this behaviour
 let private maxByteOffset = (pown 2 29) - 1 // zero based, hence the -1
-let private minByteOffset = (pown 2 29) * -1 // -1 represents the last element, so not zero based, and so there is no -1 
+let private minByteOffset = (pown 2 29) * -1 
 
 // constrained single case discriminated union
 type ByteOffset = private ByteOffset of int with
@@ -41,7 +41,6 @@ type ByteOffset = private ByteOffset of int with
 
 // bit offsets range of values is 32 bits (byte offset 2^29 * 2 ^ 3), so no constraint is required
 //type BitOffset = private BitOffsetvalCtor of int with
-
 
 type optByteOffsetPair = (ByteOffset*ByteOffset) option
 type Bytes = byte array
@@ -81,7 +80,7 @@ type FredisCmd =
     |GetSet     of Key*Bytes
     |Bitpos     of Key*bool*ArrayRange
     |GetRange   of Key*ArrayRange
-//        |SetRange   of Key*int*Bytes
+    |SetRange   of Key*int*Bytes
 
 
 let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
