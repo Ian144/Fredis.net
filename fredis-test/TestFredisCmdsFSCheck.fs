@@ -66,6 +66,20 @@ let ``SETRANGE when key does not exist, returns length of offset + length of val
     expected = actual
 
 
+[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+let ``SETRANGE when key does exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
+    let hashMap = HashMap()
+    let cmd1 = FredisCmd.SetRange (key, 0, value)
+    FredisCmdProcessor.Execute hashMap cmd1 |> ignore
+
+    let cmd2 = FredisCmd.SetRange (key, offset, value)
+    let actual = FredisCmdProcessor.Execute hashMap cmd2
+
+    let expected = (offset + value.Length) |> int64 |> Resp.Integer
+    expected = actual
+
+
+
 
 // helper function to make ``GETRANGE SETRANGE round trip`` less ugly
 let private GetBulkStrVal (resp:Resp) =
@@ -76,8 +90,7 @@ let private GetBulkStrVal (resp:Resp) =
     | _ -> failwith "failed to get byte array from bulkString"
     
 
-// if key is not in the hashmap initially, then the first setrange call will execute a different code path to the second
-[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |], Verbose = true) >]
+[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
 let ``GETRANGE SETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
     let valueIn = neValue.Get
     let skey = nesKey.Get
@@ -90,6 +103,13 @@ let ``GETRANGE SETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyAr
     let getRange = FredisCmd.GetRange (key, ArrayRange.Lower byteOffset)
     let ret = FredisCmdProcessor.Execute hashMap getRange
     let valueOut = GetBulkStrVal ret
+
+    // f# array '=' is structural equality
+    //> System.Object.ReferenceEquals( [|1..9|], [|1..9|] );;
+    //val it : bool = false
+    //> [|1..9|] = [|1..9|];;
+    //val it : bool = true
+
     valueOut = valueIn
     
 
