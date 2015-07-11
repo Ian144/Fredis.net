@@ -31,6 +31,23 @@ let IncrementBy (hashMap:HashMap) kk increment =
                 Resp.Integer increment
     
 
+let IncrementByFloat (hashMap:HashMap) kk increment =
+    match hashMap.ContainsKey(kk) with 
+    | true  ->  let optVal = hashMap.[kk] |> BytesToStr |> FSharpx.FSharpOption.ParseDouble
+                match optVal with
+                | Some ff   ->  let newVal = ff + increment 
+                                let bs = newVal |> System.Convert.ToString |> StrToBytes
+                                hashMap.[kk] <- bs
+                                Resp.BulkString (BulkStrContents.Contents bs)
+                | None      ->  Resp.Error ErrorMsgs.valueNotAValidFloat
+                                                
+    | false ->  let newVal = increment
+                let bs = newVal |> System.Convert.ToString |> StrToBytes
+                hashMap.[kk] <- bs
+                Resp.BulkString (BulkStrContents.Contents bs)
+
+
+
 
     
 // converts negative offsets to positive, see http://redis.io/commands/getrange
