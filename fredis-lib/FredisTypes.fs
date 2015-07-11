@@ -63,24 +63,28 @@ type ArrayRange =
 
 type FredisCmd = 
     |Ping
-    |Get        of Key
-    |Strlen     of Key
-    |Set        of Key*Bytes
-    |MSet       of (Key*Bytes) list
-    |MGet       of Key list
-    |Append     of Key*Bytes
-    |Bitcount   of Key*optByteOffsetPair
-    |BitOp      of BitOpInner
-    |Decr       of Key
-    |Incr       of Key
-    |DecrBy     of Key*int64
-    |IncrBy     of Key*int64
-    |SetBit     of Key*int*bool
-    |GetBit     of Key*int
-    |GetSet     of Key*Bytes
-    |Bitpos     of Key*bool*ArrayRange
-    |GetRange   of Key*ArrayRange
-    |SetRange   of Key*int*Bytes
+    |Get            of Key
+    |Strlen         of Key
+    |Set            of Key*Bytes
+    |SetNX          of Key*Bytes
+    |MSet           of (Key*Bytes) list
+    |MSetNX         of (Key*Bytes) list
+    |MGet           of Key list
+    |Append         of Key*Bytes
+    |Bitcount       of Key*optByteOffsetPair
+    |BitOp          of BitOpInner
+    |Decr           of Key
+    |Incr           of Key
+    |DecrBy         of Key*int64
+    |IncrBy         of Key*int64
+    |SetBit         of Key*int*bool
+    |GetBit         of Key*int
+    |GetSet         of Key*Bytes
+    |Bitpos         of Key*bool*ArrayRange
+    |GetRange       of Key*ArrayRange
+    |SetRange       of Key*int*Bytes
+    |IncrByFloat    of Key*double
+
 
 
 let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)

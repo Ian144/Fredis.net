@@ -11,13 +11,38 @@ open FredisTypes
 
 
 
+
+
+let private int64ToBytes (ii:int64) =
+    let ss = sprintf "%d" ii
+    Utils.StrToBytes ss
+
+let private doubleToBytes (dd:double) =
+    let ss = sprintf "%f" dd
+    Utils.StrToBytes ss
+
+
+
+let private BytesToInt64 (bs:Bytes) =
+    bs |> Utils.BytesToStr |> System.Convert.ToInt64 
+
+let private BytesToDouble (bs:Bytes) =
+    bs |> Utils.BytesToStr |> System.Convert.ToDouble
+
+
+//type MyPropertyAttribute() =
+//    inherit PropertyAttribute (Arbitrary=[| typeof<PositiveInt32SmallRange> |])
+
+
+
+
+
+
+
 type Offsets = 
     static member Ints() =
         Arb.Default.Int32()
         |> Arb.filter (fun ii -> ii > 0 && ii < (pown 2 29) )
-
-
-
 
 
 
@@ -32,16 +57,47 @@ type PositiveInt32SmallRange =
         Arb.fromGen (Gen.choose(0, 999))
 
 
-//type MyPropertyAttribute() =
-//    inherit PropertyAttribute (Arbitrary=[| typeof<PositiveInt32SmallRange> |])
-//
-//type ArbKey =
-//    static member Create () = 
-//        Arb.Default.String () |> Arb.filter (fun s -> not (String.IsNullOrEmpty s) && not (String.exists ((=) '\000') s)) 
-//
-//type ArbKey2 =
-//    static member Create () = 
-//        Arb.Default.NonEmptyString () |> Arb.convert string NonEmptyString
+
+// this causes stack overflow
+//type FloatRestrictedRange = 
+//    static member Floats() = 
+//        Arb.generate<float> 
+//        |> Gen.suchThat (fun ff -> (abs ff) < 9999999.9)
+//        |> Arb.fromGen
+
+
+type FloatRestrictedRange = 
+    static member Floats() = 
+        Arb.generate<float32>
+        |> Gen.suchThat (fun ff -> (abs ff) < 999999999999.9f)
+        |> Gen.map (fun ff -> float ff) 
+        |> Arb.fromGen
+
+
+
+[<Property( Arbitrary = [| typeof<FloatRestrictedRange> |])>]
+let ``INCRBYFLOAT when key does exist, value equals old + new`` (oldValue:float) (increment:float) =
+    let hashMap = HashMap()
+    let key = Key "key"
+    let bsOldValue = doubleToBytes oldValue
+    let setCmd = FredisCmd.Set (key, bsOldValue)
+    let _ = FredisCmdProcessor.Execute hashMap setCmd
+    let incrCmd = FredisCmd.IncrByFloat (key, increment)
+    let _ = FredisCmdProcessor.Execute hashMap incrCmd
+    let newValue = BytesToDouble hashMap.[key]
+    let diff = abs (oldValue + increment - newValue)
+    diff < 0.00001
+
+
+[<Property( Arbitrary = [| typeof<FloatRestrictedRange> |])>]
+let ``INCRBYFLOAT when key does not exist, value equals incr`` (increment:float) =
+    let hashMap = HashMap()
+    let key = Key "key"
+    let incrCmd = FredisCmd.IncrByFloat (key, increment)
+    let _ = FredisCmdProcessor.Execute hashMap incrCmd
+    let actual = BytesToDouble hashMap.[key]
+    let diff = abs (increment - actual)
+    diff < 0.000000001
 
   
 
@@ -134,18 +190,6 @@ let ``SETBIT, array len created is never more than 8 longer than the bit offset`
     bitLenDiff >= 0 && bitLenDiff <= 8
 
 
-
-let private int64ToBytes (ii:int64) =
-    let ss = sprintf "%d" ii
-    Utils.StrToBytes ss
-
-
-let private BytesToInt64 (bs:Bytes) =
-    bs |> Utils.BytesToStr |> System.Convert.ToInt64 
-
-
-
-
 let private ReadRESPInteger (msg:Resp) = 
     match msg with
     | Resp.Integer ii   ->  ii
@@ -191,7 +235,6 @@ let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx
     | false -> -1
 
 
-// this test fails, 'OS X' redis returns 12, fredis returns 8 due to byte endianess
 [<Fact>]
 let ``Bitpos FindFirstBitIndex returns 12`` () =
     let bs = Array.zeroCreate<byte>(3)
@@ -303,6 +346,5 @@ let ``INCRBY when key does exist, value equals old + new`` (oldValue:int64) (inc
     let newValue = BytesToInt64 hashMap.[key]
     (oldValue+increment) = newValue
 
-
-
+    
 

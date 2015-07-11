@@ -50,8 +50,16 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.IncrBy (kk,incr)                ->  CmdCommon.IncrementBy hashMap kk incr
 
+    | FredisCmd.IncrByFloat (kk,incr)           ->  CmdCommon.IncrementByFloat hashMap kk incr
+
     | FredisCmd.Set (kk,vv)                     ->  hashMap.[kk] <- vv
                                                     RespUtils.okSimpleStr
+
+    | FredisCmd.SetNX (kk,vv)                   ->  if hashMap.ContainsKey(kk) then
+                                                        Resp.Integer 0L 
+                                                    else
+                                                        hashMap.[kk] <- vv
+                                                        Resp.Integer 1L 
 
     | FredisCmd.SetBit (key,offset,value)       ->  match hashMap.ContainsKey(key) with
                                                     | true  ->  let lengthRequired = offset/8 + 1 
@@ -85,6 +93,15 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.MSet kvPairs                    ->  kvPairs |> List.iter (fun (kk,vv) -> hashMap.[kk] <- vv)
                                                     RespUtils.okSimpleStr
+
+    // check that no of the keys exists, then as per MSet
+    | FredisCmd.MSetNX kvPairs                  ->  let keys = kvPairs |> List.map (fun (kk,_) -> kk)
+                                                    let anyKeysPresent = keys |> List.exists (fun kk -> hashMap.ContainsKey(kk))
+                                                    if anyKeysPresent then
+                                                        Resp.Integer 0L
+                                                    else
+                                                        kvPairs |> List.iter (fun (kk,vv) -> hashMap.[kk] <- vv)
+                                                        Resp.Integer 1L
 
     | FredisCmd.Get kk                          ->  match hashMap.ContainsKey(kk) with 
                                                     | true  ->  hashMap.[kk] |> BulkStrContents.Contents |> Resp.BulkString

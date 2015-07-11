@@ -8,8 +8,10 @@ module ErrorMsgs
 
 
 let numArgsSet                     = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'set' command\r\n")
+let numArgsSetNX                   = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'setnx' command\r\n")
 let numArgsGet                     = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'get' command\r\n")
 let numArgsMSet                    = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'mset' command\r\n")
+let numArgsMSetNX                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'msetnx' command\r\n")
 let numArgsMGet                    = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'mget' command\r\n")
 let numArgsAppend                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'append' command\r\n")
 let numArgsBitcount                = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'bitcount' command\r\n")
@@ -23,6 +25,7 @@ let numArgsDecr                    = System.Text.Encoding.UTF8.GetBytes("-ERR wr
 let numArgsIncr                    = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'incr' command\r\n")
 let numArgsDecrBy                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'decrby' command\r\n")
 let numArgsIncrBy                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'incrby' command\r\n")
+let numArgsIncrByFloat             = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'incrbyfloat' command\r\n")
 let numArgsSetbit                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'setbit' command\r\n")
 let numArgsGetbit                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'getbit' command\r\n")
 let numArgsGetSet                  = System.Text.Encoding.UTF8.GetBytes("-ERR wrong number of arguments for 'getset' command\r\n")
@@ -30,5 +33,6 @@ let numArgsGetSet                  = System.Text.Encoding.UTF8.GetBytes("-ERR wr
 
 let syntaxError                     = System.Text.Encoding.UTF8.GetBytes("-ERR syntax error\r\n")
 let valueNotIntegerOrOutOfRange     = System.Text.Encoding.UTF8.GetBytes("-ERR value is not an integer or out of range\r\n")
+let valueNotAValidFloat             = System.Text.Encoding.UTF8.GetBytes("-ERR value is not a valid float\r\n")
 let bitOffsetNotIntegerOrOutOfRange = System.Text.Encoding.UTF8.GetBytes("-ERR bit offset is not an integer or out of range\r\n")
 let bitNotIntegerOrOutOfRange       = System.Text.Encoding.UTF8.GetBytes("-ERR bit is not an integer or out of range\r\n")

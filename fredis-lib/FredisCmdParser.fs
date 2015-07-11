@@ -138,6 +138,22 @@ let Parse (msgArr:Resp []) =
                     | None      ->  Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsIncrBy
+
+    | "INCRBYFLOAT" ->
+        // should be "INCRBY key" only,so arrLen must be 3
+        match msgArrLen with
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
+                    let optCmd = RespUtils.PartialGetMsgPayload msgArr.[2] 
+                                    |> BytesToStr
+                                    |> FSharpx.FSharpOption.ParseDouble 
+                                    |> Option.map (fun increment -> FredisCmd.IncrByFloat (kk,increment))
+                    
+                    match optCmd with
+                    | Some cmd  ->  Choice1Of2 cmd
+                    | None      ->  Choice2Of2 ErrorMsgs.valueNotAValidFloat
+
+        | _     ->  Choice2Of2 ErrorMsgs.numArgsIncrBy
+
     
     | "SET" -> 
         match msgArrLen with
@@ -145,6 +161,13 @@ let Parse (msgArr:Resp []) =
                     let vv  = RespUtils.PartialGetMsgPayload msgArr.[2]
                     Choice1Of2 (FredisCmd.Set (kk, vv))
         | _     ->  Choice2Of2 ErrorMsgs.numArgsSet
+
+    | "SETNX" -> 
+        match msgArrLen with
+        | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
+                    let vv  = RespUtils.PartialGetMsgPayload msgArr.[2]
+                    Choice1Of2 (FredisCmd.SetNX (kk, vv))
+        | _     ->  Choice2Of2 ErrorMsgs.numArgsSetNX
 
     | "GETSET" -> 
         match msgArrLen with
@@ -178,6 +201,8 @@ let Parse (msgArr:Resp []) =
                         let  sOffset    = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                         let! offset     = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sOffset
                         let  bytes      = RespUtils.PartialGetMsgPayload msgArr.[3] 
+                        let  totalLen = offset + bytes.Length
+                        let! _    = ByteOffset.createChoice totalLen ErrorMsgs.valueNotIntegerOrOutOfRange //checks that an array longer than 512mb will not be needed
                         return FredisCmd.SetRange (key, offset, bytes)
                     }
 
@@ -217,6 +242,14 @@ let Parse (msgArr:Resp []) =
         | 1     ->  let paramPairs = GetMSetParamPairs msgArr
                     Choice1Of2 (FredisCmd.MSet paramPairs)
         | _     ->  Choice2Of2 ErrorMsgs.numArgsMSet
+
+    | "MSETNX" -> 
+        match (msgArrLen % 2) with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
+        | 1     ->  let paramPairs = GetMSetParamPairs msgArr
+                    Choice1Of2 (FredisCmd.MSetNX paramPairs)
+        | _     ->  Choice2Of2 ErrorMsgs.numArgsMSetNX
+
+
 
     | "GET" -> 
         match msgArrLen with
