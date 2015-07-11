@@ -11,11 +11,8 @@ let port = 6379
 
 // for responding to 'raw' non-RESP pings
 [<Literal>]
-let PingL = 80          // P - redis-benchmark just sends PING\r\n, i.e. a raw string, not RESP as i understood it
+let PingL = 80  // P - redis-benchmark PING_INLINE just sends PING\r\n, not encoded as RESP
 let pongBytes  = Utils.StrToBytes "+PONG\r\n"
-
-
-let hashMap = CmdCommon.HashMap()
 
 
 
@@ -100,12 +97,11 @@ let ClientListenerLoop (client:TcpClient) =
                                 Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                                 do! strm.AsyncWrite pongBytes
                             else
-                                let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm // invalid RESP will cause an exception here which will kill the client connection
+                                let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
-                                | Choice1Of2 cmd    ->  let respReply = FredisCmdProcessor.Execute hashMap cmd 
-                                                        do! StreamFuncs.AsyncSendResp strm respReply        
-                                | Choice2Of2 err    ->  do! strm.AsyncWrite err // the err strings are already in RESP format
+                                | Choice1Of2 cmd    ->  do! CmdProcChannel.MailBoxChannel strm cmd
+                                | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 
 
@@ -133,13 +129,14 @@ let ConnectionListenerLoop (listener:TcpListener) =
         (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
     )
 
-
+//do CmdProcChannel.mbox.Start()
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
 listener.Start ()
 ConnectionListenerLoop listener
 printfn "fredis startup complete\nawaiting incoming connection requests\npress any key to exit"
 System.Console.ReadKey() |> ignore
+printfn ""
 do Async.CancelDefaultToken()
 printfn "cancelling asyncs"
 listener.Stop()
