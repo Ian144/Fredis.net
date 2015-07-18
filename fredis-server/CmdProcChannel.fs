@@ -18,17 +18,17 @@ let DirectChannel (strm:System.IO.Stream) (cmd:FredisCmd) =
 //#### call mbox.Dispose on shutdown
 //#### confirm the default async cancellation will shutdown the mailbox listening loop
 
-let mbox =
+let private mbox =
     MailboxProcessor.Start( fun inbox ->
-        let rec loop () =
-            async { do printfn "waiting"
+        let rec msgLoop () =
+            async { //do printfn "mailbox waiting"
                     let! msg = inbox.Receive()
-                    do printfn "msg received"
+                    //do printfn "msg received: %A" msg
                     do! match msg with 
                         | strm,cmd ->   let respReply = FredisCmdProcessor.Execute hashMap cmd 
                                         StreamFuncs.AsyncSendResp strm respReply
-                    return! loop() }
-        loop () )
+                    return! msgLoop() } 
+        msgLoop () )
 
 
 let MailBoxChannel (strm:System.IO.Stream) (cmd:FredisCmd) = 

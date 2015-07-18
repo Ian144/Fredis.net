@@ -22,7 +22,7 @@ let HandleSocketError (name:string) (ex:System.Exception) =
         let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException    
 
         match optInnerEx with
-        | None  ->          ""
+        | None  ->          msg
         | Some innerEx ->   let innerMsg = HandleExInner innerEx
                             sprintf "%s | %s" msg innerMsg
     
@@ -96,6 +96,7 @@ let ClientListenerLoop (client:TcpClient) =
                             if respTypeInt = PingL then 
                                 Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                                 do! strm.AsyncWrite pongBytes
+                                //strm.Write (pongBytes, 0, pongBytes.Length)
                             else
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
@@ -129,7 +130,7 @@ let ConnectionListenerLoop (listener:TcpListener) =
         (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
     )
 
-//do CmdProcChannel.mbox.Start()
+
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
 listener.Start ()

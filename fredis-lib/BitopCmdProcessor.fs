@@ -83,7 +83,7 @@ let private ByteArrayXor = ByteArrayBinOpAdaptor (^^^)
 
 
 let private applyBitOp (destKey:Key) (srcKeys:Key list) (hashMap:HashMap) (byteArrayBitOp:Bytes->Bytes->Bytes) = 
-    let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.Keys.Contains(srcKey))
+    let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.ContainsKey(srcKey))
     match anySrcKeyExists with
     | true ->
                 let res = srcKeys |> List.map (GetValOrEmpty hashMap)   |> List.reduce (fun bs cs -> byteArrayBitOp bs cs)

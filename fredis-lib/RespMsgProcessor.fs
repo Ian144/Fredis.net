@@ -57,8 +57,8 @@ let ReadCRLFDelimitedStr (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp =
     ReadInner strm [] |> Array.ofList |> makeRESPMsg
 
 
-
-let ReadInt64 (strm:Stream) = 
+// an attempt at a functional,immutable int64 reader
+let ReadInt64F (strm:Stream) = 
     let foldInt = (fun cur nxt -> cur * 10L + nxt)
     let AsciiDigitToDigit (asciiCode:int32) = (int64 asciiCode) - 48L
     let asciiCodes = ReadUntilCRLF strm
@@ -74,7 +74,52 @@ let ReadInt64 (strm:Stream) =
             ii1 * sign
 
 
-let ReadInt32 = ReadInt64 >> int32
+// an imperative int64 reader
+// adapted from sider code
+let ReadInt64Imp (strm:Stream) = 
+    let mutable num = 0L
+    let mutable b = strm.ReadByte()
+
+    if b = 45 then // if first byte is a '-' minus sign
+        b <- strm.ReadByte()
+        while b <> CR do
+            num <- num * 10L + (int64 b) - 48L
+            b <- strm.ReadByte()
+        strm.ReadByte() |> ignore // tthrow away the CRLF
+        num * -1L
+    else
+        while b <> CR do
+            num <- num * 10L + (int64 b) - 48L
+            b <- strm.ReadByte()
+        strm.ReadByte() |> ignore // tthrow away the CRLF
+        num        
+
+
+// an imperative int64 reader
+// adapted from sider code
+let ReadInt32Imp (strm:Stream) = 
+    let mutable num = 0
+    let mutable b = strm.ReadByte()
+
+    if b = 45 then // if first byte is a '-' minus sign
+        b <- strm.ReadByte()
+        while b <> CR do
+            num <- num * 10 + b - 48
+            b <- strm.ReadByte()
+        strm.ReadByte() |> ignore // tthrow away the CRLF
+        num * -1
+    else
+        while b <> CR do
+            num <- num * 10 + b - 48
+            b <- strm.ReadByte()
+        strm.ReadByte() |> ignore // tthrow away the CRLF
+        num 
+
+let ReadInt64 = ReadInt64Imp
+let ReadInt32 = ReadInt32Imp
+
+//let ReadInt64 = ReadInt64F
+//let ReadInt32 = ReadInt64 >> int32
 
 
 // copies from the stream directly into the array that will be used as a key or value
@@ -96,7 +141,9 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
     | -1    ->  Resp.BulkString BulkStrContents.Nil
     | len   ->  let byteArr = Array.zeroCreate<byte> len
                 do ReadInner strm  0 len byteArr
-                StreamFuncs.EatCRLF strm
+//                StreamFuncs.EatCRLF strm
+                strm.ReadByte() |> ignore
+                strm.ReadByte() |> ignore
                 byteArr |> RespUtils.MakeBulkStr
 
 

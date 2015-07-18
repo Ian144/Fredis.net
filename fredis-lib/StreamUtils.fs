@@ -20,10 +20,6 @@ let Eat1 (ns:Stream) =
     ns.ReadByte() |> ignore
 
 
-let Eat3 (ns:Stream) = 
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
 
 let Eat5NoArray (ns:Stream) = 
     ns.ReadByte() |> ignore

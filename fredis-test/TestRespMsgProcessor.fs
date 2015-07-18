@@ -53,19 +53,20 @@ let ``ReadInt64 basic`` (ii:int64) =
     let bs = sprintf "%d\r\n" ii |> Utils.StrToBytes 
     do  strm.Write( bs, 0, bs.Length)
     let _ = strm.Seek(0L, System.IO.SeekOrigin.Begin)
-    ii = RespMsgProcessor.ReadInt64( strm )
+    let actual = RespMsgProcessor.ReadInt64( strm )
+    ii = actual
 
 
-[<Fact>]
-let ``ReadInt32 at end of stream returns zero`` () =
-    use strm = new System.IO.MemoryStream()
-    test <@ 0 = RespMsgProcessor.ReadInt32( strm ) @>
+//[<Fact>]
+//let ``ReadInt32 at end of stream returns zero`` () =
+//    use strm = new System.IO.MemoryStream()
+//    test <@ 0 = RespMsgProcessor.ReadInt32( strm ) @>
 
 
-[<Fact>]
-let ``ReadInt64 at end of stream returns zero`` () =
-    use strm = new System.IO.MemoryStream()
-    test <@ 0L = RespMsgProcessor.ReadInt64( strm ) @>
+//[<Fact>]
+//let ``ReadInt64 at end of stream returns zero`` () =
+//    use strm = new System.IO.MemoryStream()
+//    test <@ 0L = RespMsgProcessor.ReadInt64( strm ) @>
 
 
 
