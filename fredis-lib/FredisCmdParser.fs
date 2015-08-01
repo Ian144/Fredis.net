@@ -25,10 +25,10 @@ let GetMSetParamPairs (msgArr:Resp []) =
 let Parse (msgArr:Resp []) =
     let msgBytes    = RespUtils.PartialGetMsgPayload msgArr.[0]
     let msgStr      = BytesToStr(msgBytes)
-    let msgArrLen      = Array.length msgArr
+    let msgArrLen   = Array.length msgArr
 
     //#### consider replacing this ever growing match statement with a map of string to function
-    match msgStr.ToUpper() with
+    match msgStr with
     | "APPEND" -> 
         match msgArrLen with
         | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey

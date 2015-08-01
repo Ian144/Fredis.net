@@ -6,8 +6,8 @@ open Utils
 
 // temporarily using ConcurrentDictionary in early development, just to have something that works from the multiple .net threadpool threads used by the async workflows + IOCP
 // will experiment with other data structures at a later stage when using the MailBox or LMAX disruptors to handle concurrency
-//type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
-type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
+type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
+//type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 
 let errorBytes      = Utils.StrToBytes "-Error\r\n"
 
