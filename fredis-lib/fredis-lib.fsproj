@@ -9,9 +9,10 @@
     <OutputType>Library</OutputType>
     <RootNamespace>fredis_lib</RootNamespace>
     <AssemblyName>fredisLib</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <Name>fredis-lib</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,7 +22,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>5</WarningLevel>
-    <DocumentationFile>bin\Debug\fredis_lib.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\fredis_lib.xml</DocumentationFile>
     <OtherFlags>--warnon:1182</OtherFlags>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
@@ -34,10 +35,10 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\fredis_lib.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\fredis_lib.xml</DocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -70,6 +71,7 @@
     <Compile Include="BitopCmdProcessor.fs" />
     <Compile Include="FredisCmdParser.fs" />
     <Compile Include="FredisCmdProcessor.fs" />
+    <Compile Include="CmdProcChannels.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharpx.Core">
@@ -82,6 +84,18 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\fDisruptor\fDisruptor.fsproj">
+      <Name>fDisruptor</Name>
+      <Project>{a4cdd6f4-5370-4f3c-9979-16721c669776}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Sequence\Sequence.csproj">
+      <Name>Sequence</Name>
+      <Project>{0a401880-0b72-46ac-bb56-aef1db84533b}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

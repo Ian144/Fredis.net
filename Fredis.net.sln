@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-server", "fredis-server\fredis-server.fsproj", "{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}"
 EndProject
@@ -18,6 +18,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		snippets.fs = snippets.fs
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor", "fDisruptor\fDisruptor.fsproj", "{A4CDD6F4-5370-4F3C-9979-16721C669776}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sequence", "Sequence\Sequence.csproj", "{0A401880-0B72-46AC-BB56-AEF1DB84533B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,6 +41,14 @@ Global
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

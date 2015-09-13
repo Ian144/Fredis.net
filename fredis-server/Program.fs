@@ -37,8 +37,8 @@ let ClientListenerLoop (client:TcpClient) =
 
     //#### todo set from config
     client.NoDelay <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
-    client.ReceiveBufferSize <- 8 * 1024
-    client.SendBufferSize <- 8 * 1024
+    client.ReceiveBufferSize    <- 8 * 1024
+    client.SendBufferSize       <- 8 * 1024
     
 //    printfn "new connection"
 //    let buf = Array.zeroCreate<byte>(256)
@@ -65,7 +65,7 @@ let ClientListenerLoop (client:TcpClient) =
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
-                                | Choice1Of2 cmd    ->  do! CmdProcChannel.DirectChannel strm cmd
+                                | Choice1Of2 cmd    ->  do! CmdProcChannel.DisruptorChannel (strm, cmd)
                                 | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 
