@@ -14,12 +14,15 @@ let initialSeqVal = -1L
 let private nSpin = 8
 
 
-// needed to do this in C# because classes with mutable members are incompatible with the StructLayout attribute
-//[<StructLayout(LayoutKind.Explicit, Size = 128)>]
-//type Sequence2 () =          // only structs and classes without primary constructors may be given the struct layout attribute
-//    [<FieldOffset(0)>]
-//    let mutable seqVal:int64 // this definition can only be used in a type with a primary constructor
+(*
+     needed to implement padded Sequence in C# because classes with mutable members are incompatible with the StructLayout attribute in F#
+
+    [<StructLayout(LayoutKind.Explicit, Size = 128)>]
+    type Sequence2 () =          // only structs and classes without primary constructors may be given the struct layout attribute
+        [<FieldOffset(0)>]
+        let mutable seqVal:int64 // this definition can only be used in a type with a primary constructor
     
+*)
 
 type Sequence = Padded.Sequence
 
@@ -42,10 +45,6 @@ let ProducerWaitCAS( bufSize, waitingSeq:Sequence, targetSeq:Sequence) =
         requestSeqVal <- (waitingSeqVal + 1L)
         let origSeqVal = Interlocked.CompareExchange( & waitingSeq._value, requestSeqVal, waitingSeqVal )
         claimed <- (origSeqVal = waitingSeqVal) // meaning prodSeq._value did not change before the CAS op 
-        let waitingSeqValTmp = Thread.VolatileRead (ref waitingSeq._value) 
-        ()
-//        let msg = sprintf "ProducerWaitCAS %d %d %d %d" requestSeqVal origSeqVal waitingSeqValTmp Thread.CurrentThread.ManagedThreadId
-//        printfn "%s" msg
 
     let claimedSeqVal = requestSeqVal
 

@@ -73,21 +73,19 @@ let private DisruptorChannelConsumer () =
         while ctr <= freeUpTo do
             let indx = int(ctr &&& indexMask) // convert the int64 sequence number to an int ringBuffer index
             let (strm, cmd) = ringBuffer.[indx]
-            seqRead._value <- ctr   // publish position //#### confirm OK without Thread.VolatileWrite, x86-64 memory model is strong
+            seqRead._value <- ctr   // publish position 
             let respReply = FredisCmdProcessor.Execute hashMap cmd 
             let asyncSend = StreamFuncs.AsyncSendResp strm respReply 
-//            if (ctr % 1000L) = 0L then
-//                printfn "msg async reply: %d" ctr
-            Async.Start asyncSend // f# asyncs are not started implicitly
+            Async.Start asyncSend
             ctr <- ctr + 1L
 
             
 
-//let private consumerTask = Tasks.Task.Factory.StartNew( 
-//                                    DisruptorChannelConsumer, 
-//                                    CancellationToken.None, 
-//                                    Tasks.TaskCreationOptions.None, 
-//                                    Tasks.TaskScheduler.Default )
+let private consumerTask = Tasks.Task.Factory.StartNew( 
+                                    DisruptorChannelConsumer, 
+                                    CancellationToken.None, 
+                                    Tasks.TaskCreationOptions.None, 
+                                    Tasks.TaskScheduler.Default )
 
 
 let consumerThread = new Thread(DisruptorChannelConsumer)

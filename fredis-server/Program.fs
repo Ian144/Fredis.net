@@ -70,15 +70,12 @@ let ClientListenerLoop (client:TcpClient) =
         }
 
 
-
-    Async.Start asyncProcessClientRequests
-
-//    Async.StartWithContinuations(
-//         asyncProcessClientRequests,
-//         (fun _     -> printfn "ClientListener completed" ),
-//         ClientError,
-//         (fun ct    -> printfn "ClientListener cancelled: %A" ct)
-//    )
+    Async.StartWithContinuations(
+         asyncProcessClientRequests,
+         (fun _     -> printfn "ClientListener completed" ),
+         ClientError,
+         (fun ct    -> printfn "ClientListener cancelled: %A" ct)
+    )
 
 let ConnectionListenerLoop (listener:TcpListener) =
     let asyncConnectionListener =
@@ -89,13 +86,12 @@ let ConnectionListenerLoop (listener:TcpListener) =
                 do ClientListenerLoop client
         }  
 
-    Async.Start asyncConnectionListener   
-//    Async.StartWithContinuations(
-//        asyncConnectionListener,
-//        (fun _  -> printfn "ConnectionListener completed"),
-//        (fun ex -> ConnectionListenerError ex),
-//        (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
-//    )
+    Async.StartWithContinuations(
+        asyncConnectionListener,
+        (fun _  -> printfn "ConnectionListener completed"),
+        (fun ex -> ConnectionListenerError ex),
+        (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
+    )
 
 
 let ipAddr = IPAddress.Parse(host)
