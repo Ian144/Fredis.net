@@ -62,7 +62,7 @@ let private ConsumerFunc (totalNumMsgs:int, msgsReceived:System.Collections.Gene
             ctr <- ctr + 1L
                     
 
-
+// test that all messages are received, and that the ordering of messages from individual producers is preserved
 let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  = 
 
     let lBufSize = int64(bufSize)
@@ -78,57 +78,61 @@ let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  =
     let msgsReceived = System.Collections.Generic.List<int*int>(totalNumMsgs)
     let consumerAction () = ConsumerFunc (totalNumMsgs, msgsReceived, ringBuffer, seqRead, seqWriteC, lBufSize, indexMask )
     let consumerTask = Tasks.Task.Factory.StartNew consumerAction 
-
      
     // create producer tasks
     let prodParams = (numMsgsPerProducer, ringBuffer, seqRead, seqWrite, seqWriteC, lBufSize, indexMask )
 
-
     printfn "producers starting"
 
-    let producerTasks = 
-        seq{    for _ in 0 .. (numProducers - 1)  do
-                let prodAction () = Producerfunc prodParams
-                let task = Tasks.Task.Factory.StartNew prodAction
-                yield task } 
+    // cant use tasks for producing, the test requires a separate thread for each sender
+    let producerThreads =
+                        [   for _ in 0 .. (numProducers - 1)  do
+                            let prodAction () = Producerfunc prodParams
+                            let thrd = System.Threading.Thread( prodAction )
+                            thrd.Start()
+                            yield thrd ]
     
-    //let tasks = seq{yield consumerTask; yield! producerTasks} |> Seq.toArray
-    let tasks = seq{ yield! producerTasks} |> Seq.toArray
+    consumerTask.Wait()
 
-    Tasks.Task.WaitAll tasks
+    producerThreads |> List.iter (fun thrd -> thrd.Join() )
 
-
-    printfn "all tasks finished"
+    printfn "all tasks/threads finished"
 
     let allMsgsReceived = msgsReceived.Count = totalNumMsgs
-    
+
+//     get rid of the List.ofSeq when using F# 4.O, which has List.groupBy
+//     group msgs received by sending threadID into by tid subsequences
+//     then check all subsequences are
+//          the same length,
+//          sorted - indicating msg ordering is preserved
+
+    let xxs = msgsReceived 
+                |> Seq.groupBy (fun (tid,_) -> tid) // group by threadid
+                |> Seq.map (fun (_,xs) -> xs |> Seq.map snd |> List.ofSeq) // strip the threadID, both the groupby key and the first tuple element
+                |> Seq.toList
+
+    let expected = [0..(numMsgsPerProducer-1)]
+
+    let allSortedAscending = xxs |> List.forall (fun xs -> xs = expected)
+
+    let badSeqs = xxs |> Seq.filter (fun xs -> xs <> expected) |> List.ofSeq
 
 
-    allMsgsReceived
+    let ok = allMsgsReceived && allSortedAscending
+    ok
 
 
 
 
 
 [<Fact>]
-let ``Test fDisruptor ranges`` () =
+let ``Test fDisruptor`` () =
 
-    let ringBufSize = 1024 * 4
+    let ringBufSize = 1024 * 1024
     let numProducers = 8
-    let numMsgsPerProducer = 2 * 1024 * 1024 / numProducers
+    let numMsgsPerProducer =  1024 * 1024 / numProducers
 
-    let sw = System.Diagnostics.Stopwatch.StartNew()
-    let res = TestDisruptor ringBufSize numProducers numMsgsPerProducer
-    sw.Stop()
-    printfn "Test fDisruptor took: %d (ms)" sw.ElapsedMilliseconds
-    Xunit.Assert.True res
+    <@TestDisruptor ringBufSize numProducers numMsgsPerProducer@>
 
 
-//    // considered fscheck random generation of bufsize and numthreads, but 1..16ish in both cases does not warrent random generation
-//    // considered xunit theories, but nested loops are enough
-//    for ringBufPow2 = 4 to 4 do
-//        let ringBufSize = pown 2 ringBufPow2
-//        for numProducers = 8 to 8 do
-//            let res = TestDisruptor ringBufSize numProducers
-//            Xunit.Assert.True res
 
