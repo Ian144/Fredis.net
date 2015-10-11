@@ -41,19 +41,18 @@ let ProducerWaitCAS( bufSize, waitingSeq:Sequence, targetSeq:Sequence) =
 
     // claim a slot to write in, competing with the other producers
     while not claimed do
-        let waitingSeqVal = Thread.VolatileRead (ref waitingSeq._value) 
+        let waitingSeqVal = Thread.VolatileRead ( &(waitingSeq._value)) 
         requestSeqVal <- (waitingSeqVal + 1L)
         let origSeqVal = Interlocked.CompareExchange( & waitingSeq._value, requestSeqVal, waitingSeqVal )
         claimed <- (origSeqVal = waitingSeqVal) // meaning prodSeq._value did not change before the CAS op 
 
     let claimedSeqVal = requestSeqVal
 
-
     // wait until the client has read enough to allow room to write
-    let mutable targetSeqVal = Thread.VolatileRead (ref (targetSeq._value))
+    let mutable targetSeqVal = Thread.VolatileRead ( &(targetSeq._value))
     while (claimedSeqVal - targetSeqVal) > bufSize do  
         Thread.SpinWait(nSpin)
-        targetSeqVal <- Thread.VolatileRead (ref (targetSeq._value))
+        targetSeqVal <- Thread.VolatileRead ( &(targetSeq._value))
     
     claimedSeqVal
 
@@ -61,11 +60,11 @@ let ProducerWaitCAS( bufSize, waitingSeq:Sequence, targetSeq:Sequence) =
 // single producer single consumer producer wait func
 // not used in fredis
 let ProducerWait( bufSize, waitingSeq:Sequence, targetSeq: Sequence) =
-    let requestSeqVal = waitingSeq._value // TODO; change to Thread.VolatileRead???
-    let mutable targetSeqVal = Thread.VolatileRead (ref (targetSeq._value))
+    let requestSeqVal = Thread.VolatileRead ( &waitingSeq._value ) // TODO; change to Thread.VolatileRead???
+    let mutable targetSeqVal = Thread.VolatileRead ( & targetSeq._value )
     while (requestSeqVal - targetSeqVal) > bufSize do  
         System.Threading.Thread.SpinWait(nSpin)
-        targetSeqVal <- Thread.VolatileRead (ref (targetSeq._value))
+        targetSeqVal <- Thread.VolatileRead ( &(targetSeq._value))
     let lastProdPosWritten = requestSeqVal - 1L
     lastProdPosWritten + bufSize - (lastProdPosWritten - targetSeqVal)
 
@@ -73,9 +72,9 @@ let ProducerWait( bufSize, waitingSeq:Sequence, targetSeq: Sequence) =
 
 
 let ConsumerWait( waitingSeqVal:int64, targetSeq: Sequence) =
-    let mutable targetSeqVal = Thread.VolatileRead (ref (targetSeq._value))
+    let mutable targetSeqVal = Thread.VolatileRead ( &targetSeq._value )
     while waitingSeqVal = targetSeqVal do 
         System.Threading.Thread.SpinWait(nSpin)
-        targetSeqVal <- Thread.VolatileRead (ref (targetSeq._value))
+        targetSeqVal <- Thread.VolatileRead ( &(targetSeq._value))
     targetSeqVal //consumer can read up to the producer sequence to get freeUpTo
 

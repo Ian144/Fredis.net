@@ -31,13 +31,8 @@ let private mbox =
 
 let MailBoxChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
     mbox.Post (strm, cmd)
-    async {return ()} // this async is here to maintain type signature compatibility with DirectChannel
 
 
-let MailBoxChannel2 (strm:System.IO.Stream, cmd:FredisCmd) = 
-    async{
-        mbox.Post (strm, cmd)
-    } 
 
 
 open Disruptor
@@ -66,44 +61,51 @@ let private ringBuffer = Array.zeroCreate<System.IO.Stream * FredisCmd>(bufSize)
 let pongBytes  = Utils.StrToBytes "+PONG\r\n"
 
 
-let private DisruptorChannelConsumer () = 
+let private DisruptorConsumerFunc () = 
+    printfn "starting new consumer"
+
     let mutable ctr = 0L
     while true do
-        let freeUpTo = ConsumerWait (seqRead._value, seqWriteC)
+        let freeUpTo = ConsumerWait (seqRead._value, seqWriteC) // spinWhileEqual reading seqWriteC accross caches
         while ctr <= freeUpTo do
             let indx = int(ctr &&& indexMask) // convert the int64 sequence number to an int ringBuffer index
             let (strm, cmd) = ringBuffer.[indx]
             seqRead._value <- ctr   // publish position 
+            ctr <- ctr + 1L
             let respReply = FredisCmdProcessor.Execute hashMap cmd 
             let asyncSend = StreamFuncs.AsyncSendResp strm respReply 
-            Async.Start asyncSend
-            ctr <- ctr + 1L
+
+            Async.StartWithContinuations(
+                asyncSend,
+                (fun ex -> ()),
+                (fun ex -> printfn "DisruptorConsumerFunc send exception: %s" ex.Message),
+                (fun ct -> printfn "DisruptorConsumerFunc send cancelled: %A" ct)
+            )
 
             
 
 let private consumerTask = Tasks.Task.Factory.StartNew( 
-                                    DisruptorChannelConsumer, 
+                                    DisruptorConsumerFunc, 
                                     CancellationToken.None, 
                                     Tasks.TaskCreationOptions.None, 
                                     Tasks.TaskScheduler.Default )
 
 
-let consumerThread = new Thread(DisruptorChannelConsumer)
-consumerThread.Start()
-
-
 let DisruptorChannel (evnt:System.IO.Stream * FredisCmd) = 
-//    printfn "request"
     let writeSeqVal = ProducerWaitCAS (lBufSize, seqWrite, seqRead)   
     let indx = int(writeSeqVal &&& indexMask)
     ringBuffer.[indx] <- evnt                       // it is safe to write here, as ProducerWaitCAS has allocated this slot for this producer
     let prevSeqValToWaitOn = writeSeqVal - 1L       // wait until the previous slot has been published, probably by some other producer thread
+    
+    
+    let mutable seqWriteCVal = Thread.VolatileRead ( & seqWriteC._value )
     while prevSeqValToWaitOn <> seqWriteC._value do  // ensure the earlier slots have been published before publishing this one
-//        Thread.SpinWait(nSpin)  
-                () // busy wait
+        seqWriteCVal <- Thread.VolatileRead ( & seqWriteC._value )
     seqWriteC._value <- writeSeqVal                  // publish, cant be written to by multiple threads because they are spin waiting on a different value of prevSeqValToWaitOn
-    async {return ()} // this async is here to maintain type signature compatibility with DirectChannel
 
 
 
+
+let NDisruptorChannel (evnt:System.IO.Stream * FredisCmd) = 
+    ()
 

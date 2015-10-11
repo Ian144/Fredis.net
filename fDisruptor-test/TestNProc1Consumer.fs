@@ -130,9 +130,12 @@ let ``Test fDisruptor`` () =
 
     let ringBufSize = 1024 * 1024
     let numProducers = 8
-    let numMsgsPerProducer =  1024 * 1024 / numProducers
+    //let numMsgsPerProducer =  8 * 1024 * 1024 / numProducers
+    let numMsgsPerProducer =  1024
 
-    <@TestDisruptor ringBufSize numProducers numMsgsPerProducer@>
+    Xunit.Assert.True (TestDisruptor ringBufSize numProducers numMsgsPerProducer)
+
+//    <@TestDisruptor ringBufSize numProducers numMsgsPerProducer@>
 
 
 
