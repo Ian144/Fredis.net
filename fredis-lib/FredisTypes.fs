@@ -94,6 +94,17 @@ let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
 // without having this the Resp algebraic data type does not fully model RESP
 type BulkStrContents = Nil | Contents of Bytes
 
+//type Resp =
+//    | SimpleString   of Bytes
+//    | Error          of Bytes
+//    | Integer        of int64
+//    | BulkString     of BulkStrContents
+//    | Array          of Resp array
+
+
+
+
+[<StructuredFormatDisplay("{FormatDisplay}")>]
 type Resp =
     | SimpleString   of Bytes
     | Error          of Bytes
@@ -101,24 +112,13 @@ type Resp =
     | BulkString     of BulkStrContents
     | Array          of Resp array
 
-
-
-
-//[<StructuredFormatDisplay("{FormatDisplay}")>]
-//type Resp =
-//    | SimpleString   of Bytes
-//    | Error          of Bytes
-//    | Integer        of int64
-//    | BulkString     of BulkStrContents
-//    | Array          of Resp array
-//
-//    member this.FormatDisplay =
-//        match this with
-//        | SimpleString bs   -> sprintf "SimpleString: %s" (BytesToStr bs)
-//        | Error        _    -> "Error"
-//        | Integer      ii   -> sprintf "Integer:%d" ii
-//        | BulkString   cn   -> match cn with
-//                                | BulkStrContents.Contents bs   -> sprintf "BulkString: %s" (BytesToStr bs)
-//                                | BulkStrContents.Nil           -> "BulkString: nil"
-//        | Array        _    -> "Array"
+    member this.FormatDisplay =
+        match this with
+        | SimpleString bs   -> sprintf "SimpleString: %s" (BytesToStr bs)
+        | Error        _    -> "Error"
+        | Integer      ii   -> sprintf "Integer:%d" ii
+        | BulkString   cn   -> match cn with
+                                | BulkStrContents.Contents bs   -> sprintf "BulkString: %s" (BytesToStr bs)
+                                | BulkStrContents.Nil           -> "BulkString: nil"
+        | Array        _    -> "Array"
 

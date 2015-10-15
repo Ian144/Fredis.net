@@ -10,15 +10,22 @@ open FredisTypes
 let hashMap = CmdCommon.HashMap()
 
 
+// this struct has public, mutable members as its used to populate the ringbuffer
+[<NoComparison; NoEquality>]
+type CmdProcChannelMsg =
+    struct
+        val mutable Strm: System.IO.Stream
+        val mutable Cmd: FredisCmd
+//        new(strmIn: System.IO.Stream, cmdIn: FredisCmd) = { Strm = strmIn; Cmd = cmdIn }
+    end
 
 
-
-let DirectChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
-    let respReply = FredisCmdProcessor.Execute hashMap cmd 
-    StreamFuncs.AsyncSendResp strm respReply
-
-
-
+//let DirectChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
+//    let respReply = FredisCmdProcessor.Execute hashMap cmd 
+//    StreamFuncs.AsyncSendResp strm respReply
+//
+//
+//
 let private mbox =
     MailboxProcessor.Start( fun inbox ->
         let rec msgLoop () =
@@ -31,7 +38,6 @@ let private mbox =
 
 let MailBoxChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
     mbox.Post (strm, cmd)
-
 
 
 
@@ -50,12 +56,10 @@ let private indexMask = lBufSize - 1L
 
 type private Sequence = Padded.Sequence
 
-
 let private seqWrite = Sequence initialSeqVal
 let private seqWriteC = Sequence initialSeqVal
 let private seqRead  = Sequence initialSeqVal
-let private ringBuffer = Array.zeroCreate<System.IO.Stream * FredisCmd>(bufSize) // elements initialised with the struct default ctor
-
+let private ringBuffer = Array.zeroCreate<CmdProcChannelMsg>(bufSize) // elements initialised with the struct default ctor>(bufSize) // elements initialised with the struct default ctor
 
 
 let pongBytes  = Utils.StrToBytes "+PONG\r\n"
@@ -69,15 +73,18 @@ let private DisruptorConsumerFunc () =
         let freeUpTo = ConsumerWait (seqRead._value, seqWriteC) // spinWhileEqual reading seqWriteC accross caches
         while ctr <= freeUpTo do
             let indx = int(ctr &&& indexMask) // convert the int64 sequence number to an int ringBuffer index
-            let (strm, cmd) = ringBuffer.[indx]
+            let msg = ringBuffer.[indx]
             seqRead._value <- ctr   // publish position 
             ctr <- ctr + 1L
-            let respReply = FredisCmdProcessor.Execute hashMap cmd 
-            let asyncSend = StreamFuncs.AsyncSendResp strm respReply 
+
+            // (un)commenting can show how relative cost of FredisCmdProcessor.Execute vs StreamFuncs.AsyncSendResp vs RESP decoding
+            let respReply = FredisCmdProcessor.Execute hashMap msg.Cmd
+            let asyncSend = StreamFuncs.AsyncSendResp msg.Strm respReply 
+//            let asyncSend = msg.Strm.AsyncWrite pongBytes 
 
             Async.StartWithContinuations(
                 asyncSend,
-                (fun ex -> ()),
+                ignore,
                 (fun ex -> printfn "DisruptorConsumerFunc send exception: %s" ex.Message),
                 (fun ct -> printfn "DisruptorConsumerFunc send cancelled: %A" ct)
             )
@@ -91,10 +98,11 @@ let private consumerTask = Tasks.Task.Factory.StartNew(
                                     Tasks.TaskScheduler.Default )
 
 
-let DisruptorChannel (evnt:System.IO.Stream * FredisCmd) = 
-    let writeSeqVal = ProducerWaitCAS (lBufSize, seqWrite, seqRead)   
+let DisruptorChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
+    let writeSeqVal = ProducerWaitCAS (lBufSize, seqWrite, seqRead)
     let indx = int(writeSeqVal &&& indexMask)
-    ringBuffer.[indx] <- evnt                       // it is safe to write here, as ProducerWaitCAS has allocated this slot for this producer
+    ringBuffer.[indx].Strm <- strm
+    ringBuffer.[indx].Cmd <- cmd         // it is safe to write here, as ProducerWaitCAS has allocated this slot for this producer
     let prevSeqValToWaitOn = writeSeqVal - 1L       // wait until the previous slot has been published, probably by some other producer thread
     
     
@@ -106,6 +114,63 @@ let DisruptorChannel (evnt:System.IO.Stream * FredisCmd) =
 
 
 
-let NDisruptorChannel (evnt:System.IO.Stream * FredisCmd) = 
-    ()
+//open Disruptor.Dsl
+//open System.Threading.Tasks
+//
+//
+//type StreamCmd = System.IO.Stream * FredisCmd
+//
+//// generic types cannot be 'padded'
+//type Evnt = Padded.DistEvent
+//
+//let makeEvent () = Evnt ()
+//
+//
+//
+//type private LMAXDisruptorEventHandler () =
+//    interface IEventHandler<Evnt> with
+//        member this.OnNext (evnt, sequence, endOfBatch) =
+//            //let strm, cmd = event :?> StreamCmd
+//
+//            ()
+////            let strm, cmd = evnt
+////            let respReply = FredisCmdProcessor.Execute hashMap cmd 
+////            let asyncSend = StreamFuncs.AsyncSendResp strm respReply 
+////
+////            Async.StartWithContinuations(
+////                asyncSend,
+////                (fun ex -> ()),
+////                (fun ex -> printfn "LMAXDisruptorConsumerFunc send exception: %s" ex.Message),
+////                (fun ct -> printfn "LMAXDisruptorConsumerFunc send cancelled: %A" ct)
+////            )
+//
+//let private lmaxDisruptorEventHandler = LMAXDisruptorEventHandler ()
+//
+//
+//
+//let lmaxDisruptor = Disruptor<Evnt>(
+//                        (fun () -> makeEvent ()), // is there a System.Func adaptor in fsharpx fsharp.extras 
+//                        MultiThreadedLowContentionClaimStrategy(1024*32),
+//                        YieldingWaitStrategy(),
+//                        TaskScheduler.Default )
+//
+//
+//let private eventHandlerGroup = lmaxDisruptor.HandleEventsWith lmaxDisruptorEventHandler 
+//
+//let ringBuf = lmaxDisruptor.RingBuffer
+//
+//let rb = lmaxDisruptor.Start()
+//
+//
+//
+//
+//let LMAXDisruptorChannel (evnt:System.IO.Stream * FredisCmd) = 
+//
+//    let seq = ringBuf.Next()
+//
+//    ringBuf.[seq]._value <- evnt
+//
+//    ringBuf.Publish seq
+//
+//    ()
 

@@ -13,13 +13,22 @@ open Utils
 
 
 
-
-// extract the list of key-value pair mset params
+// #### this is a partial function - fix this
+// zeroth element contains mset
+// even indices are keys
+// odd indices are values
 let GetMSetParamPairs (msgArr:Resp []) = 
-    let msetParams = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload // throw away the first element, which will be the string MSET
-    let keys, vals = List.foldBack (fun x (l,r) -> x::r, l) msetParams ([],[]) // note the (l,r) -> (r,l) switch see: http://stackoverflow.com/questions/7942630/splitting-a-list-of-items-into-two-lists-of-odd-and-even-indexed-items
-    List.zip keys vals |> List.map (fun (rawKey, vv) -> (BytesToKey rawKey), vv )
 
+    let maxIdx = msgArr.Length - 1
+
+    [   for idx in 2 .. 2 .. maxIdx do
+        let keyIdx = idx - 1
+        let keyBytes = RespUtils.PartialGetMsgPayload msgArr.[keyIdx]
+        let key = BytesToKey keyBytes
+        let valBytes = RespUtils.PartialGetMsgPayload msgArr.[idx]
+        yield key, valBytes]
+
+    
 
 
 let Parse (msgArr:Resp []) =

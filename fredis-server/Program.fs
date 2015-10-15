@@ -17,16 +17,16 @@ let pongBytes  = Utils.StrToBytes "+PONG\r\n"
 
 
 let HandleSocketError (name:string) (ex:System.Exception) = 
-    let rec HandleExInner (ex:System.Exception) = 
+    let rec handleExInner (ex:System.Exception) = 
         let msg = ex.Message
-        let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException    
+        let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException
 
         match optInnerEx with
         | None  ->          msg
-        | Some innerEx ->   let innerMsg = HandleExInner innerEx
+        | Some innerEx ->   let innerMsg = handleExInner innerEx
                             sprintf "%s | %s" msg innerMsg
     
-    let msg = HandleExInner ex
+    let msg = handleExInner ex
     printfn "%s --> %s" name msg
 
 let ClientError ex =  HandleSocketError "client error" ex
@@ -65,7 +65,8 @@ let ClientListenerLoop (client:TcpClient) =
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
-                                | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
+                                | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
+
                                 | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 
@@ -74,8 +75,7 @@ let ClientListenerLoop (client:TcpClient) =
     Async.StartWithContinuations(
          asyncProcessClientRequests,
          (fun _     -> printfn "ClientListener completed" ),
-//         ClientError,
-         (fun _     -> () ),
+         ClientError,
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )
 
@@ -86,12 +86,12 @@ let ConnectionListenerLoop (listener:TcpListener) =
                 let acceptClientTask = listener.AcceptTcpClientAsync ()
                 let! client = Async.AwaitTask acceptClientTask
                 do ClientListenerLoop client
-        }  
+        }
 
     Async.StartWithContinuations(
         asyncConnectionListener,
         (fun _  -> printfn "ConnectionListener completed"),
-        (fun ex -> ConnectionListenerError ex),
+        ConnectionListenerError,
         (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
     )
 
