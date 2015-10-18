@@ -23,15 +23,13 @@ type CmdProcChannelMsg =
 //let DirectChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
 //    let respReply = FredisCmdProcessor.Execute hashMap cmd 
 //    StreamFuncs.AsyncSendResp strm respReply
-//
-//
-//
+
 let private mbox =
     MailboxProcessor.Start( fun inbox ->
         let rec msgLoop () =
             async { let! (strm:System.IO.Stream, cmd) = inbox.Receive()
                     let respReply = FredisCmdProcessor.Execute hashMap cmd 
-                    do! StreamFuncs.AsyncSendResp strm respReply
+                    do! RespStreamFuncs.AsyncSendResp strm respReply
                     return! msgLoop () } 
         msgLoop () )
 
@@ -79,7 +77,7 @@ let private DisruptorConsumerFunc () =
 
             // (un)commenting can show how relative cost of FredisCmdProcessor.Execute vs StreamFuncs.AsyncSendResp vs RESP decoding
             let respReply = FredisCmdProcessor.Execute hashMap msg.Cmd
-            let asyncSend = StreamFuncs.AsyncSendResp msg.Strm respReply 
+            let asyncSend = RespStreamFuncs.AsyncSendResp msg.Strm respReply 
 //            let asyncSend = msg.Strm.AsyncWrite pongBytes 
 
             Async.StartWithContinuations(

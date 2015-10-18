@@ -530,19 +530,19 @@ type ``Parse GETRANGE`` () =
     [<Fact>]
     member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
         let expected = FredisCmd.GetRange (kkey, ``range (0,3)``)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|getRange; key; startIdx; endIdx|] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|getRange; key; startIdx; endIdx|] @>
 
     [<Fact>]
     member this.``parse GETRANGE fails when no params supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.ParseRESPtoFredisCmds [|getRange|] @>
 
     [<Fact>]
     member this.``parse GETRANGE key fails when no 'start end' params supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.ParseRESPtoFredisCmds [|getRange; key|] @>
 
     [<Fact>]
     member this.``parse GETRANGE key start fails when no 'end' param supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.Parse [|getRange; key; startIdx|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsGetRange = FredisCmdParser.ParseRESPtoFredisCmds [|getRange; key; startIdx|] @>
 
 
 
@@ -570,45 +570,45 @@ type ``Parse BITPOS`` () =
 
     [<Fact>]
     member this.``parse BITPOS fails when no params supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.Parse [|bitPos|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos|] @>
 
     [<Fact>]
     member this.``parse BITPOS key fails when no bit supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.Parse [|bitPos; key|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsBitpos = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key|] @>
 
     [<Fact>]
     member this.``parse BITPOS key 9 fails as 9 is not convertable to a bit`` () = 
-        test <@ Choice2Of2 ErrorMsgs.badBitArgBitpos = FredisCmdParser.Parse [|bitPos; key; badBit|] @>
+        test <@ Choice2Of2 ErrorMsgs.badBitArgBitpos = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; badBit|] @>
 
     [<Fact>]
     member this.``parse BITPOS key 0 succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, false, ArrayRange.All)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg0|] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg0|] @>
 
     [<Fact>]
     member this.``parse BITPOS key 1 succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.All)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1|] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1|] @>
 
     [<Fact>]
     member this.``parse BITPOS key bitArg1 startByte succeeds`` () = 
         let nineByteOffset = (ByteOffset.create 9).Value
         let nineBlkStr   = "9" |> StrToBulkStr
         let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.Lower nineByteOffset)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; nineBlkStr|] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1; nineBlkStr|] @>
 
     [<Fact>]
     member this.``parse BITPOS key bitArg1 startByte endByte succeeds`` () = 
         let expected = FredisCmd.Bitpos (kkey, true, ``range (0,3)``)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte; endByte|] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1; startByte; endByte|] @>
 
     [<Fact>]
     member this.``parse BITPOS key true "not and int" fails with 'value not integer'`` () = 
-        test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.Parse [|bitPos; key; bitArg1; badStartByte|] @>
+        test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1; badStartByte|] @>
 
     [<Fact>]
     member this.``parse BITPOS key true 9 "not an int" fails with 'value not integer'`` () = 
-        test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.Parse [|bitPos; key; bitArg1; startByte; badEndByte|] @>
+        test <@ Choice2Of2 ErrorMsgs.valueNotIntegerOrOutOfRange = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1; startByte; badEndByte|] @>
 
 
 
@@ -622,16 +622,16 @@ type ``Parse INCRBY`` () =
 
     [<Fact>]
     member this.``parse INCRBY fails when no params supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.Parse [|incrBy|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.ParseRESPtoFredisCmds [|incrBy|] @>
 
     [<Fact>]
     member this.``parse INCRBY fails when no increment supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.Parse [|incrBy; skey|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsIncrBy = FredisCmdParser.ParseRESPtoFredisCmds [|incrBy; skey|] @>
 
     [<Fact>]
     member this.``parse INCRBY key incr succeeds`` () = 
         let expected = FredisCmd.IncrBy (kkey, 9L)
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [|incrBy; skey; increment |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|incrBy; skey; increment |] @>
 
 
 
@@ -662,7 +662,7 @@ type ``Parse BITOP`` () =
 
     [<Fact>]
     member this.``parse BITOP fails when no inner op supplied`` () = 
-        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [|bitop|] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.ParseRESPtoFredisCmds [|bitop|] @>
 
 //  the unquote version of this test, above, requires less type annotation and has better compile time type safety
 //    [<Fact>]
@@ -675,53 +675,53 @@ type ``Parse BITOP`` () =
 
     [<Fact>]
     member this.``parse "BITOP NOT destKey" fails with missing source key`` () =
-        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [| bitop; notOp; destKey |] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; notOp; destKey |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP NOT destKey srcKey1 srcKey1" fails with num keys error`` () =
-        test <@ Choice2Of2 ErrorMsgs.numKeysBitopNot = FredisCmdParser.Parse  [| bitop; notOp; destKey; srcKey1; srcKey2 |] @>
+        test <@ Choice2Of2 ErrorMsgs.numKeysBitopNot = FredisCmdParser.ParseRESPtoFredisCmds  [| bitop; notOp; destKey; srcKey1; srcKey2 |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP OR destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.OR (kDestKey,[kSrcKey1]))
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; orOp; destKey; srcKey1 |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; orOp; destKey; srcKey1 |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP NOT destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.NOT (kDestKey,kSrcKey1))
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; notOp; destKey; srcKey1 |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; notOp; destKey; srcKey1 |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP AND destKey" fails with num keys error`` () =
-        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.Parse [| bitop; andOp; destKey |] @>
+        test <@ Choice2Of2 ErrorMsgs.numArgsBitop = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; andOp; destKey |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP AND destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey,[kSrcKey1]))
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; andOp; destKey; srcKey1 |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; andOp; destKey; srcKey1 |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP AND destKey 4 src keys" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey, [kSrcKey1; kSrcKey2; kSrcKey3; kSrcKey4]))
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; andOp; destKey; srcKey1; srcKey2; srcKey3; srcKey4 |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; andOp; destKey; srcKey1; srcKey2; srcKey3; srcKey4 |] @>
 
 
     [<Fact>]
     member this.``parse "BITOP XOR destKey srcKey" succeeds`` () =
         let expected = FredisCmd.BitOp (BitOpInner.XOR (kDestKey,[kSrcKey1]))
-        test <@ Choice1Of2 expected = FredisCmdParser.Parse [| bitop; xorOp; destKey; srcKey1 |] @>
+        test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; xorOp; destKey; srcKey1 |] @>
 
 
 

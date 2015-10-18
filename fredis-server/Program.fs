@@ -2,7 +2,7 @@
 open System.Net.Sockets
 
 open Utils
-open StreamFuncs
+open RespStreamFuncs
 
 
 //let host = """127.0.0.1"""
@@ -66,7 +66,6 @@ let ClientListenerLoop (client:TcpClient) =
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
                                 | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
-
                                 | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 

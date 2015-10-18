@@ -89,7 +89,7 @@ type BufferSizes =
 [<Property( Arbitrary=[|typeof<BufferSizes>; typeof<ArbResp>|] )>]
 let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     use strm = new MemoryStream()
-    StreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
+    RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
     let respTypeByte = strm.ReadByte() 
     let respOut = RespMsgProcessor.LoadRESPMsg bufSize respTypeByte strm

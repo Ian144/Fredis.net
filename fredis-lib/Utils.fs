@@ -7,10 +7,12 @@ open FredisTypes
 
 
 let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
-let StrToBytes (str:string) = System.Text.Encoding.UTF8.GetBytes(str)   
+let StrToBytes (str:string) = System.Text.Encoding.UTF8.GetBytes(str)
 let BytesToInt64 bs = System.BitConverter.ToInt64(bs, 0)
 let BytesToKey = BytesToStr >> Key
 
+
+let keyToBytes = BytesToStr >> Key
 
 
 let SetBit (bs:byte []) (index:int) (value:bool) =

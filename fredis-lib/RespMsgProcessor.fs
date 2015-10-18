@@ -39,7 +39,7 @@ let ReadUntilCRLF (strm:Stream) : int list =
     let rec ReadInner (ns:Stream) bs : int list = 
         match ns.ReadByte() with    // annoyingly ReadByte returns an int32
         | -1    ->  []              // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  StreamFuncs.Eat1 ns         //#### assuming the next char is LF
+        | CR    ->  RespStreamFuncs.Eat1 ns         //#### assuming the next char is LF
                     bs
         | b     ->  b :: (ReadInner ns bs) 
     ReadInner strm []
@@ -50,7 +50,7 @@ let ReadCRLFDelimitedStr (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp =
     let rec ReadInner (ns:Stream) bs : byte list = 
         match ns.ReadByte() with
         | -1    ->  []      // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  StreamFuncs.Eat1 ns //#### assuming the next char is LF
+        | CR    ->  RespStreamFuncs.Eat1 ns //#### assuming the next char is LF
                     bs
         | ii    ->  let bb = System.Convert.ToByte ii
                     bb :: (ReadInner ns bs) 
