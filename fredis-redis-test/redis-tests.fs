@@ -93,28 +93,22 @@ let BitOpInnerToBulkStrs (boi:FredisTypes.BitOpInner) =
     | NOT (key1, key2)  ->  [ yield StrToBulkStr "NOT"; yield (KeyToBulkStr key1); yield  (KeyToBulkStr      key2)  ]
 
 
-
-// helper class to allow the conversion to bulkstring based on the the type of the input param
 // F# does not have function overloading, but it does have member overloading
+// helper class to allow the conversion to bulkstring based on the the type of the input param 
 [<AbstractClass;Sealed>]
 type RespHlpr private () =
-    static member ToBS (str:string)             = [| StrToBulkStr str  |]
-    static member ToBS (key:Key)                = [| KeyToBulkStr key  |]
-    static member ToBS (ii:int32)               = [| Int32ToBulkStr ii |]
-    static member ToBS (ii:int64)               = [| Int64ToBulkStr ii |]
-    static member ToBS (bs:Bytes)               = [| BytesToBulkStr bs |]
-    static member ToBS (ff:float)               = [| floatToBulkStr ff |]
-    static member ToBS (bb:bool)                = [| boolToBulkStr bb  |]
-    static member ToBS (xx:optByteOffsetPair)   = xx |> OptByteOffsetPairToBulkStrs |> Array.ofList
-    static member ToBS (xx:BitOpInner)          = xx |> BitOpInnerToBulkStrs        |> Array.ofList
-    static member ToBS (xx:ArrayRange)          = xx |> ArrayRangeToBulkStrs        |> Array.ofList
-    static member ToBS (xs:Key list)            = xs |> keyListToBulkStrs           |> Array.ofList
-    static member ToBS (xs:(Key*Bytes) list)    = xs |> keyBytesListToBulkStrs      |> Array.ofList
-
-
-NEXT, HOW TO DEAL WITH FUNCTIONS RETURNING BulkStrings and those returnings lists or Arrays of BulkStrings
-use yield and yield!
-arrays or lists
+    static member ToBS (str:string)             = [ StrToBulkStr str  ]
+    static member ToBS (key:Key)                = [ KeyToBulkStr key  ]
+    static member ToBS (ii:int32)               = [ Int32ToBulkStr ii ]
+    static member ToBS (ii:int64)               = [ Int64ToBulkStr ii ]
+    static member ToBS (bs:Bytes)               = [ BytesToBulkStr bs ]
+    static member ToBS (ff:float)               = [ floatToBulkStr ff ]
+    static member ToBS (bb:bool)                = [ boolToBulkStr bb  ]
+    static member ToBS (xx:optByteOffsetPair)   = xx |> OptByteOffsetPairToBulkStrs
+    static member ToBS (xx:BitOpInner)          = xx |> BitOpInnerToBulkStrs
+    static member ToBS (xx:ArrayRange)          = xx |> ArrayRangeToBulkStrs
+    static member ToBS (xs:Key list)            = xs |> keyListToBulkStrs
+    static member ToBS (xs:(Key*Bytes) list)    = xs |> keyBytesListToBulkStrs
 
 
 // CONSIDER BLOGGING THIS
@@ -129,38 +123,46 @@ arrays or lists
 
 
 let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
-    match cmd with
-    |Append         (key, bs)                   -> [| (RespHlpr.ToBS "APPEND");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              |]
-    |Bitcount       (key, optByteOffsetPair)    -> [| (RespHlpr.ToBS "BITCOUNT");       (RespHlpr.ToBS key);        (RespHlpr.ToBS optByteOffsetPair)               |]
-    |BitOp          bitOpInner                  -> [| (RespHlpr.ToBS "BITOP");          (RespHlpr.ToBS bitOpInner)                                                  |]
-    |Bitpos         (key, bb, range)            -> [| (RespHlpr.ToBS "BITPOS");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bb);      (RespHlpr.ToBS range)  |]
-    |Decr           key                         -> [| (RespHlpr.ToBS "DECR");           (RespHlpr.ToBS key)                                                         |]
-    |DecrBy         (key, amount)               -> [| (RespHlpr.ToBS "DECRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          |]
-    |Get            key                         -> [| (RespHlpr.ToBS "GET");            (RespHlpr.ToBS key)                                                         |]
-    |GetBit         (key, int)                  -> [| (RespHlpr.ToBS "GETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS int)                             |]
-    |GetRange       (key, range)                -> [| (RespHlpr.ToBS "GETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS range)                           |]
-    |GetSet         (key, bs)                   -> [| (RespHlpr.ToBS "GETSET");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              |]
-    |Incr           key                         -> [| (RespHlpr.ToBS "INCR");           (RespHlpr.ToBS key)                                                         |]
-    |IncrBy         (key, amount)               -> [| (RespHlpr.ToBS "INCRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          |]
-    |IncrByFloat    (key, amount)               -> [| (RespHlpr.ToBS "INCRBYFLOAT");    (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          |]
-    |MGet           keys                        -> [| (RespHlpr.ToBS "MGET");           (RespHlpr.ToBS keys)                                                        |]
-    |MSet           keyVals                     -> [| (RespHlpr.ToBS "MSET");           (RespHlpr.ToBS keyVals)                                                     |]
-    |MSetNX         keyVals                     -> [| (RespHlpr.ToBS "MSETNX");         (RespHlpr.ToBS keyVals)                                                     |]
-    |Set            (key, bs)                   -> [| (RespHlpr.ToBS "SET");            (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              |]
-    |SetBit         (key, pos, vval)            -> [| (RespHlpr.ToBS "SETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS vval)    |]
-    |SetNX          (key, bs)                   -> [| (RespHlpr.ToBS "SETNX");          (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              |]
-    |SetRange       (key, pos, bs)              -> [| (RespHlpr.ToBS "SETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS bs)      |]
-    |Strlen         key                         -> [| (RespHlpr.ToBS "STRLEN");         (RespHlpr.ToBS key)                                                         |]
-    |Ping                                       -> [| (RespHlpr.ToBS "PING")                                                                                        |]
-
-
+    let xss = 
+        match cmd with
+        |Append         (key, bs)                   -> [ (RespHlpr.ToBS "APPEND");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
+        |Bitcount       (key, optByteOffsetPair)    -> [ (RespHlpr.ToBS "BITCOUNT");       (RespHlpr.ToBS key);        (RespHlpr.ToBS optByteOffsetPair)               ]
+        |BitOp          bitOpInner                  -> [ (RespHlpr.ToBS "BITOP");          (RespHlpr.ToBS bitOpInner)                                                  ]
+        |Bitpos         (key, bb, range)            -> [ (RespHlpr.ToBS "BITPOS");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bb);      (RespHlpr.ToBS range)  ]
+        |Decr           key                         -> [ (RespHlpr.ToBS "DECR");           (RespHlpr.ToBS key)                                                         ]
+        |DecrBy         (key, amount)               -> [ (RespHlpr.ToBS "DECRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
+        |Get            key                         -> [ (RespHlpr.ToBS "GET");            (RespHlpr.ToBS key)                                                         ]
+        |GetBit         (key, int)                  -> [ (RespHlpr.ToBS "GETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS int)                             ]
+        |GetRange       (key, range)                -> [ (RespHlpr.ToBS "GETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS range)                           ]
+        |GetSet         (key, bs)                   -> [ (RespHlpr.ToBS "GETSET");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
+        |Incr           key                         -> [ (RespHlpr.ToBS "INCR");           (RespHlpr.ToBS key)                                                         ]
+        |IncrBy         (key, amount)               -> [ (RespHlpr.ToBS "INCRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
+        |IncrByFloat    (key, amount)               -> [ (RespHlpr.ToBS "INCRBYFLOAT");    (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
+        |MGet           keys                        -> [ (RespHlpr.ToBS "MGET");           (RespHlpr.ToBS keys)                                                        ]
+        |MSet           keyVals                     -> [ (RespHlpr.ToBS "MSET");           (RespHlpr.ToBS keyVals)                                                     ]
+        |MSetNX         keyVals                     -> [ (RespHlpr.ToBS "MSETNX");         (RespHlpr.ToBS keyVals)                                                     ]
+        |Set            (key, bs)                   -> [ (RespHlpr.ToBS "SET");            (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
+        |SetBit         (key, pos, vval)            -> [ (RespHlpr.ToBS "SETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS vval)    ]
+        |SetNX          (key, bs)                   -> [ (RespHlpr.ToBS "SETNX");          (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
+        |SetRange       (key, pos, bs)              -> [ (RespHlpr.ToBS "SETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS bs)      ]
+        |Strlen         key                         -> [ (RespHlpr.ToBS "STRLEN");         (RespHlpr.ToBS key)                                                         ]
+        |Ping                                       -> [ (RespHlpr.ToBS "PING")                                                                                        ]
+    
+    // flatten the list of lists and convert to an array, RESP is read from TCP into arrays
+    let xs = 
+        [   for xs in xss do
+            yield! xs ]
+    xs |> List.toArray
 
 
 [<Property( Arbitrary=[|typeof<ByteOffset>|] )>]
-let ``fredis vs redis`` (cmd:FredisTypes.FredisCmd) =
+let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
+    printfn "################################"
 
 
-    //convert FredisTypes to RESP
+    let resp = FredisCmdToRESP cmdIn
 
-
-    true
+    match  FredisCmdParser.ParseRESPtoFredisCmds resp with
+    | Choice1Of2 cmdOut   ->    printfn "##################### %A - %A" cmdIn cmdOut
+                                cmdIn = cmdOut
+    | Choice2Of2 err      ->    false
