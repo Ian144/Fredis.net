@@ -111,8 +111,6 @@ type RespHlpr private () =
     static member ToBS (xs:(Key*Bytes) list)    = xs |> keyBytesListToBulkStrs
 
 
-// CONSIDER BLOGGING THIS
-
 // create key generator, that restricts num keys to a small number, even one, to ensure there are interactions between the commands
 
 // are cmd names SimpleStrings or BulkStrings - for append cmd key and val are bulk strings, as seen from the msoft redis-cli
@@ -125,30 +123,30 @@ type RespHlpr private () =
 let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
     let xss = 
         match cmd with
-        |Append         (key, bs)                   -> [ (RespHlpr.ToBS "APPEND");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
-        |Bitcount       (key, optByteOffsetPair)    -> [ (RespHlpr.ToBS "BITCOUNT");       (RespHlpr.ToBS key);        (RespHlpr.ToBS optByteOffsetPair)               ]
-        |BitOp          bitOpInner                  -> [ (RespHlpr.ToBS "BITOP");          (RespHlpr.ToBS bitOpInner)                                                  ]
-        |Bitpos         (key, bb, range)            -> [ (RespHlpr.ToBS "BITPOS");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bb);      (RespHlpr.ToBS range)  ]
-        |Decr           key                         -> [ (RespHlpr.ToBS "DECR");           (RespHlpr.ToBS key)                                                         ]
-        |DecrBy         (key, amount)               -> [ (RespHlpr.ToBS "DECRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
-        |Get            key                         -> [ (RespHlpr.ToBS "GET");            (RespHlpr.ToBS key)                                                         ]
-        |GetBit         (key, int)                  -> [ (RespHlpr.ToBS "GETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS int)                             ]
-        |GetRange       (key, range)                -> [ (RespHlpr.ToBS "GETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS range)                           ]
-        |GetSet         (key, bs)                   -> [ (RespHlpr.ToBS "GETSET");         (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
-        |Incr           key                         -> [ (RespHlpr.ToBS "INCR");           (RespHlpr.ToBS key)                                                         ]
-        |IncrBy         (key, amount)               -> [ (RespHlpr.ToBS "INCRBY");         (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
-        |IncrByFloat    (key, amount)               -> [ (RespHlpr.ToBS "INCRBYFLOAT");    (RespHlpr.ToBS key);        (RespHlpr.ToBS amount)                          ]
-        |MGet           keys                        -> [ (RespHlpr.ToBS "MGET");           (RespHlpr.ToBS keys)                                                        ]
-        |MSet           keyVals                     -> [ (RespHlpr.ToBS "MSET");           (RespHlpr.ToBS keyVals)                                                     ]
-        |MSetNX         keyVals                     -> [ (RespHlpr.ToBS "MSETNX");         (RespHlpr.ToBS keyVals)                                                     ]
-        |Set            (key, bs)                   -> [ (RespHlpr.ToBS "SET");            (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
-        |SetBit         (key, pos, vval)            -> [ (RespHlpr.ToBS "SETBIT");         (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS vval)    ]
-        |SetNX          (key, bs)                   -> [ (RespHlpr.ToBS "SETNX");          (RespHlpr.ToBS key);        (RespHlpr.ToBS bs)                              ]
-        |SetRange       (key, pos, bs)              -> [ (RespHlpr.ToBS "SETRANGE");       (RespHlpr.ToBS key);        (RespHlpr.ToBS pos);    (RespHlpr.ToBS bs)      ]
-        |Strlen         key                         -> [ (RespHlpr.ToBS "STRLEN");         (RespHlpr.ToBS key)                                                         ]
-        |Ping                                       -> [ (RespHlpr.ToBS "PING")                                                                                        ]
+        |Append         (key, bytes)        -> [ RespHlpr.ToBS "APPEND";         RespHlpr.ToBS key;        RespHlpr.ToBS bytes                              ]
+        |Bitcount       (key, optOffsets)   -> [ RespHlpr.ToBS "BITCOUNT";       RespHlpr.ToBS key;        RespHlpr.ToBS optOffsets                         ]
+        |BitOp          bitOpInner          -> [ RespHlpr.ToBS "BITOP";          RespHlpr.ToBS bitOpInner                                                   ]
+        |Bitpos         (key, bb, range)    -> [ RespHlpr.ToBS "BITPOS";         RespHlpr.ToBS key;        RespHlpr.ToBS bb;          RespHlpr.ToBS range   ]
+        |Decr           key                 -> [ RespHlpr.ToBS "DECR";           RespHlpr.ToBS key                                                          ]
+        |DecrBy         (key, amount)       -> [ RespHlpr.ToBS "DECRBY";         RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
+        |Get            key                 -> [ RespHlpr.ToBS "GET";            RespHlpr.ToBS key                                                          ]
+        |GetBit         (key, int)          -> [ RespHlpr.ToBS "GETBIT";         RespHlpr.ToBS key;        RespHlpr.ToBS int                                ]
+        |GetRange       (key, range)        -> [ RespHlpr.ToBS "GETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS range                              ]
+        |GetSet         (key, bs)           -> [ RespHlpr.ToBS "GETSET";         RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]
+        |Incr           key                 -> [ RespHlpr.ToBS "INCR";           RespHlpr.ToBS key                                                          ]
+        |IncrBy         (key, amount)       -> [ RespHlpr.ToBS "INCRBY";         RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
+        |IncrByFloat    (key, amount)       -> [ RespHlpr.ToBS "INCRBYFLOAT";    RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
+        |MGet           keys                -> [ RespHlpr.ToBS "MGET";           RespHlpr.ToBS keys                                                         ]
+        |MSet           keyVals             -> [ RespHlpr.ToBS "MSET";           RespHlpr.ToBS keyVals                                                      ]
+        |MSetNX         keyVals             -> [ RespHlpr.ToBS "MSETNX";         RespHlpr.ToBS keyVals                                                      ]
+        |Set            (key, bs)           -> [ RespHlpr.ToBS "SET";            RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]
+        |SetBit         (key, pos, vval)    -> [ RespHlpr.ToBS "SETBIT";         RespHlpr.ToBS key;        RespHlpr.ToBS pos;         RespHlpr.ToBS vval    ]
+        |SetNX          (key, bs)           -> [ RespHlpr.ToBS "SETNX";          RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]
+        |SetRange       (key, pos, bytes)   -> [ RespHlpr.ToBS "SETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS pos;         RespHlpr.ToBS bytes   ]
+        |Strlen         key                 -> [ RespHlpr.ToBS "STRLEN";         RespHlpr.ToBS key                                                          ]
+        |Ping                               -> [ RespHlpr.ToBS "PING"                                                                                       ]
     
-    // flatten the list of lists and convert to an array, RESP is read from TCP into arrays
+    // flatten the list of lists and convert the result to an array, RESP is read from TCP into arrays
     let xs = 
         [   for xs in xss do
             yield! xs ]

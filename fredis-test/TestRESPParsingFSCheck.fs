@@ -94,7 +94,7 @@ let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     let respTypeByte = strm.ReadByte() 
     let respOut = RespMsgProcessor.LoadRESPMsg bufSize respTypeByte strm
     let isEof = strm.Position = strm.Length
-    respIn = respOut && isEof   
+    respIn = respOut && isEof
     
 
 

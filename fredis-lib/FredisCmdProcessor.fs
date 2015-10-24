@@ -117,7 +117,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.Strlen kk                       ->  match hashMap.ContainsKey(kk) with 
                                                     | true  ->  let len = hashMap.[kk].LongLength
-                                                                Resp.Integer len              
+                                                                Resp.Integer len
                                                     | false ->  Resp.Integer 0L
 
     | FredisCmd.MGet keys                       ->  let vals = 
