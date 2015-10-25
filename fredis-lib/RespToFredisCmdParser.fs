@@ -146,7 +146,6 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
         | _     ->  Choice2Of2 ErrorMsgs.numArgsIncrBy
 
     | "INCRBYFLOAT" ->
-        // should be "INCRBY key" only,so arrLen must be 3
         match msgArrLen with
         | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                     let optCmd = RespUtils.PartialGetMsgPayload msgArr.[2] 
@@ -189,12 +188,9 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
                         let  key        = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                         let  sStartByte = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                         let! iStartByte = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sStartByte
-                        let! startByte  = ByteOffset.createChoice iStartByte ErrorMsgs.valueNotIntegerOrOutOfRange
                         let  sEndByte   = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                         let! iEndByte   = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sEndByte
-                        let! endByte    = ByteOffset.createChoice iEndByte ErrorMsgs.valueNotIntegerOrOutOfRange
-                        let  arrayRange = ArrayRange.LowerUpper (startByte,endByte)
-                        return FredisCmd.GetRange (key, arrayRange)
+                        return FredisCmd.GetRange (key, iStartByte, iEndByte)
                     }
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetRange

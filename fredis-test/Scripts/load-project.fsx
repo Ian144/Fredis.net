@@ -5,3 +5,4 @@
       "../TestFredisCmds.fs"
       "../TestRESPParsingFSCheck.fs"
       "../TestFredisCmdsFSCheck.fs"
+      "../TestFredisCmdToRESP.fs"

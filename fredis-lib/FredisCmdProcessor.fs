@@ -129,22 +129,16 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.Ping                            ->  RespUtils.pongSimpleStr
 
-    | FredisCmd.GetRange (key, range)           ->  match hashMap.ContainsKey(key) with 
+    | FredisCmd.GetRange (key, lower, upper)    ->  match hashMap.ContainsKey(key) with 
                                                     | false ->  RespUtils.nilBulkStr
                                                     | true  ->  let bs = hashMap.[key]
                                                                 let upperBound = bs.GetUpperBound(0)
-                                                                let lower,upper = 
-                                                                        match range with
-                                                                        | All                   -> 0,   upperBound
-                                                                        | Lower ll              -> ll.Value,  upperBound
-                                                                        | LowerUpper (ll, uu)   -> ll.Value,  uu.Value
-                                                                
                                                                 let optBounds = RationaliseArrayBounds lower upper upperBound
-                                                                
                                                                 match optBounds with
                                                                 | Some (lower1, upper1) -> 
                                                                                             let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
-                                                                                            (Array.sub bs lower1 count) |> RespUtils.MakeBulkStr
+                                                                                            let xs = (Array.sub bs lower1 count)
+                                                                                            xs |> RespUtils.MakeBulkStr
                                                                 | None                  ->  RespUtils.nilBulkStr
 
     | FredisCmd.SetRange (key, offset, srcBytes)   ->   let len = offset + srcBytes.Length  

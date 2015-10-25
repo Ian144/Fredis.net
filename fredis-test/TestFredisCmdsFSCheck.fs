@@ -30,13 +30,6 @@ let private BytesToDouble (bs:Bytes) =
     bs |> Utils.BytesToStr |> System.Convert.ToDouble
 
 
-//type MyPropertyAttribute() =
-//    inherit PropertyAttribute (Arbitrary=[| typeof<PositiveInt32SmallRange> |])
-
-
-
-
-
 
 
 type Offsets = 
@@ -56,14 +49,6 @@ type PositiveInt32SmallRange =
     static member Ints() =
         Arb.fromGen (Gen.choose(0, 999))
 
-
-
-// this causes stack overflow
-//type FloatRestrictedRange = 
-//    static member Floats() = 
-//        Arb.generate<float> 
-//        |> Gen.suchThat (fun ff -> (abs ff) < 9999999.9)
-//        |> Arb.fromGen
 
 
 type FloatRestrictedRange = 
@@ -149,22 +134,17 @@ let private GetBulkStrVal (resp:Resp) =
 [< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
 let ``GETRANGE SETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
     let valueIn = neValue.Get
-    let skey = nesKey.Get
-    let key = Key skey
+    let key = nesKey.Get |> Key
     let hashMap = HashMap()
     let setRange = FredisCmd.SetRange (key, offset, valueIn)
     FredisCmdProcessor.Execute hashMap setRange |> ignore
-    let optByteOffset = ByteOffset.create offset
-    let byteOffset = optByteOffset.Value // its ok to assume optByteOffset is 'Some byteoffset' here, will throw and fail the test if this is not the case
-    let getRange = FredisCmd.GetRange (key, ArrayRange.Lower byteOffset)
+
+
+    let lower = offset
+    let upper = offset + valueIn.Length 
+    let getRange = FredisCmd.GetRange (key, lower, upper)
     let ret = FredisCmdProcessor.Execute hashMap getRange
     let valueOut = GetBulkStrVal ret
-
-    // f# array '=' is structural equality
-    //> System.Object.ReferenceEquals( [|1..9|], [|1..9|] );;
-    //val it : bool = false
-    //> [|1..9|] = [|1..9|];;
-    //val it : bool = true
 
     valueOut = valueIn
     

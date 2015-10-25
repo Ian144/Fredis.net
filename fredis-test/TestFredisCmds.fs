@@ -15,7 +15,8 @@ let private ``byteOffset 3`` = (ByteOffset.create 3).Value
 let private ``byteOffset -1`` = (ByteOffset.create -1).Value
 let private ``byteOffset -3`` = (ByteOffset.create -3).Value
 let private ``range (0,3)`` = ArrayRange.LowerUpper (``byteOffset 0``, ``byteOffset 3``)
-let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteOffset -1``)
+//let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteOffset -1``)
+
 
 let private key = Key "key"
 let private bs  = "This is a string" |> Utils.StrToBytes
@@ -28,7 +29,7 @@ type ``Execute GETRANGE`` () =
     [<Fact>]
     static member ``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
-        let cmd = FredisCmd.GetRange (key, ``range (0,3)``)
+        let cmd = FredisCmd.GetRange (key, 0, 3)
         test <@ RespUtils.nilBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
 
 
@@ -37,7 +38,7 @@ type ``Execute GETRANGE`` () =
         let hashMap = HashMap()
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
-        let getRangeCmd = FredisCmd.GetRange (key, ``range (0,3)``)
+        let getRangeCmd = FredisCmd.GetRange (key, 0, 3)
         let expected = "This" |> StrToBulkStr
         test <@ expected = FredisCmdProcessor.Execute hashMap getRangeCmd @>
 
@@ -48,7 +49,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
-        let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
+        let getRangeCmd = FredisCmd.GetRange (key, -3, -1)
         let expected = "ing" |> StrToBulkStr
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
@@ -60,7 +61,7 @@ type ``Execute GETRANGE`` () =
         let setCmd = FredisCmd.Set (key, bs)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
 
-        let getRangeCmd = FredisCmd.GetRange (key, ``range(-3,-1)``)
+        let getRangeCmd = FredisCmd.GetRange (key, -3, -1)
         let expected = "ing"|>  StrToBulkStr
         let ret = FredisCmdProcessor.Execute hashMap getRangeCmd
         test <@ expected = ret @>
@@ -153,62 +154,6 @@ type ``Execute SETBIT`` () =
         test <@ Resp.Integer 1L = FredisCmdProcessor.Execute hashMap resetCmd &&
                 [|0uy|] = hashMap.[key] @>
 
-
-
-
-//replaced with fscheck property (fscheck.xunit tests)
-//
-//    [<Fact>]
-//    static member ``"SETBIT key 7 true",  when key does not exist returns integer 0`` () =
-//        let hashMap = HashMap()
-//        let key = Key "key"
-//        let offset = 7
-//        let value  = true
-//        let cmd = FredisCmd.SetBit (key, offset, value)
-//        test <@ Resp.Integer 0L = (FredisCmdProcessor.ExecuteRedisCmds hashMap cmd) @>
-//
-//
-//    [<Fact>]
-//    static member ``"SETBIT key 0 true", byteArray created is one byte long`` () =
-//        let hashMap = HashMap()
-//        let key = Key "key"
-//        let offset = 0
-//        let value  = true
-//        let cmd = FredisCmd.SetBit (key, offset, value)
-//        FredisCmdProcessor.ExecuteRedisCmds hashMap cmd |> ignore
-//        test <@ 1 = hashMap.[key].Length @>
-//
-//
-//    [<Fact>]
-//    static member ``"SETBIT key 7 true", byteArray created is one byte long`` () =
-//        let hashMap = HashMap()
-//        let key = Key "key"
-//        let offset = 7
-//        let value  = true
-//        let cmd = FredisCmd.SetBit (key, offset, value)
-//        FredisCmdProcessor.ExecuteRedisCmds hashMap cmd |> ignore
-//        test <@ 1 = hashMap.[key].Length @>
-//
-//
-//    static member ``"SETBIT key 8 true", byteArray created is three bytes long`` () =
-//        let hashMap = HashMap()
-//        let key = Key "key"
-//        let offset = 8
-//        let value  = true
-//        let cmd = FredisCmd.SetBit (key, offset, value)
-//        FredisCmdProcessor.ExecuteRedisCmds hashMap cmd |> ignore
-//        test <@ 1 = hashMap.[key].Length @>
-//
-//
-//    [<Fact>]
-//    static member ``"SETBIT key 8 true", byteArray created is two bytes long`` () =
-//        let hashMap = HashMap()
-//        let key = Key "key"
-//        let offset = 8
-//        let value  = true
-//        let cmd = FredisCmd.SetBit (key, offset, value)
-//        FredisCmdProcessor.ExecuteRedisCmds hashMap cmd |> ignore
-//        test <@ 2 = hashMap.[key].Length @>
 
 
 type ``Execute INCRBY`` () =
@@ -529,7 +474,7 @@ type ``Parse GETRANGE`` () =
 
     [<Fact>]
     member this.``parse GETRANGE key start end returns FredisCmd.GetRange`` () = 
-        let expected = FredisCmd.GetRange (kkey, ``range (0,3)``)
+        let expected = FredisCmd.GetRange (kkey, 0, 3)
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|getRange; key; startIdx; endIdx|] @>
 
     [<Fact>]
