@@ -131,24 +131,21 @@ let private GetBulkStrVal (resp:Resp) =
     | _ -> failwith "failed to get byte array from bulkString"
     
 
+
 [< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
-let ``GETRANGE SETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
+let ``SETRANGE GETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
     let valueIn = neValue.Get
     let key = nesKey.Get |> Key
     let hashMap = HashMap()
     let setRange = FredisCmd.SetRange (key, offset, valueIn)
     FredisCmdProcessor.Execute hashMap setRange |> ignore
 
-
     let lower = offset
-    let upper = offset + valueIn.Length 
+    let upper = offset + valueIn.Length - 1 // if the range set was one byte then upper should equal lower, if two bytes then upper should be one more than lower
     let getRange = FredisCmd.GetRange (key, lower, upper)
     let ret = FredisCmdProcessor.Execute hashMap getRange
     let valueOut = GetBulkStrVal ret
-
     valueOut = valueIn
-    
-
 
 
 

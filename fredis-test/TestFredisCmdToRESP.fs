@@ -220,7 +220,6 @@ type Overrides() =
         Gen.listOf genKey
         |> Arb.fromGen
         |> Arb.filter (fun xs -> List.isEmpty xs |> not)
-
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGen genByteOffset
 
