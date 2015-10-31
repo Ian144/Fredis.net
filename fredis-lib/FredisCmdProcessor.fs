@@ -158,3 +158,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                                         System.Buffer.BlockCopy(srcBytes,       0,  destBytes2, offset, srcBytes.Length)
                                                                         hashMap.[key] <- destBytes2
                                                                         Resp.Integer (int64 len)
+
+    | FredisCmd.FlushDB                            ->   hashMap.Clear()
+                                                        RespUtils.okSimpleStr
+                                                    

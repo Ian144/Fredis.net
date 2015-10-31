@@ -49,7 +49,7 @@ let ArrayRangeToBulkStrs (rng:ArrayRange) =
 
 
 
-// RespHlpr is not available yet
+// RespHlpr is not available until further down this source file
 let BitOpInnerToBulkStrs (boi:FredisTypes.BitOpInner) = 
     match boi with
     | AND (key, keys)   ->  [ yield StrToBulkStr "AND"; yield (KeyToBulkStr key);  yield! (keyListToBulkStrs keys)  ]
@@ -75,14 +75,6 @@ type RespHlpr private () =
     static member ToBS (xs:Key list)            = xs |> keyListToBulkStrs
     static member ToBS (xs:(Key*Bytes) list)    = xs |> keyBytesListToBulkStrs
 
-
-// create key generator, that restricts num keys to a small number, even one, to ensure there are interactions between the commands
-
-// are cmd names SimpleStrings or BulkStrings - for append cmd key and val are bulk strings, as seen from the msoft redis-cli
-
-// roundtrip tests
-// test FredisCmd to RESP to FredisCmd
-// test RESP to FredisCmd to RESP
 
 
 let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
@@ -110,6 +102,7 @@ let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
         |SetRange       (key, pos, bytes)   -> [ RespHlpr.ToBS "SETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS pos;         RespHlpr.ToBS bytes   ]
         |Strlen         key                 -> [ RespHlpr.ToBS "STRLEN";         RespHlpr.ToBS key                                                          ]
         |Ping                               -> [ RespHlpr.ToBS "PING"                                                                                       ]
+        |FlushDB                            -> [ RespHlpr.ToBS "FLUSHDB"                                                                                    ]
     
     // flatten the list of lists and convert the result to an array, RESP is read from TCP into arrays
     let xs = 
@@ -186,14 +179,15 @@ let fredisCmdEquality cmd1 cmd2 =
 
 
 
-let genAlphaChar = Gen.choose(65,122) |> Gen.map char
-let genAlphaByteChar = Gen.arrayOf genAlphaChar
-
-let CharsToKey (chrs:char array) = 
-    let ss:string = System.String chrs
-    Key ss
-
-let genKey = genAlphaByteChar |> Gen.map CharsToKey
+let key1 = Gen.constant (Key "key1")
+let key2 = Gen.constant (Key "key2")
+let key3 = Gen.constant (Key "key3")
+let key4 = Gen.constant (Key "key4")
+let key5 = Gen.constant (Key "key5")
+let key6 = Gen.constant (Key "key6")
+let key7 = Gen.constant (Key "key7")
+let key8 = Gen.constant (Key "key8")
+let genKey = Gen.frequency[(1, key1); (1, key2); (1, key3); (1, key4); (1, key5); (1, key6); (1, key7); (1, key8) ]
 
 
 // create an Arbitrary<ByteOffset> so as to avoid the runtime error below
@@ -210,25 +204,45 @@ let genByteOffset =
 
 
 
+
+
+// overrides created to apply to nest values in reflexively generated types
+
 type Overrides() =
     static member Float() =
         Arb.Default.Float()
         |> Arb.filter (fun f -> not <| System.Double.IsNaN(f) && 
                                 not <| System.Double.IsInfinity(f) &&
                                 not <| (System.Math.Abs(f) > (System.Double.MaxValue / 2.0)) )
-    static member NonEmptyKeyList() =
-        Gen.listOf genKey
-        |> Arb.fromGen
-        |> Arb.filter (fun xs -> List.isEmpty xs |> not)
+
+    // creates stack overflow, probably because NormalFloat calls the overridden Float
+//    static member Float() =
+//        Arb.generate<NormalFloat>
+//        |> Gen.map (fun (NormalFloat ff) -> ff)
+//        |> Arb.fromGen
+
+    static member NonEmptyKeyList() = Gen.listOf genKey |> Arb.fromGen |> Arb.filter (fun xs -> List.isEmpty xs |> not)
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGen genByteOffset
 
 
 
 
-[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=100 )>]
+[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=1000 )>]
 let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
     let resp = FredisCmdToRESP cmdIn
     match  FredisCmdParser.ParseRESPtoFredisCmds resp with
     | Choice1Of2 cmdOut   -> fredisCmdEquality cmdIn cmdOut
     | Choice2Of2 _        -> false
+
+
+
+
+
+
+[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=100 )>]
+let ``test funcx`` (cmds:FredisTypes.FredisCmd list) =
+
+
+    printfn "%A" cmds
+    true

@@ -71,6 +71,7 @@ type FredisCmd =
     |Bitpos         of Key*bool*ArrayRange
     |Decr           of Key
     |DecrBy         of Key*int64
+    |FlushDB
     |Get            of Key
     |GetBit         of Key*int
     |GetRange       of Key*int*int

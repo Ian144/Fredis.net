@@ -196,20 +196,20 @@ let private findFirstSetBitposReference (searchVal:bool) (bytes:byte []) =
     | false -> -1
 
 
-// probably slow but probably correct reference implementation, to be used in property based testing
-let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx:int) (bytes:byte []) =
-    let ba = System.Collections.BitArray(bytes)
-    let arr = Array.zeroCreate<bool>(ba.Length)
-    
-    let startIdx2 = if startIdx >= 0 then startIdx else 0
-    let endIdx2 = if endIdx < arr.Length then endIdx else (arr.Length - 1)
-
-    for idx = startIdx2 to endIdx2 do
-        arr.[idx] <- ba.Item(idx)
-
-    match arr |> Array.exists (fun bl -> bl = searchVal) with
-    | true -> arr |> Array.findIndex (fun bl -> bl = searchVal)
-    | false -> -1
+//// probably slow but probably correct reference implementation, to be used in property based testing
+//let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx:int) (bytes:byte []) =
+//    let ba = System.Collections.BitArray(bytes)
+//    let arr = Array.zeroCreate<bool>(ba.Length)
+//    
+//    let startIdx2 = if startIdx >= 0 then startIdx else 0
+//    let endIdx2 = if endIdx < arr.Length then endIdx else (arr.Length - 1)
+//
+//    for idx = startIdx2 to endIdx2 do
+//        arr.[idx] <- ba.Item(idx)
+//
+//    match arr |> Array.exists (fun bl -> bl = searchVal) with
+//    | true -> arr |> Array.findIndex (fun bl -> bl = searchVal)
+//    | false -> -1
 
 
 [<Fact>]

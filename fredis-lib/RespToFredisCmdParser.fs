@@ -37,7 +37,7 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
     let msgArrLen   = Array.length msgArr
 
     //#### consider replacing this ever growing match statement with a map of string to function
-    match msgStr with
+    match msgStr.ToUpper() with
     | "APPEND" -> 
         match msgArrLen with
         | 3     ->  let kk  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
@@ -210,9 +210,6 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetRange
 
-
-
-
     | "SETBIT" -> 
         match msgArrLen with
         | 4     ->  choose{
@@ -238,7 +235,6 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetbit
 
-
     | "MSET" -> 
         match (msgArrLen % 2) with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
         | 1     ->  let paramPairs = GetMSetParamPairs msgArr
@@ -250,8 +246,6 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
         | 1     ->  let paramPairs = GetMSetParamPairs msgArr
                     Choice1Of2 (FredisCmd.MSetNX paramPairs)
         | _     ->  Choice2Of2 ErrorMsgs.numArgsMSetNX
-
-
 
     | "GET" -> 
         match msgArrLen with
@@ -268,14 +262,20 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
     | "MGET" -> 
         match (msgArrLen > 1) with
 
-        | true     ->   let keys = msgArr |> Array.toList |> List.tail |> List.map (RespUtils.PartialGetMsgPayload >> BytesToKey)
-                        //let keys = msgArr |> Array.toList |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToKey
+        | true      ->  let keys = msgArr |> Array.toList |> List.tail |> List.map (RespUtils.PartialGetMsgPayload >> BytesToKey)
+
                         Choice1Of2 (FredisCmd.MGet keys)
-        | false    ->   Choice2Of2 ErrorMsgs.numArgsMGet
+        | false     ->  Choice2Of2 ErrorMsgs.numArgsMGet
 
-    | "PING"    ->  Choice1Of2 FredisCmd.Ping
+    | "PING"        ->  Choice1Of2 FredisCmd.Ping
 
-    | _         ->  Choice2Of2 RespUtils.errorBytes   // unsupported or invalid redis command
+    | "FLUSHDB"     ->  Choice1Of2 FredisCmd.FlushDB
+
+    | _             ->  Choice2Of2 RespUtils.errorBytes   // unsupported or invalid redis command
+
+    
+
+
 
 
 
