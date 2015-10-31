@@ -1,46 +1,7 @@
-﻿module Fredis_Fedis_Test
-
-
-
-
-
-
-open FsCheck
-open FsCheck.Xunit
+﻿module FredisCmdToResp
 
 open FredisTypes
 
-
-//[<Property>]
-//let ``######################### ReadInt64 Write-Read roundtrip`` (ii:int64)  =
-//    use strm = new MemoryStream()
-//    let bytes = (sprintf "%d\r\n" ii) |> Utils.StrToBytes
-//    let _ = strm.Write (bytes, 0, bytes.Length)
-//    strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-//    let iiOut = RespMsgProcessor.ReadInt64(strm)
-//    let isEof = strm.Position = strm.Length
-//    ii = iiOut && isEof
-
-
-
-
-
-// create an Arbitrary<ByteOffset> so as to avoid the runtime error below
-// "The type FredisTypes+ByteOffset is not handled automatically by FsCheck. Consider using another type or writing and registering a generator for it"
-
-let private maxByteOffset = (pown 2 29) - 1 // zero based, hence the -1
-let private minByteOffset = (pown 2 29) * -1 
-
-
-let genByteOffset = 
-    Gen.choose(minByteOffset, maxByteOffset)
-    |> Gen.map FredisTypes.ByteOffset.create
-    |> Gen.map (fun optBoffset -> optBoffset.Value)
-
-
-type ByteOffset =
-    static member ByteOffsets() =
-        Arb.fromGen genByteOffset
 
 
 
@@ -53,7 +14,8 @@ let KeyToBulkStr = KeyToStr >> StrToBulkStr
 
 let Int32ToBulkStr (ii:int32) = sprintf "%d" ii |> StrToBulkStr
 let Int64ToBulkStr (ii:int64) = sprintf "%d" ii |> StrToBulkStr
-let floatToBulkStr (ff:float) = sprintf "%f" ff |> StrToBulkStr
+//let floatToBulkStr (ff:float) = sprintf "%f" ff |> StrToBulkStr
+let floatToBulkStr (ff:float) = System.Convert.ToString ff |> StrToBulkStr
 let boolToBulkStr  (bb:bool)  = 
     match bb with
     | true  -> "1" |> StrToBulkStr
@@ -84,7 +46,7 @@ let ArrayRangeToBulkStrs (rng:ArrayRange) =
 
 
 
-// RespHlpr is not available yet
+// RespHlpr is not available until further down this source file
 let BitOpInnerToBulkStrs (boi:FredisTypes.BitOpInner) = 
     match boi with
     | AND (key, keys)   ->  [ yield StrToBulkStr "AND"; yield (KeyToBulkStr key);  yield! (keyListToBulkStrs keys)  ]
@@ -111,14 +73,6 @@ type RespHlpr private () =
     static member ToBS (xs:(Key*Bytes) list)    = xs |> keyBytesListToBulkStrs
 
 
-// create key generator, that restricts num keys to a small number, even one, to ensure there are interactions between the commands
-
-// are cmd names SimpleStrings or BulkStrings - for append cmd key and val are bulk strings, as seen from the msoft redis-cli
-
-// roundtrip tests
-// test FredisCmd to RESP to FredisCmd
-// test RESP to FredisCmd to RESP
-
 
 let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
     let xss = 
@@ -131,7 +85,7 @@ let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
         |DecrBy         (key, amount)       -> [ RespHlpr.ToBS "DECRBY";         RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
         |Get            key                 -> [ RespHlpr.ToBS "GET";            RespHlpr.ToBS key                                                          ]
         |GetBit         (key, int)          -> [ RespHlpr.ToBS "GETBIT";         RespHlpr.ToBS key;        RespHlpr.ToBS int                                ]
-        |GetRange       (key, range)        -> [ RespHlpr.ToBS "GETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS range                              ]
+        |GetRange       (key, lower, upper) -> [ RespHlpr.ToBS "GETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS lower;       RespHlpr.ToBS upper   ]
         |GetSet         (key, bs)           -> [ RespHlpr.ToBS "GETSET";         RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]
         |Incr           key                 -> [ RespHlpr.ToBS "INCR";           RespHlpr.ToBS key                                                          ]
         |IncrBy         (key, amount)       -> [ RespHlpr.ToBS "INCRBY";         RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
@@ -145,22 +99,10 @@ let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
         |SetRange       (key, pos, bytes)   -> [ RespHlpr.ToBS "SETRANGE";       RespHlpr.ToBS key;        RespHlpr.ToBS pos;         RespHlpr.ToBS bytes   ]
         |Strlen         key                 -> [ RespHlpr.ToBS "STRLEN";         RespHlpr.ToBS key                                                          ]
         |Ping                               -> [ RespHlpr.ToBS "PING"                                                                                       ]
+        |FlushDB                            -> [ RespHlpr.ToBS "FLUSHDB"                                                                                    ]
     
     // flatten the list of lists and convert the result to an array, RESP is read from TCP into arrays
     let xs = 
         [   for xs in xss do
             yield! xs ]
     xs |> List.toArray
-
-
-[<Property( Arbitrary=[|typeof<ByteOffset>|] )>]
-let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
-    printfn "################################"
-
-
-    let resp = FredisCmdToRESP cmdIn
-
-    match  FredisCmdParser.ParseRESPtoFredisCmds resp with
-    | Choice1Of2 cmdOut   ->    printfn "##################### %A - %A" cmdIn cmdOut
-                                cmdIn = cmdOut
-    | Choice2Of2 err      ->    false

@@ -63,6 +63,7 @@ let ClientListenerLoop (client:TcpClient) =
                                 do! strm.AsyncWrite pongBytes
                             else
                                 let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
+                                printfn "received: %A" respMsg
                                 let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                                 match choiceFredisCmd with 
                                 | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)

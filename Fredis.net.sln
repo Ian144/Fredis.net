@@ -25,7 +25,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sequence", "Sequence\Sequen
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor-test", "fDisruptor-test\fDisruptor-test.fsproj", "{3D6C5389-A123-4A08-A764-79E839E92E7C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-redis-test", "fredis-redis-test\fredis-redis-test.fsproj", "{70345B34-10CE-401A-9A00-153ED7DE3166}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-vs-redis-test", "fredis-redis-test\fredis-vs-redis-test.fsproj", "{70345B34-10CE-401A-9A00-153ED7DE3166}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

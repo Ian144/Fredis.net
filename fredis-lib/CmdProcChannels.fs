@@ -77,6 +77,7 @@ let private DisruptorConsumerFunc () =
 
             // (un)commenting can show how relative cost of FredisCmdProcessor.Execute vs StreamFuncs.AsyncSendResp vs RESP decoding
             let respReply = FredisCmdProcessor.Execute hashMap msg.Cmd
+            printfn "replying with: %A" respReply
             let asyncSend = RespStreamFuncs.AsyncSendResp msg.Strm respReply 
 //            let asyncSend = msg.Strm.AsyncWrite pongBytes 
 

@@ -72,6 +72,7 @@
     <Compile Include="RespToFredisCmdParser.fs" />
     <Compile Include="FredisCmdProcessor.fs" />
     <Compile Include="CmdProcChannels.fs" />
+    <Compile Include="FredisCmdToResp.fs" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
