@@ -156,14 +156,14 @@ let ``SETRANGE GETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyAr
 //[<Property(Arbitrary = [| typeof<Offsets> |], Verbose=true)>]
 //[<Property(Arbitrary = [| typeof<Offsets> |], MaxTest = 9999, Verbose=true, QuietOnSuccess = true)>]
 [<  Property(Arbitrary = [| typeof<PositiveInt32> |]) >]
-let ``SETBIT, array len created is never more than 8 longer than the bit offset`` (offset:int) =
+let ``SETBIT, array len created is never more than 8 longer than the bit offset`` (offset:uint32) =
     let key = Key "key"
     let value  = true
     let hashMap = HashMap()
     let cmd = FredisCmd.SetBit (key, offset, value)
     FredisCmdProcessor.Execute hashMap cmd |> ignore
     let createdArrayLen = hashMap.[key].Length
-    let bitLenDiff = createdArrayLen * 8 - offset
+    let bitLenDiff = createdArrayLen * 8 - (int offset)
     bitLenDiff >= 0 && bitLenDiff <= 8
 
 
@@ -236,14 +236,14 @@ let ``BitposCmdProcessor.FindFirstBitIndex true equals reference implementation`
 
 [<Property>]
 let ``BitposCmdProcessor.FindFirstBitIndex false equals reference implementation`` (bs:byte array) =
-    let uIndx = bs.GetUpperBound(0)    
+    let uIndx = bs.GetUpperBound(0)
     BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs =  findFirstSetBitposReference false bs
 
 
 
 
 [<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
-let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
+let ``SETBIT BITPOS roundtrip agree`` (offset:uint32) =
     let key = Key "key"
     let value  = true
     let hashMap = HashMap()
@@ -254,19 +254,19 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:int) =
     let ret = FredisCmdProcessor.Execute hashMap bitPosCmd 
     
     match ret with
-    | Resp.Integer bitPosFound  -> (int bitPosFound) = offset
+    | Resp.Integer bitPosFound  -> (int bitPosFound) = (int offset)
     | _                         -> false
 
 
 
 [<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
-let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:int) =
+let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:uint32) =
     let key = Key "key"
     let hashMap = HashMap()
 
-    let arraySizeToCreate = (bitOffset / 8) * 2 + 1 // big enough to contain the offset
+    let arraySizeToCreate = (bitOffset / 8ul) * 2ul + 1ul // big enough to contain the offset
 
-    let bs = Array.create<byte> arraySizeToCreate 255uy // create an array containing only 1's
+    let bs = Array.create<byte> (int arraySizeToCreate) 255uy // create an array containing only 1's
     let setCmd = FredisCmd.Set (key, bs)
     FredisCmdProcessor.Execute hashMap setCmd |> ignore
 
@@ -277,13 +277,13 @@ let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one
     let ret = FredisCmdProcessor.Execute hashMap bitPosCmd 
     
     match ret with
-    | Resp.Integer bitPosFound  -> (int bitPosFound) = bitOffset
+    | Resp.Integer bitPosFound  -> (int bitPosFound) = (int bitOffset)
     | _                         -> false
 
 
 
 [<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |])>]
-let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:int) =
+let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:uint32) =
     let key = Key "key"
     let value  = true
     let hashMap = HashMap()

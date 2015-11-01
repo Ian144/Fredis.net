@@ -10,13 +10,13 @@ open FredisTypes
 
 let fredisCmdEquality cmd1 cmd2 = 
 
-    let ApproxEq (ff1:float) (ff2:float) = 
+    let approxEq (ff1:float) (ff2:float) = 
         let diff = System.Math.Abs (ff1 - ff2)
         diff < 0.0000001
 
     match cmd1, cmd2 with
     | IncrByFloat (key1, amount1), IncrByFloat (key2, amount2) ->   let keysEq = key1 = key2
-                                                                    let amountsEq = ApproxEq amount1 amount2
+                                                                    let amountsEq = approxEq amount1 amount2
                                                                     keysEq && amountsEq
     | _, _                                                     ->   cmd1 = cmd2
 
@@ -81,8 +81,21 @@ let private minByteOffset = (pown 2 29) * -1
 
 let genByteOffset = 
     Gen.choose(minByteOffset, maxByteOffset)
-    |> Gen.map FredisTypes.ByteOffset.create
+    |> Gen.map FredisTypes.ByteOffset.Create
     |> Gen.map (fun optBoffset -> optBoffset.Value)
+
+
+
+let genByte = Gen.arrayOf Arb.generate<byte>
+    
+let genKeyBytePair =
+    gen{
+        let! key = genKey
+        let! bytes = genByte
+        return key, bytes
+    }
+    
+
 
 
 
@@ -94,7 +107,7 @@ type Overrides() =
         Arb.Default.Float()
         |> Arb.filter (fun f -> not <| System.Double.IsNaN(f) && 
                                 not <| System.Double.IsInfinity(f) &&
-                                not <| (System.Math.Abs(f) > (System.Double.MaxValue / 2.0)) )
+                                (System.Math.Abs(f) < (System.Double.MaxValue / 2.0)) )
 
     // creates stack overflow, probably because NormalFloat calls the overridden Float
 //    static member Float() =
@@ -102,7 +115,8 @@ type Overrides() =
 //        |> Gen.map (fun (NormalFloat ff) -> ff)
 //        |> Arb.fromGen
 
-    static member NonEmptyKeyList() = Gen.listOf genKey |> Arb.fromGen |> Arb.filter (fun xs -> List.isEmpty xs |> not)
+    static member NonEmptyKeyList() = Gen.listOf genKey |> Arb.fromGen |> Arb.filter (List.isEmpty >> not)
+    static member NonEmptyKeyByteList() = Gen.listOf genKeyBytePair |> Arb.fromGen |> Arb.filter (List.isEmpty >> not)
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGen genByteOffset
 
@@ -112,18 +126,14 @@ type Overrides() =
 [<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=1000 )>]
 let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
     let resp = FredisCmdToResp.FredisCmdToRESP cmdIn
-    match  FredisCmdParser.ParseRESPtoFredisCmds resp with
-    | Choice1Of2 cmdOut   -> fredisCmdEquality cmdIn cmdOut
-    | Choice2Of2 _        -> false
+    let ok =
+        match  FredisCmdParser.ParseRESPtoFredisCmds resp with
+        | Choice1Of2 cmdOut   ->    fredisCmdEquality cmdIn cmdOut
+        | Choice2Of2 bs       ->    let msg = Utils.BytesToStr bs
+                                    System.Diagnostics.Debug.WriteLine msg 
+                                    false
 
+    if not ok then
+        printfn "#####################"
+    ok
 
-
-
-
-
-[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=100 )>]
-let ``test funcx`` (cmds:FredisTypes.FredisCmd list) =
-
-
-    printfn "%A" cmds
-    true

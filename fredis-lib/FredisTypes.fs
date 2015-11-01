@@ -21,15 +21,15 @@ let private minByteOffset = (pown 2 29) * -1
 // constrained single case discriminated union
 [<StructuredFormatDisplay("{FormatDisplay}")>]
 type ByteOffset = private ByteOffset of int with
-    static member private isValid (ii:int) = (ii >= minByteOffset) && (ii <= maxByteOffset)
+    static member private IsValid (ii:int) = (ii >= minByteOffset) && (ii <= maxByteOffset)
     
-    static member create (ii:int) = 
-        if ByteOffset.isValid ii
+    static member Create (ii:int) = 
+        if ByteOffset.IsValid ii
         then Some (ByteOffset ii) 
         else None
 
-    static member createChoice (ii:int) (err: byte []) = 
-        if ByteOffset.isValid ii
+    static member CreateChoice (ii:int) (err: byte []) = 
+        if ByteOffset.IsValid ii
         then Choice1Of2 (ByteOffset ii) 
         else Choice2Of2 err
 
@@ -64,6 +64,8 @@ type ArrayRange =
 
 
 
+
+
 type FredisCmd = 
     |Append         of Key*Bytes
     |Bitcount       of Key*optByteOffsetPair
@@ -73,7 +75,7 @@ type FredisCmd =
     |DecrBy         of Key*int64
     |FlushDB
     |Get            of Key
-    |GetBit         of Key*int
+    |GetBit         of Key*uint32
     |GetRange       of Key*int*int
     |GetSet         of Key*Bytes
     |Incr           of Key
@@ -84,7 +86,7 @@ type FredisCmd =
     |MSetNX         of (Key*Bytes) list
     |Ping
     |Set            of Key*Bytes
-    |SetBit         of Key*int*bool
+    |SetBit         of Key*uint32*bool
     |SetNX          of Key*Bytes
     |SetRange       of Key*int*Bytes
     |Strlen         of Key

@@ -30,14 +30,16 @@ let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) : in
 let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
     let numSetBits =
             match (range, hashMap.ContainsKey(key)) with
-            | (_, false)                                ->  -1L   // key not in map, so bitval is not found
+            | (_, false)                                ->  match bitVal with
+                                                            | true  ->  -1L
+                                                            | false -> 0L
                                                                     
-            | (ArrayRange.All, true)                    ->  let bs = hashMap.[key]       
+            | (ArrayRange.All, true)                    ->  let bs = hashMap.[key]
                                                             (FindFirstBitIndex 0 (bs.Length-1) bitVal bs) |> int64
 
             | (ArrayRange.Lower ll, true)               ->  let bs = hashMap.[key] 
                                                             let arrayUBound = bs.Length - 1
-                                                            let uu = arrayUBound        
+                                                            let uu = arrayUBound
                                                             let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu arrayUBound //#### consider a function to only rationalise the lower bound here
                                                             match optBounds with
                                                             | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary

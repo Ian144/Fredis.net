@@ -53,8 +53,8 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
                 let sUIdx       = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                 let optParams   = maybe{    let! iLIndx = FSharpx.FSharpOption.ParseInt sLIdx
                                             let! iUIndx = FSharpx.FSharpOption.ParseInt sUIdx
-                                            let! lIndx  = ByteOffset.create iLIndx
-                                            let! uIndx  = ByteOffset.create iUIndx
+                                            let! lIndx  = ByteOffset.Create iLIndx
+                                            let! uIndx  = ByteOffset.Create iUIndx
                                             return (key, Some(lIndx, uIndx)) }
 
                 match optParams with
@@ -71,29 +71,32 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
             match msgArrLen with
             | 5 ->  choose{ let key         = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let sBit        = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+                            let! _          = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sBit
                             let! bit        = Utils.ChoiceParseBool ErrorMsgs.badBitArgBitpos sBit
                             let sStartByte  = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                             let! iStartByte = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sStartByte
-                            let! startByte  = ByteOffset.createChoice iStartByte ErrorMsgs.valueNotIntegerOrOutOfRange
+                            let! startByte  = ByteOffset.CreateChoice iStartByte ErrorMsgs.valueNotIntegerOrOutOfRange
                             let sEndByte    = RespUtils.PartialGetMsgPayload msgArr.[4] |> BytesToStr
                             let! iEndByte   = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sEndByte
-                            let! endByte    = ByteOffset.createChoice iEndByte ErrorMsgs.valueNotIntegerOrOutOfRange
+                            let! endByte    = ByteOffset.CreateChoice iEndByte ErrorMsgs.valueNotIntegerOrOutOfRange
                             let arrayRange  = ArrayRange.LowerUpper (startByte,endByte)
                             return FredisCmd.Bitpos (key, bit, arrayRange) }
 
             // BITPOS key bit startByte 
             | 4 ->  choose{ let key             = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let strBit          = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+                            let! _ = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange strBit
                             let! bit            = Utils.ChoiceParseBool ErrorMsgs.badBitArgBitpos strBit
                             let strStartByte    = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                             let! startByte      = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange strStartByte
-                            let! startByte1     = ByteOffset.createChoice startByte ErrorMsgs.valueNotIntegerOrOutOfRange
+                            let! startByte1     = ByteOffset.CreateChoice startByte ErrorMsgs.valueNotIntegerOrOutOfRange
                             let arrayRange      = ArrayRange.Lower startByte1
                             return FredisCmd.Bitpos (key, bit, arrayRange) }
 
             // BITPOS key bit
             | 3 ->  choose{ let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let strBit = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+                            let! _ = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange strBit
                             let! bit = Utils.ChoiceParseBool ErrorMsgs.badBitArgBitpos strBit
                             return FredisCmd.Bitpos (key, bit, ArrayRange.All) }
 
@@ -204,11 +207,11 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
                         let! offset     = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sOffset
                         let  bytes      = RespUtils.PartialGetMsgPayload msgArr.[3] 
                         let  totalLen = offset + bytes.Length
-                        let! _    = ByteOffset.createChoice totalLen ErrorMsgs.valueNotIntegerOrOutOfRange //checks that an array longer than 512mb will not be needed
+                        let! _    = ByteOffset.CreateChoice totalLen ErrorMsgs.valueNotIntegerOrOutOfRange //checks that an array longer than 512mb will not be needed
                         return FredisCmd.SetRange (key, offset, bytes)
                     }
 
-        | _     ->  Choice2Of2 ErrorMsgs.numArgsGetRange
+        | _     ->  Choice2Of2 ErrorMsgs.numArgsSetRange
 
     | "SETBIT" -> 
         match msgArrLen with
@@ -216,10 +219,11 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
                             let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let  offsetStr = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
                             let! offset = Utils.ChoiceParseInt ErrorMsgs.bitOffsetNotIntegerOrOutOfRange offsetStr 
+                            let uoffset = uint32 offset
                             let  bitValStr = RespUtils.PartialGetMsgPayload msgArr.[3] |> BytesToStr
                             let! intVal = Utils.ChoiceParseInt ErrorMsgs.bitNotIntegerOrOutOfRange bitValStr
                             let! bitVal = Utils.ChoiceParseBoolFromInt ErrorMsgs.bitNotIntegerOrOutOfRange intVal
-                            return FredisCmd.SetBit (key, offset, bitVal)
+                            return FredisCmd.SetBit (key, uoffset, bitVal)
                         }
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsSetbit
@@ -229,23 +233,24 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
         | 3     ->  choose{
                             let key  = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
                             let  offsetStr = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
-                            let! offset = Utils.ChoiceParseInt ErrorMsgs.bitOffsetNotIntegerOrOutOfRange offsetStr 
-                            return FredisCmd.GetBit (key, offset)
+                            let! offset = Utils.ChoiceParsePosOrZeroInt ErrorMsgs.bitOffsetNotIntegerOrOutOfRange offsetStr 
+                            let uoffset = uint32 offset
+                            return FredisCmd.GetBit (key, uoffset)
                         }
 
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetbit
 
     | "MSET" -> 
-        match (msgArrLen % 2) with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
-        | 1     ->  let paramPairs = GetMSetParamPairs msgArr
+        match (msgArrLen % 2) = 1 && msgArrLen > 1 with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
+        | true  ->  let paramPairs = GetMSetParamPairs msgArr
                     Choice1Of2 (FredisCmd.MSet paramPairs)
-        | _     ->  Choice2Of2 ErrorMsgs.numArgsMSet
+        | false ->  Choice2Of2 ErrorMsgs.numArgsMSet
 
     | "MSETNX" -> 
-        match (msgArrLen % 2) with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
-        | 1     ->  let paramPairs = GetMSetParamPairs msgArr
+        match (msgArrLen % 2) = 1 && msgArrLen > 1 with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
+        | true  ->  let paramPairs = GetMSetParamPairs msgArr
                     Choice1Of2 (FredisCmd.MSetNX paramPairs)
-        | _     ->  Choice2Of2 ErrorMsgs.numArgsMSetNX
+        | false ->  Choice2Of2 ErrorMsgs.numArgsMSetNX
 
     | "GET" -> 
         match msgArrLen with
@@ -282,8 +287,5 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
 
 let RespMsgToRedisCmds (respMsg:Resp) =
     match respMsg with
-    | Resp.Array msgArray    -> ParseRESPtoFredisCmds msgArray
-    | Resp.BulkString _      -> Choice2Of2 RespUtils.errorBytes 
-    | Resp.Error _           -> Choice2Of2 RespUtils.errorBytes
-    | Resp.Integer _         -> Choice2Of2 RespUtils.errorBytes
-    | Resp.SimpleString _    -> Choice2Of2 RespUtils.errorBytes
+    | Resp.Array msgArray   -> ParseRESPtoFredisCmds msgArray
+    |  _                    -> Choice2Of2 RespUtils.errorBytes 

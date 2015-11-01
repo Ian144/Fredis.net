@@ -61,7 +61,8 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                         hashMap.[kk] <- vv
                                                         Resp.Integer 1L 
 
-    | FredisCmd.SetBit (key,offset,value)       ->  match hashMap.ContainsKey(key) with
+    | FredisCmd.SetBit (key,uoffset,value)       -> let offset = int uoffset
+                                                    match hashMap.ContainsKey(key) with
                                                     | true  ->  let lengthRequired = offset/8 + 1 
                                                                 let bytes = hashMap.[key]
                                                                 let bytes' = ExtendBytes lengthRequired bytes
@@ -78,8 +79,9 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                                 hashMap.[key] <- bytes
                                                                 Resp.Integer 0L // the 'old' value is considered to be zero if the key did not exist
 
-    | FredisCmd.GetBit (key,offset)   ->            match hashMap.ContainsKey(key) with
-                                                    | true  ->  let lengthRequired = offset/8 + 1 
+    | FredisCmd.GetBit (key,uoffset)   ->           match hashMap.ContainsKey(key) with
+                                                    | true  ->  let offset = int uoffset
+                                                                let lengthRequired = offset/8 + 1 
                                                                 let bytes = hashMap.[key]
                                                                 match lengthRequired > bytes.Length with
                                                                 | true -> Resp.Integer 0L   // the value is past the end of the byte array, return zero
@@ -130,7 +132,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
     | FredisCmd.Ping                            ->  RespUtils.pongSimpleStr
 
     | FredisCmd.GetRange (key, lower, upper)    ->  match hashMap.ContainsKey(key) with 
-                                                    | false ->  RespUtils.nilBulkStr
+                                                    | false ->  RespUtils.emptyBulkStr
                                                     | true  ->  let bs = hashMap.[key]
                                                                 let upperBound = bs.GetUpperBound(0)
                                                                 let optBounds = RationaliseArrayBounds lower upper upperBound
@@ -139,9 +141,9 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                                                             let count = (upper1 - lower1 + 1) // +1 because for example, when both lower and upper refer to the last element the count should be 1-
                                                                                             let xs = (Array.sub bs lower1 count)
                                                                                             xs |> RespUtils.MakeBulkStr
-                                                                | None                  ->  RespUtils.nilBulkStr
+                                                                | None                  ->  RespUtils.emptyBulkStr
 
-    | FredisCmd.SetRange (key, offset, srcBytes)   ->   let len = offset + srcBytes.Length  
+    | FredisCmd.SetRange (key, offset, srcBytes)   ->   let len = offset + srcBytes.Length
                                                         match hashMap.ContainsKey(key) with 
                                                         | false ->  let destBytes = Array.zeroCreate<byte> (len) 
                                                                     System.Buffer.BlockCopy(srcBytes, 0, destBytes, offset, srcBytes.Length)

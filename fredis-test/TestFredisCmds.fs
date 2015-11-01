@@ -10,10 +10,10 @@ open FredisTypes
 
 
 
-let private ``byteOffset 0`` = (ByteOffset.create 0).Value
-let private ``byteOffset 3`` = (ByteOffset.create 3).Value
-let private ``byteOffset -1`` = (ByteOffset.create -1).Value
-let private ``byteOffset -3`` = (ByteOffset.create -3).Value
+let private ``byteOffset 0`` = (ByteOffset.Create 0).Value
+let private ``byteOffset 3`` = (ByteOffset.Create 3).Value
+let private ``byteOffset -1`` = (ByteOffset.Create -1).Value
+let private ``byteOffset -3`` = (ByteOffset.Create -3).Value
 let private ``range (0,3)`` = ArrayRange.LowerUpper (``byteOffset 0``, ``byteOffset 3``)
 //let private ``range(-3,-1)`` = ArrayRange.LowerUpper (``byteOffset -3``, ``byteOffset -1``)
 
@@ -22,7 +22,7 @@ let private key = Key "key"
 let private bs  = "This is a string" |> Utils.StrToBytes
 let StrToBulkStr = Utils.StrToBytes >> RespUtils.MakeBulkStr
 
-//let emptyBulkStr = Resp.BulkString [||] // i.e. an empty byte array
+
 
 type ``Execute GETRANGE`` () =
 
@@ -30,7 +30,7 @@ type ``Execute GETRANGE`` () =
     static member ``GETRANGE key start end returns empty string when key does not exist`` () = 
         let hashMap = HashMap()
         let cmd = FredisCmd.GetRange (key, 0, 3)
-        test <@ RespUtils.nilBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
+        test <@ RespUtils.emptyBulkStr = FredisCmdProcessor.Execute hashMap cmd @>
 
 
     [<Fact>]
@@ -133,11 +133,11 @@ type ``Execute SETBIT`` () =
         let hashMap = HashMap()
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
-                    (FredisCmd.SetBit (key, 7, true))
+                    (FredisCmd.SetBit (key, 7ul, true))
 
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
-                    (FredisCmd.SetBit (key, 8, true))
+                    (FredisCmd.SetBit (key, 8ul, true))
 
         test <@ 2 = hashMap.[key].Length @>
 
@@ -145,7 +145,7 @@ type ``Execute SETBIT`` () =
     [<Fact>]
     static member ``"SETBIT key 7 true" then "SETBIT key 7 false" returns 1 and resets to 0`` () =
         let hashMap = HashMap()
-        let offset = 0
+        let offset = 0ul
         let _ = FredisCmdProcessor.Execute 
                     hashMap 
                     (FredisCmd.SetBit (key, offset, true))
@@ -537,7 +537,7 @@ type ``Parse BITPOS`` () =
 
     [<Fact>]
     member this.``parse BITPOS key bitArg1 startByte succeeds`` () = 
-        let nineByteOffset = (ByteOffset.create 9).Value
+        let nineByteOffset = (ByteOffset.Create 9).Value
         let nineBlkStr   = "9" |> StrToBulkStr
         let expected = FredisCmd.Bitpos (kkey, true, ArrayRange.Lower nineByteOffset)
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [|bitPos; key; bitArg1; nineBlkStr|] @>

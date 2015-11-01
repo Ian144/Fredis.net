@@ -27,9 +27,15 @@ type CmdProcChannelMsg =
 let private mbox =
     MailboxProcessor.Start( fun inbox ->
         let rec msgLoop () =
-            async { let! (strm:System.IO.Stream, cmd) = inbox.Receive()
-                    let respReply = FredisCmdProcessor.Execute hashMap cmd 
-                    do! RespStreamFuncs.AsyncSendResp strm respReply
+            async { 
+                    try
+
+                        let! (strm:System.IO.Stream, cmd) = inbox.Receive()
+                        let respReply = FredisCmdProcessor.Execute hashMap cmd 
+                        do! RespStreamFuncs.AsyncSendResp strm respReply
+                    with
+                    | ex -> printfn "####################### mailbox processor exception thrown: %s" ex.Message
+                    
                     return! msgLoop () } 
         msgLoop () )
 

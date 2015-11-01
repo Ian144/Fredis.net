@@ -2,6 +2,9 @@
 
 //#### use less generic name than Utils and/or separate into multiple files
 
+open FSharpx.Choice
+
+
 open FredisTypes
 
 
@@ -40,8 +43,16 @@ let OptionToChoice (optFunc:'a -> 'b option) (xx:'a) choice2Of2Val  =
     | None      -> Choice2Of2 choice2Of2Val
                     
                     
-let ChoiceParseInt failureMsg str :Choice<int,byte[]> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
+let ChoiceParseInt failureMsg str : Choice<int,byte[]> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
 
+
+
+let ChoiceParsePosOrZeroInt failureMsg str : Choice<int,byte[]> = 
+    choose{
+        let! ii1 = ChoiceParseInt failureMsg str
+        let! ii2 = if ii1 < 0 then Choice2Of2 failureMsg else Choice1Of2 ii1
+        return ii2
+    }
 
 let ChoiceParseBoolFromInt (errorMsg:byte[]) (ii:int) = 
     match ii with

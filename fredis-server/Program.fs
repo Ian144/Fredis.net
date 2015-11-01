@@ -55,19 +55,20 @@ let ClientListenerLoop (client:TcpClient) =
                 // reading from the socket is mostly synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte3 buf
                 match optRespTypeByte with
-                | None              ->   loopAgain := false  // client disconnected
+                | None              ->
+                    loopAgain := false  // client disconnected
                 | Some respTypeByte -> 
-                            let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                            if respTypeInt = PingL then 
-                                Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                                do! strm.AsyncWrite pongBytes
-                            else
-                                let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
-                                printfn "received: %A" respMsg
-                                let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                                match choiceFredisCmd with 
-                                | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
-                                | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
+                    let respTypeInt = System.Convert.ToInt32(respTypeByte)
+                    if respTypeInt = PingL then 
+                        Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                        do! strm.AsyncWrite pongBytes
+                    else
+                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
+                        printfn "received: %A" respMsg
+                        let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                        match choiceFredisCmd with 
+                        | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
+                        | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 
 
