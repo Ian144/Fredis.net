@@ -28,13 +28,14 @@ let private mbox =
     MailboxProcessor.Start( fun inbox ->
         let rec msgLoop () =
             async { 
+                    let! (strm:System.IO.Stream, cmd) = inbox.Receive()
                     try
-
-                        let! (strm:System.IO.Stream, cmd) = inbox.Receive()
                         let respReply = FredisCmdProcessor.Execute hashMap cmd 
                         do! RespStreamFuncs.AsyncSendResp strm respReply
                     with
-                    | ex -> printfn "####################### mailbox processor exception thrown: %s" ex.Message
+                    | ex -> 
+                        printfn "mailbox processor exception thrown: %s" ex.Message
+                        do! strm.AsyncWrite (RespUtils.errorBytes, 0, RespUtils.errorBytes.Length)
                     
                     return! msgLoop () } 
         msgLoop () )

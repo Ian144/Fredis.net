@@ -93,11 +93,13 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                     | false ->  Resp.Integer 0L // the 'old' value is considered to be zero if the key did not exist
 
 
-    | FredisCmd.MSet kvPairs                    ->  kvPairs |> List.iter (fun (kk,vv) -> hashMap.[kk] <- vv)
+    | FredisCmd.MSet (kv, kvs)                  ->  let allKeyVals = kv :: kvs
+                                                    allKeyVals |> List.iter (fun (kk,vv) -> hashMap.[kk] <- vv)
                                                     RespUtils.okSimpleStr
 
     // check that no of the keys exists, then as per MSet
-    | FredisCmd.MSetNX kvPairs                  ->  let keys = kvPairs |> List.map (fun (kk,_) -> kk)
+    | FredisCmd.MSetNX (kv, kvs)                ->  let kvPairs = kv::kvs
+                                                    let keys = kvPairs |> List.map (fun (kk,_) -> kk)
                                                     let anyKeysPresent = keys |> List.exists (fun kk -> hashMap.ContainsKey(kk))
                                                     if anyKeysPresent then
                                                         Resp.Integer 0L
@@ -122,8 +124,9 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                                 Resp.Integer len
                                                     | false ->  Resp.Integer 0L
 
-    | FredisCmd.MGet keys                       ->  let vals = 
-                                                        keys |> List.map (fun kk -> 
+    | FredisCmd.MGet (key,keys)                 ->  let keys2 = key::keys
+                                                    let vals = 
+                                                        keys2 |> List.map (fun kk -> 
                                                             match hashMap.ContainsKey(kk) with 
                                                             | true  ->  hashMap.[kk] |> RespUtils.MakeBulkStr
                                                             | false ->  RespUtils.nilBulkStr ) 

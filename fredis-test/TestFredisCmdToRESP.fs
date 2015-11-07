@@ -97,11 +97,7 @@ let genKeyBytePair =
     
 
 
-
-
-
-
-// overrides created to apply too nested values in reflexively generated types
+// overrides created apply to nested values in reflexively generated types (FredisCmds)
 type Overrides() =
     static member Float() =
         Arb.Default.Float()
@@ -109,14 +105,6 @@ type Overrides() =
                                 not <| System.Double.IsInfinity(f) &&
                                 (System.Math.Abs(f) < (System.Double.MaxValue / 2.0)) )
 
-    // creates stack overflow, probably because NormalFloat calls the overridden Float
-//    static member Float() =
-//        Arb.generate<NormalFloat>
-//        |> Gen.map (fun (NormalFloat ff) -> ff)
-//        |> Arb.fromGen
-
-    static member NonEmptyKeyList() = Gen.listOf genKey |> Arb.fromGen |> Arb.filter (List.isEmpty >> not)
-    static member NonEmptyKeyByteList() = Gen.listOf genKeyBytePair |> Arb.fromGen |> Arb.filter (List.isEmpty >> not)
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGen genByteOffset
 
@@ -126,14 +114,9 @@ type Overrides() =
 [<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=1000 )>]
 let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
     let resp = FredisCmdToResp.FredisCmdToRESP cmdIn
-    let ok =
-        match  FredisCmdParser.ParseRESPtoFredisCmds resp with
-        | Choice1Of2 cmdOut   ->    fredisCmdEquality cmdIn cmdOut
-        | Choice2Of2 bs       ->    let msg = Utils.BytesToStr bs
-                                    System.Diagnostics.Debug.WriteLine msg 
-                                    false
-
-    if not ok then
-        printfn "#####################"
-    ok
+    match  FredisCmdParser.ParseRESPtoFredisCmds resp with
+    | Choice1Of2 cmdOut   ->    fredisCmdEquality cmdIn cmdOut
+    | Choice2Of2 bs       ->    let msg = Utils.BytesToStr bs
+                                System.Diagnostics.Debug.WriteLine msg 
+                                false
 

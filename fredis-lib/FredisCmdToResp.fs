@@ -23,6 +23,10 @@ let boolToBulkStr  (bb:bool)  =
 
 let keyListToBulkStrs (ks:Key list) = ks |> List.map KeyToBulkStr
 
+
+let keyBytesPairToBulkStrs (kk,bb) = [KeyToBulkStr kk; BytesToBulkStr bb]
+
+
 let keyBytesListToBulkStrs (kbs:(Key*Bytes) list) = 
     [   for kk,bs in kbs do
         yield kk |> KeyToBulkStr
@@ -49,14 +53,15 @@ let ArrayRangeToBulkStrs (rng:ArrayRange) =
 // RespHlpr is not available until further down this source file
 let BitOpInnerToBulkStrs (boi:FredisTypes.BitOpInner) = 
     match boi with
-    | AND (key, keys)   ->  [ yield StrToBulkStr "AND"; yield (KeyToBulkStr key);  yield! (keyListToBulkStrs keys)  ]
-    | OR  (key, keys)   ->  [ yield StrToBulkStr "OR";  yield (KeyToBulkStr key);  yield! (keyListToBulkStrs keys)  ]
-    | XOR (key, keys)   ->  [ yield StrToBulkStr "XOR"; yield (KeyToBulkStr key);  yield! (keyListToBulkStrs keys)  ]
-    | NOT (key1, key2)  ->  [ yield StrToBulkStr "NOT"; yield (KeyToBulkStr key1); yield  (KeyToBulkStr      key2)  ]
+    | AND (key, srcKey, srcKeys)   ->  [ yield StrToBulkStr "AND"; yield (KeyToBulkStr key);  yield (KeyToBulkStr srcKey);  yield! (keyListToBulkStrs srcKeys)  ]
+    | OR  (key, srcKey, srcKeys)   ->  [ yield StrToBulkStr "OR";  yield (KeyToBulkStr key);  yield (KeyToBulkStr srcKey);  yield! (keyListToBulkStrs srcKeys)  ]
+    | XOR (key, srcKey, srcKeys)   ->  [ yield StrToBulkStr "XOR"; yield (KeyToBulkStr key);  yield (KeyToBulkStr srcKey);  yield! (keyListToBulkStrs srcKeys)  ]
+    | NOT (key1, key2)             ->  [ yield StrToBulkStr "NOT"; yield (KeyToBulkStr key1); yield (KeyToBulkStr key2)  ]
 
 
 // F# does not have function overloading, but it does have member overloading
 // helper class to allow the conversion to bulkstring based on the the type of the input param 
+// all ToBS functions return a list of RESP bulk strings
 [<AbstractClass;Sealed>]
 type RespHlpr private () =
     static member ToBS (str:string)             = [ StrToBulkStr str  ]
@@ -67,6 +72,7 @@ type RespHlpr private () =
     static member ToBS (bs:Bytes)               = [ BytesToBulkStr bs ]
     static member ToBS (ff:float)               = [ floatToBulkStr ff ]
     static member ToBS (bb:bool)                = [ boolToBulkStr bb  ]
+    static member ToBS (kb:Key*Bytes)           = kb |> keyBytesPairToBulkStrs
     static member ToBS (xx:optByteOffsetPair)   = xx |> OptByteOffsetPairToBulkStrs
     static member ToBS (xx:BitOpInner)          = xx |> BitOpInnerToBulkStrs
     static member ToBS (xx:ArrayRange)          = xx |> ArrayRangeToBulkStrs
@@ -91,9 +97,9 @@ let FredisCmdToRESP (cmd:FredisTypes.FredisCmd) =
         |Incr           key                 -> [ RespHlpr.ToBS "INCR";           RespHlpr.ToBS key                                                          ]
         |IncrBy         (key, amount)       -> [ RespHlpr.ToBS "INCRBY";         RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
         |IncrByFloat    (key, amount)       -> [ RespHlpr.ToBS "INCRBYFLOAT";    RespHlpr.ToBS key;        RespHlpr.ToBS amount                             ]
-        |MGet           keys                -> [ RespHlpr.ToBS "MGET";           RespHlpr.ToBS keys                                                         ]
-        |MSet           keyVals             -> [ RespHlpr.ToBS "MSET";           RespHlpr.ToBS keyVals                                                      ]
-        |MSetNX         keyVals             -> [ RespHlpr.ToBS "MSETNX";         RespHlpr.ToBS keyVals                                                      ]
+        |MGet           (key, keys)         -> [ RespHlpr.ToBS "MGET";           RespHlpr.ToBS key;        RespHlpr.ToBS keys                               ]
+        |MSet           (kv, kvs)           -> [ RespHlpr.ToBS "MSET";           RespHlpr.ToBS kv;         RespHlpr.ToBS kvs                                ]
+        |MSetNX         (kv, kvs)           -> [ RespHlpr.ToBS "MSETNX";         RespHlpr.ToBS kv;         RespHlpr.ToBS kvs                                ]
         |Set            (key, bs)           -> [ RespHlpr.ToBS "SET";            RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]
         |SetBit         (key, pos, vval)    -> [ RespHlpr.ToBS "SETBIT";         RespHlpr.ToBS key;        RespHlpr.ToBS pos;         RespHlpr.ToBS vval    ]
         |SetNX          (key, bs)           -> [ RespHlpr.ToBS "SETNX";          RespHlpr.ToBS key;        RespHlpr.ToBS bs                                 ]

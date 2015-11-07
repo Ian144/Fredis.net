@@ -311,7 +311,7 @@ type ``Execute BITOP`` () =
         let destKey = Key "destKey"
         let setCmd = FredisCmd.Set (srcKey, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
-        let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey])
+        let boi = FredisTypes.BitOpInner.AND (destKey, srcKey, [])
         let bitopCmd = FredisCmd.BitOp boi
         test <@ Resp.Integer 3L = FredisCmdProcessor.Execute hashMap bitopCmd @>
 
@@ -329,7 +329,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap set1
         let set2 = FredisCmd.Set (srcKey2, bVal2)
         let _ = FredisCmdProcessor.Execute hashMap set2
-        let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey1; srcKey2])
+        let boi = FredisTypes.BitOpInner.AND (destKey, srcKey1, [srcKey2])
         let bitopCmd = FredisCmd.BitOp boi
         test <@ Resp.Integer 6L = FredisCmdProcessor.Execute hashMap bitopCmd@>
 
@@ -339,7 +339,7 @@ type ``Execute BITOP`` () =
         let hashMap = HashMap()
         let srcKey = Key "srcKey"
         let destKey = Key "destKey"
-        let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey])
+        let boi = FredisTypes.BitOpInner.AND (destKey, srcKey, [])
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
@@ -361,7 +361,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap set1
         let set2 = FredisCmd.Set (srcKey2, bVal2)
         let _ = FredisCmdProcessor.Execute hashMap set2
-        let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey1; srcKey2])
+        let boi = FredisTypes.BitOpInner.AND (destKey, srcKey1, [srcKey2])
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
@@ -382,7 +382,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap set1
         let set2 = FredisCmd.Set (srcKey2, bVal2)
         let _ = FredisCmdProcessor.Execute hashMap set2
-        let boi = FredisTypes.BitOpInner.OR (destKey, [srcKey1; srcKey2])
+        let boi = FredisTypes.BitOpInner.OR (destKey, srcKey1, [srcKey2])
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
@@ -403,7 +403,7 @@ type ``Execute BITOP`` () =
         let _ = FredisCmdProcessor.Execute hashMap set1
         let set2 = FredisCmd.Set (srcKey2, bVal2)
         let _ = FredisCmdProcessor.Execute hashMap set2
-        let boi = FredisTypes.BitOpInner.XOR (destKey, [srcKey1; srcKey2])
+        let boi = FredisTypes.BitOpInner.XOR (destKey, srcKey1, [srcKey2])
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
@@ -451,7 +451,7 @@ type ``Execute BITOP`` () =
         let srcKey = Key "srcKey"
         let setCmd = FredisCmd.Set (srcKey, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
-        let boi = FredisTypes.BitOpInner.AND (destKey, [srcKey])
+        let boi = FredisTypes.BitOpInner.AND (destKey, srcKey, [])
         let bitopCmd = FredisCmd.BitOp boi
         let _ = FredisCmdProcessor.Execute hashMap bitopCmd
         let getCmd = FredisCmd.Get destKey
@@ -632,7 +632,7 @@ type ``Parse BITOP`` () =
 
     [<Fact>]
     member this.``parse "BITOP OR destKey srcKey" succeeds`` () =
-        let expected = FredisCmd.BitOp (BitOpInner.OR (kDestKey,[kSrcKey1]))
+        let expected = FredisCmd.BitOp (BitOpInner.OR (kDestKey, kSrcKey1, []))
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; orOp; destKey; srcKey1 |] @>
 
 
@@ -652,20 +652,20 @@ type ``Parse BITOP`` () =
 
     [<Fact>]
     member this.``parse "BITOP AND destKey srcKey" succeeds`` () =
-        let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey,[kSrcKey1]))
+        let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey, kSrcKey1, []))
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; andOp; destKey; srcKey1 |] @>
 
 
 
     [<Fact>]
     member this.``parse "BITOP AND destKey 4 src keys" succeeds`` () =
-        let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey, [kSrcKey1; kSrcKey2; kSrcKey3; kSrcKey4]))
+        let expected = FredisCmd.BitOp (BitOpInner.AND (kDestKey, kSrcKey1, [kSrcKey2; kSrcKey3; kSrcKey4]))
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; andOp; destKey; srcKey1; srcKey2; srcKey3; srcKey4 |] @>
 
 
     [<Fact>]
     member this.``parse "BITOP XOR destKey srcKey" succeeds`` () =
-        let expected = FredisCmd.BitOp (BitOpInner.XOR (kDestKey,[kSrcKey1]))
+        let expected = FredisCmd.BitOp (BitOpInner.XOR (kDestKey, kSrcKey1, []))
         test <@ Choice1Of2 expected = FredisCmdParser.ParseRESPtoFredisCmds [| bitop; xorOp; destKey; srcKey1 |] @>
 
 

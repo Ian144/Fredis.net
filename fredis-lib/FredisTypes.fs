@@ -49,11 +49,12 @@ type optByteOffsetPair = (ByteOffset*ByteOffset) option
 type Bytes = byte array
 type Key = Key of string
 
-
+// AND, OR and XOR need a destKey, srcKey and 0->N further source keys
+// making 'illegal states unrepresentable' by not having all source keys in a list, as that would allow zero source keys
 type BitOpInner = 
-    |AND    of (Key * Key list)
-    |OR     of (Key * Key list)
-    |XOR    of (Key * Key list)
+    |AND    of (Key * Key * Key list)   // must be one destKey, one scrKey, and an optional number of further source keys
+    |OR     of (Key * Key * Key list)
+    |XOR    of (Key * Key * Key list)
     |NOT    of (Key * Key)
 
 
@@ -63,8 +64,15 @@ type ArrayRange =
     | LowerUpper of ByteOffset * ByteOffset
 
 
+// to simplify 
+type KeyBytes = (Key*Bytes)
 
 
+// making illegal states unrepresentable
+// 1. MGET must have at least one key, with an optional number of further keys, hence "|MGet of Key * Key list" and not "|MGet of Key list", so the type system enforces this
+// 2. MSET and MSETNX, as above but for KeyBytesPair
+// 3. SetBit and GetBit cannot have negative indices, hence uint
+// these changes enable fscheck to automatically generate FredisCmds less custom generation
 
 type FredisCmd = 
     |Append         of Key*Bytes
@@ -81,9 +89,9 @@ type FredisCmd =
     |Incr           of Key
     |IncrBy         of Key*int64
     |IncrByFloat    of Key*double
-    |MGet           of Key list
-    |MSet           of (Key*Bytes) list
-    |MSetNX         of (Key*Bytes) list
+    |MGet           of Key*Key list
+    |MSet           of KeyBytes*KeyBytes list
+    |MSetNX         of KeyBytes*KeyBytes list
     |Ping
     |Set            of Key*Bytes
     |SetBit         of Key*uint32*bool
@@ -98,7 +106,21 @@ let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
 
 // an empty bulk string e.g. "" is not the same as a bulk string that was not found
 // without having this the Resp algebraic data type does not fully model RESP
-type BulkStrContents = Nil | Contents of Bytes
+
+//type BulkStrContents = Nil | Contents of Bytes
+
+[<StructuredFormatDisplay("{FormatDisplay}")>]
+type BulkStrContents = 
+    | Nil 
+    | Contents of Bytes
+    member this.FormatDisplay =
+        match this with
+        | Nil           -> "Nil"
+        | Contents bs   -> (BytesToStr bs) |> sprintf "SimpleString: %s" 
+
+
+
+
 
 //type Resp =
 //    | SimpleString   of Bytes
@@ -106,8 +128,6 @@ type BulkStrContents = Nil | Contents of Bytes
 //    | Integer        of int64
 //    | BulkString     of BulkStrContents
 //    | Array          of Resp array
-
-
 
 
 [<StructuredFormatDisplay("{FormatDisplay}")>]

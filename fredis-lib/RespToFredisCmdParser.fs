@@ -18,9 +18,7 @@ open Utils
 // even indices are keys
 // odd indices are values
 let private GetMSetParamPairs (msgArr:Resp []) = 
-
     let maxIdx = msgArr.Length - 1
-
     [   for idx in 2 .. 2 .. maxIdx do
         let keyIdx = idx - 1
         let keyBytes = RespUtils.PartialGetMsgPayload msgArr.[keyIdx]
@@ -241,15 +239,19 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGetbit
 
     | "MSET" -> 
-        match (msgArrLen % 2) = 1 && msgArrLen > 1 with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
-        | true  ->  let paramPairs = GetMSetParamPairs msgArr
-                    Choice1Of2 (FredisCmd.MSet paramPairs)
+        // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
+        // there must be at least one key value pair
+        match (msgArrLen % 2) = 1 && msgArrLen >= 3 with
+        | true  ->  let kvs = GetMSetParamPairs msgArr
+                    Choice1Of2 (FredisCmd.MSet (kvs.Head, kvs.Tail))
         | false ->  Choice2Of2 ErrorMsgs.numArgsMSet
 
     | "MSETNX" -> 
-        match (msgArrLen % 2) = 1 && msgArrLen > 1 with         // mset will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
-        | true  ->  let paramPairs = GetMSetParamPairs msgArr
-                    Choice1Of2 (FredisCmd.MSetNX paramPairs)
+        // msetNX will have an arbitrary number of key-value pairs, so including the cmd itself the array length must be odd
+        // there must be at least one key value pair
+        match (msgArrLen % 2) = 1 && msgArrLen >= 3 with 
+        | true  ->  let kvs = GetMSetParamPairs msgArr
+                    Choice1Of2 (FredisCmd.MSetNX (kvs.Head, kvs.Tail))
         | false ->  Choice2Of2 ErrorMsgs.numArgsMSetNX
 
     | "GET" -> 
@@ -265,11 +267,10 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
         | _     ->  Choice2Of2 ErrorMsgs.numArgsGet
     
     | "MGET" -> 
-        match (msgArrLen > 1) with
-
+        // mset will have an arbitrary number of keys, but there must be at least two array elements, so including the cmd itself
+        match (msgArrLen >= 2) with
         | true      ->  let keys = msgArr |> Array.toList |> List.tail |> List.map (RespUtils.PartialGetMsgPayload >> BytesToKey)
-
-                        Choice1Of2 (FredisCmd.MGet keys)
+                        Choice1Of2 (FredisCmd.MGet (keys.Head, keys.Tail)) // there must be at least one key, the rest are optional. An empty list of keys is an invalid state
         | false     ->  Choice2Of2 ErrorMsgs.numArgsMGet
 
     | "PING"        ->  Choice1Of2 FredisCmd.Ping

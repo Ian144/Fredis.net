@@ -27,11 +27,11 @@ let Parse (msgArr:Resp []) =
 
                         // there must be at least one srcKey as arrLen > 3, NOT requires exactly one src key
                         match operationStr.ToUpper(), srcKeys.Length with
-                        | "AND", _  ->    let op = BitOpInner.AND (destKey, srcKeys)
+                        | "AND", _  ->    let op = BitOpInner.AND (destKey, srcKeys.Head, srcKeys.Tail)
                                           Choice1Of2 (FredisCmd.BitOp op)
-                        | "OR",  _  ->    let op = BitOpInner.OR (destKey, srcKeys) 
+                        | "OR",  _  ->    let op = BitOpInner.OR (destKey, srcKeys.Head, srcKeys.Tail) 
                                           Choice1Of2 (FredisCmd.BitOp op)
-                        | "XOR", _  ->    let op = BitOpInner.XOR (destKey, srcKeys)
+                        | "XOR", _  ->    let op = BitOpInner.XOR (destKey, srcKeys.Head, srcKeys.Tail)
                                           Choice1Of2 (FredisCmd.BitOp op)
                         | "NOT", 1  ->    let op = BitOpInner.NOT (destKey, srcKeys.Head)
                                           Choice1Of2 (FredisCmd.BitOp op)
@@ -82,7 +82,8 @@ let private ByteArrayXor = ByteArrayBinOpAdaptor (^^^)
 
 
 
-let private applyBitOp (destKey:Key) (srcKeys:Key list) (hashMap:HashMap) (byteArrayBitOp:Bytes->Bytes->Bytes) = 
+let private applyBitOp (destKey:Key) (srcKey:Key) (srcKeysX:Key list) (hashMap:HashMap) (byteArrayBitOp:Bytes->Bytes->Bytes) = 
+    let srcKeys = srcKey :: srcKeysX
     let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.ContainsKey(srcKey))
     match anySrcKeyExists with
     | true ->
@@ -93,9 +94,9 @@ let private applyBitOp (destKey:Key) (srcKeys:Key list) (hashMap:HashMap) (byteA
 
 let Process (op:BitOpInner) (hashMap:HashMap) =
     match op with
-    | BitOpInner.AND (destKey, srcKeys)   ->    applyBitOp destKey srcKeys hashMap ByteArrayAnd
-    | BitOpInner.OR  (destKey, srcKeys)   ->    applyBitOp destKey srcKeys hashMap ByteArrayOr
-    | BitOpInner.XOR (destKey, srcKeys)   ->    applyBitOp destKey srcKeys hashMap ByteArrayXor
+    | BitOpInner.AND (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayAnd
+    | BitOpInner.OR  (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayOr
+    | BitOpInner.XOR (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayXor
     | BitOpInner.NOT (destKey, srcKey)    ->    match hashMap.TryGetValue(srcKey) with
                                                 | true, vv  ->  let res = ByteArrayNot vv
                                                                 hashMap.[destKey] <- res
