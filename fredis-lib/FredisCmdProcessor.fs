@@ -109,7 +109,7 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
 
     | FredisCmd.Get kk                          ->  match hashMap.ContainsKey(kk) with 
                                                     | true  ->  hashMap.[kk] |> BulkStrContents.Contents |> Resp.BulkString
-                                                    | false ->  BulkStrContents.Nil |> Resp.BulkString
+                                                    | false ->   RespUtils.nilBulkStr
 
     | FredisCmd.GetSet (kk,newVal)              ->  match hashMap.ContainsKey(kk) with 
                                                     | true  ->  let oldVal = hashMap.[kk]
@@ -147,22 +147,23 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                                 | None                  ->  RespUtils.emptyBulkStr
 
     | FredisCmd.SetRange (key, offset, srcBytes)   ->   let len = offset + srcBytes.Length
-                                                        match hashMap.ContainsKey(key) with 
-                                                        | false ->  let destBytes = Array.zeroCreate<byte> (len) 
-                                                                    System.Buffer.BlockCopy(srcBytes, 0, destBytes, offset, srcBytes.Length)
-                                                                    hashMap.[key] <- destBytes
-                                                                    Resp.Integer (int64 len)
-                                                        | true  ->  let currentBytes = hashMap.[key]
-                                                                    let destLen = currentBytes.Length
-                                                                    if destLen >= len then
-                                                                        System.Buffer.BlockCopy(srcBytes, 0, currentBytes, offset, srcBytes.Length)
-                                                                        Resp.Integer (int64 destLen)
-                                                                    else
-                                                                        let destBytes2 = Array.zeroCreate<byte> (len) 
-                                                                        System.Buffer.BlockCopy(currentBytes,   0,  destBytes2, 0, currentBytes.Length)
-                                                                        System.Buffer.BlockCopy(srcBytes,       0,  destBytes2, offset, srcBytes.Length)
-                                                                        hashMap.[key] <- destBytes2
+                                                        match hashMap.ContainsKey(key), srcBytes.Length with 
+                                                        | _, 0     ->   Resp.Integer 0L
+                                                        | false, _ ->   let destBytes = Array.zeroCreate<byte> (len) 
+                                                                        System.Buffer.BlockCopy(srcBytes, 0, destBytes, offset, srcBytes.Length)
+                                                                        hashMap.[key] <- destBytes
                                                                         Resp.Integer (int64 len)
+                                                        | true, _  ->   let currentBytes = hashMap.[key]
+                                                                        let destLen = currentBytes.Length
+                                                                        if destLen >= len then
+                                                                            System.Buffer.BlockCopy(srcBytes, 0, currentBytes, offset, srcBytes.Length)
+                                                                            Resp.Integer (int64 destLen)
+                                                                        else
+                                                                            let destBytes2 = Array.zeroCreate<byte> (len) 
+                                                                            System.Buffer.BlockCopy(currentBytes,   0,  destBytes2, 0, currentBytes.Length)
+                                                                            System.Buffer.BlockCopy(srcBytes,       0,  destBytes2, offset, srcBytes.Length)
+                                                                            hashMap.[key] <- destBytes2
+                                                                            Resp.Integer (int64 len)
 
     | FredisCmd.FlushDB                            ->   hashMap.Clear()
                                                         RespUtils.okSimpleStr

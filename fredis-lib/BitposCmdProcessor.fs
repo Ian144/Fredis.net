@@ -15,8 +15,8 @@ let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) : in
     
     let bitPosLookup, funcx = 
             match searchVal with
-            | true  -> trueBitPosLookup,    (fun indx -> bs.[indx] <> 0uy)
-            | false -> falseBitPosLookup,   (fun indx -> bs.[indx] <> 255uy)
+            | true  -> trueBitPosLookup,  (fun indx -> bs.[indx] <> 0uy)
+            | false -> falseBitPosLookup, (fun indx -> bs.[indx] <> 255uy)
 
     let indxs = seq{lIndx..uIndx}
 
@@ -24,7 +24,9 @@ let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) : in
     match cFirstByteContainingBitValIndex indxs with
     | Choice2Of2 _          -> -1   // indicating there are no bits of the value being searched for
     | Choice1Of2 byteIdx    ->  let firstFoundByte = bs.[byteIdx] |> int
-                                byteIdx * 8 + bitPosLookup.[firstFoundByte]        
+                                let pos = byteIdx * 8 + bitPosLookup.[firstFoundByte]
+                                Utils.BitPosToRedis pos bs
+
 
 
 let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
@@ -42,7 +44,7 @@ let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
                                                             let uu = arrayUBound
                                                             let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu arrayUBound //#### consider a function to only rationalise the lower bound here
                                                             match optBounds with
-                                                            | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary
+                                                            | Some (lower2, upper2) -> (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64
                                                             | None                  -> -1L
 
 
@@ -50,7 +52,7 @@ let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
                                                             let arrayUBound = bs.Length - 1
                                                             let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu.Value arrayUBound 
                                                             match optBounds with
-                                                            | Some (lower2, upper2) ->  (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64  //#### is this conversion really neccessary
+                                                            | Some (lower2, upper2) -> (FindFirstBitIndex lower2 upper2 bitVal bs) |> int64
                                                             | None                  -> -1L
 
     Resp.Integer numSetBits

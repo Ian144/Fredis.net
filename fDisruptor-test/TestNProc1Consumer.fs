@@ -5,6 +5,7 @@ open Xunit
 open FsCheck
 open FsCheck.Xunit
 
+open Swensen.Unquote
 
 open System.Threading
 open System.Collections.Generic
@@ -132,10 +133,7 @@ let ``Test fDisruptor`` () =
     let numProducers = 8
     //let numMsgsPerProducer =  8 * 1024 * 1024 / numProducers
     let numMsgsPerProducer =  1024
-
-    Xunit.Assert.True (TestDisruptor ringBufSize numProducers numMsgsPerProducer)
-
-//    <@TestDisruptor ringBufSize numProducers numMsgsPerProducer@>
+    test <@TestDisruptor ringBufSize numProducers numMsgsPerProducer@>
 
 
 

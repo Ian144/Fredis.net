@@ -17,10 +17,17 @@ let BytesToKey = BytesToStr >> Key
 
 let keyToBytes = BytesToStr >> Key
 
+let BitPosToRedis bitIndex (bs:byte array) =
+    let maxBitIdx = bs.Length * 8 - 1           // match redis behaviour, the bit index starts at the opposite end
+    let revBitIndex = maxBitIdx - bitIndex
+    revBitIndex
 
-let SetBit (bs:byte []) (index:int) (value:bool) =
-    let byteIndex   = index / 8
-    let bitIndex    = index % 8
+
+let SetBit (bs:byte []) (bitIndexIn:int) (value:bool) =
+    let bitIndex = BitPosToRedis bitIndexIn bs
+    let byteIndex   = bitIndex / 8
+    let bitIndex    = bitIndex % 8
+
     let mask = 1uy <<< bitIndex
     match value with
     | true  ->  bs.[byteIndex] <- bs.[byteIndex] ||| mask
@@ -29,9 +36,10 @@ let SetBit (bs:byte []) (index:int) (value:bool) =
                 ()
 
 
-let GetBit (bs:byte []) (index:int) : bool =
-    let byteIndex   = index / 8
-    let bitIndex    = index % 8
+let GetBit (bs:byte []) (bitIndexIn:int) : bool =
+    let bitIndex    = BitPosToRedis bitIndexIn bs    
+    let byteIndex   = bitIndex / 8
+    let bitIndex    = bitIndex % 8
     let mask = 1uy <<< bitIndex
     (bs.[byteIndex] &&& mask) <> 0uy
 

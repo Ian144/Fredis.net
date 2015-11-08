@@ -119,6 +119,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TestSetBitGetBit.fs" />
     <Compile Include="TestRespMsgProcessor.fs" />
     <Compile Include="TestFredisCmds.fs" />
     <Compile Include="TestRESPParsingFSCheck.fs" />

@@ -5,6 +5,7 @@ open System
 open Xunit
 open FsCheck
 open FsCheck.Xunit
+open Swensen.Unquote
 
 open CmdCommon
 open FredisTypes
@@ -59,6 +60,16 @@ type FloatRestrictedRange =
         |> Arb.fromGen
 
 
+let genNonEmptyBytes = 
+    gen{
+        let! arraySize = Gen.choose (1, 4096)
+        let! bs = Gen.arrayOfLength arraySize Arb.generate<byte>
+        return bs
+    }
+
+
+
+
 
 [<Property( Arbitrary = [| typeof<FloatRestrictedRange> |])>]
 let ``INCRBYFLOAT when key does exist, value equals old + new`` (oldValue:float) (increment:float) =
@@ -84,10 +95,14 @@ let ``INCRBYFLOAT when key does not exist, value equals incr`` (increment:float)
     let diff = abs (increment - actual)
     diff < 0.000000001
 
-  
+
+type ArbOverrides() =
+    static member NonEmptyByteArray() = Arb.fromGen genNonEmptyBytes
+    static member Ints() = Arb.fromGen (Gen.choose(0, 999))
+
 
 // if key is not in the hashmap initially, then the first setrange call will execute a different code path to the second
-[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+[< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
 let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) (offset:int) = 
     let hashMap = HashMap()
     let cmd = FredisCmd.SetRange (key, offset, value)
@@ -98,7 +113,7 @@ let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) 
     valOut1 = valOut2
 
 
-[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+[< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
 let ``SETRANGE when key does not exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
     let hashMap = HashMap()
     let cmd = FredisCmd.SetRange (key, offset, value)
@@ -107,7 +122,7 @@ let ``SETRANGE when key does not exist, returns length of offset + length of val
     expected = actual
 
 
-[< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
+[< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
 let ``SETRANGE when key does exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
     let hashMap = HashMap()
     let cmd1 = FredisCmd.SetRange (key, 0, value)
@@ -151,11 +166,7 @@ let ``SETRANGE GETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyAr
 
 
 // if the first offset is 0, and the key does not exist an array of 1 byte long will be created
-// this gives a difference of "1 * 8 - 0 = 8"
-//[<Property(Arbitrary = [| typeof<Offsets> |] )>]
-//[<Property(Arbitrary = [| typeof<Offsets> |], Verbose=true)>]
-//[<Property(Arbitrary = [| typeof<Offsets> |], MaxTest = 9999, Verbose=true, QuietOnSuccess = true)>]
-[<  Property(Arbitrary = [| typeof<PositiveInt32> |]) >]
+[<Property>]
 let ``SETBIT, array len created is never more than 8 longer than the bit offset`` (offset:uint32) =
     let key = Key "key"
     let value  = true
@@ -173,7 +184,7 @@ let private ReadRESPInteger (msg:Resp) =
     | _                 ->  failwith "non integer RESP passed to ReadRESPInteger" 
 
 
-let private CountSetBits (bs:Bytes) =
+let private CountSetBitsReferenceImpl (bs:Bytes) =
     let bitArray = System.Collections.BitArray(bs)
     let maxIndex = bitArray.Length - 1
     let mutable count = 0L
@@ -191,25 +202,12 @@ let private findFirstSetBitposReference (searchVal:bool) (bytes:byte []) =
     for idx = 0 to ba.Length - 1 do
         arr.[idx] <- ba.Item(idx)
 
-    match arr |> Array.exists (fun bl -> bl = searchVal) with
-    | true -> arr |> Array.findIndex (fun bl -> bl = searchVal)
+    let exists = arr |> Array.exists (fun bl -> bl = searchVal)
+    match exists with
+    | true ->   let pos = arr |> Array.findIndex (fun bl -> bl = searchVal)
+                Utils.BitPosToRedis pos bytes
     | false -> -1
 
-
-//// probably slow but probably correct reference implementation, to be used in property based testing
-//let private findFirstSetBitposReferenceX (searchVal:bool) (startIdx:int) (endIdx:int) (bytes:byte []) =
-//    let ba = System.Collections.BitArray(bytes)
-//    let arr = Array.zeroCreate<bool>(ba.Length)
-//    
-//    let startIdx2 = if startIdx >= 0 then startIdx else 0
-//    let endIdx2 = if endIdx < arr.Length then endIdx else (arr.Length - 1)
-//
-//    for idx = startIdx2 to endIdx2 do
-//        arr.[idx] <- ba.Item(idx)
-//
-//    match arr |> Array.exists (fun bl -> bl = searchVal) with
-//    | true -> arr |> Array.findIndex (fun bl -> bl = searchVal)
-//    | false -> -1
 
 
 [<Fact>]
@@ -218,14 +216,14 @@ let ``Bitpos FindFirstBitIndex returns 12`` () =
     bs.[0] <- 0xFFuy
     bs.[1] <- 0xF0uy
     let uIndx = bs.GetUpperBound(0)
-    <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
+    test <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
 
     
 
 //[<Property(Verbose = true, MaxTest = 9999)>]
 [<Property>]
 let ``BitcountCmdProcessor.CountBitsInArrayRange agrees with alternate count method`` (bs:byte array) =
-    BitcountCmdProcessor.CountSetBitsInRange (bs, 0, bs.Length) = CountSetBits bs
+    BitcountCmdProcessor.CountSetBitsInRange (bs, 0, bs.Length) = CountSetBitsReferenceImpl bs
 
 
 
@@ -259,7 +257,7 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:uint32) =
 
 
 
-[<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
+[<Property>]
 let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:uint32) =
     let key = Key "key"
     let hashMap = HashMap()
@@ -282,7 +280,7 @@ let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one
 
 
 
-[<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |])>]
+[<Property>]
 let ``SETBIT GETBIT roundtrip sets correct bit and nothing else`` (offset:uint32) =
     let key = Key "key"
     let value  = true
