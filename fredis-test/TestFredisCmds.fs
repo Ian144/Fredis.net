@@ -24,6 +24,32 @@ let StrToBulkStr = Utils.StrToBytes >> RespUtils.MakeBulkStr
 
 
 
+// #### DRY violation
+let private ReadRESPInteger (msg:Resp) = 
+    match msg with
+    | Resp.Integer ii   ->  ii
+    | _                 ->  failwith "non integer RESP passed to ReadRESPInteger"
+
+[<Fact>]
+let ``Set then GetBit matches redis`` () =
+    let key = Key "key"
+    let bs  = "RLPJXYCWKLPJXYCW" |> Utils.StrToBytes
+
+    let bitArray = System.Collections.BitArray(bs)
+
+    let hashMap = HashMap()
+    let setCmd = FredisCmd.Set (key, bs)
+    FredisCmdProcessor.Execute hashMap setCmd |> ignore
+    let getCmd = FredisCmd.GetBit (key, 5u)
+    let respResult = FredisCmdProcessor.Execute hashMap getCmd
+
+    test <@ 0L = (ReadRESPInteger respResult)  @> // fredis was returning 1 for this
+//    (Utils.GetBit bs bitIndex) = (getBitReferenceImpl bitIndex bs)
+
+
+
+
+
 type ``Execute GETRANGE`` () =
 
     [<Fact>]

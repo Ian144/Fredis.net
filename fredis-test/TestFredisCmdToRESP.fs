@@ -97,7 +97,7 @@ let genKeyBytePair =
     
 
 
-// overrides created apply to nested values in reflexively generated types (FredisCmds)
+// overrides apply to nested values in reflexively generated types (FredisCmds)
 type Overrides() =
     static member Float() =
         Arb.Default.Float()

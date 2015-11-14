@@ -90,7 +90,7 @@ let ``INCRBYFLOAT when key does not exist, value equals incr`` (increment:float)
     let hashMap = HashMap()
     let key = Key "key"
     let incrCmd = FredisCmd.IncrByFloat (key, increment)
-    let _ = FredisCmdProcessor.Execute hashMap incrCmd
+    FredisCmdProcessor.Execute hashMap incrCmd |> ignore
     let actual = BytesToDouble hashMap.[key]
     let diff = abs (increment - actual)
     diff < 0.000000001
@@ -103,7 +103,7 @@ type ArbOverrides() =
 
 // if key is not in the hashmap initially, then the first setrange call will execute a different code path to the second
 [< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
-let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) (offset:int) = 
+let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) (offset:uint32) = 
     let hashMap = HashMap()
     let cmd = FredisCmd.SetRange (key, offset, value)
     FredisCmdProcessor.Execute hashMap cmd |> ignore
@@ -114,24 +114,25 @@ let ``SETRANGE twice with same params is idempotent`` (key:Key) (value:byte []) 
 
 
 [< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
-let ``SETRANGE when key does not exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
+let ``SETRANGE when key does not exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:uint32) = 
     let hashMap = HashMap()
     let cmd = FredisCmd.SetRange (key, offset, value)
     let actual = FredisCmdProcessor.Execute hashMap cmd 
-    let expected = (offset + value.Length) |> int64 |> Resp.Integer
+    let sgnOffset = int offset
+    let expected = (sgnOffset + value.Length) |> int64 |> Resp.Integer
     expected = actual
 
 
 [< Property(Arbitrary = [| typeof<ArbOverrides> |]) >]
-let ``SETRANGE when key does exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:int) = 
+let ``SETRANGE when key does exist, returns length of offset + length of value`` (key:Key) (value:byte []) (offset:uint32) = 
     let hashMap = HashMap()
-    let cmd1 = FredisCmd.SetRange (key, 0, value)
+    let cmd1 = FredisCmd.SetRange (key, 0u, value)
     FredisCmdProcessor.Execute hashMap cmd1 |> ignore
 
     let cmd2 = FredisCmd.SetRange (key, offset, value)
     let actual = FredisCmdProcessor.Execute hashMap cmd2
-
-    let expected = (offset + value.Length) |> int64 |> Resp.Integer
+    let sgnOffset = int offset
+    let expected = (sgnOffset + value.Length) |> int64 |> Resp.Integer
     expected = actual
 
 
@@ -148,15 +149,16 @@ let private GetBulkStrVal (resp:Resp) =
 
 
 [< Property(Arbitrary = [| typeof<PositiveInt32SmallRange> |]) >]
-let ``SETRANGE GETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:int)  = 
+let ``SETRANGE GETRANGE round trip`` (nesKey:NonEmptyString) (neValue:NonEmptyArray<byte>) (offset:uint32)  = 
     let valueIn = neValue.Get
     let key = nesKey.Get |> Key
     let hashMap = HashMap()
     let setRange = FredisCmd.SetRange (key, offset, valueIn)
     FredisCmdProcessor.Execute hashMap setRange |> ignore
 
-    let lower = offset
-    let upper = offset + valueIn.Length - 1 // if the range set was one byte then upper should equal lower, if two bytes then upper should be one more than lower
+    let sgnOffset = int offset
+    let lower = sgnOffset
+    let upper = sgnOffset + valueIn.Length - 1 // if the range set was one byte then upper should equal lower, if two bytes then upper should be one more than lower
     let getRange = FredisCmd.GetRange (key, lower, upper)
     let ret = FredisCmdProcessor.Execute hashMap getRange
     let valueOut = GetBulkStrVal ret

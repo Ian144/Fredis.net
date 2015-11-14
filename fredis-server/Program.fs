@@ -64,7 +64,7 @@ let ClientListenerLoop (client:TcpClient) =
                         do! strm.AsyncWrite pongBytes
                     else
                         let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
-                        printfn "received: %A" respMsg
+//                        printfn "received: %A" respMsg
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
@@ -75,7 +75,8 @@ let ClientListenerLoop (client:TcpClient) =
 
     Async.StartWithContinuations(
          asyncProcessClientRequests,
-         (fun _     -> printfn "ClientListener completed" ),
+         //(fun _     -> printfn "ClientListener completed" ),
+         (fun _     -> () ),
          ClientError,
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )

@@ -173,5 +173,5 @@ and LoadRESPMsg (rcvBufSz:int) (respType:int) (strm:Stream) =
     | IntegerL      -> ReadRESPInteger strm
     | BulkStringL   -> ReadBulkString rcvBufSz strm
     | ArrayL        -> LoadRESPMsgArray rcvBufSz strm
-    | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion
+    | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion, hence throwing an exception
 

@@ -128,7 +128,7 @@ let private AsyncSendError (strm:Stream) (contents:byte array) =
     async{
         do! strm.AsyncWrite errStrType
         do! strm.AsyncWrite contents
-        do! strm.AsyncWrite crlf
+        do! strm.AsyncWrite crlf 
     }
 
 

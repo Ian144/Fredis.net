@@ -37,7 +37,7 @@ let SetBit (bs:byte []) (bitIndexIn:int) (value:bool) =
 
 
 let GetBit (bs:byte []) (bitIndexIn:int) : bool =
-    let bitIndex    = BitPosToRedis bitIndexIn bs    
+    let bitIndex    = BitPosToRedis bitIndexIn bs
     let byteIndex   = bitIndex / 8
     let bitIndex    = bitIndex % 8
     let mask = 1uy <<< bitIndex

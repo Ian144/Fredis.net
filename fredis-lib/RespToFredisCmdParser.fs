@@ -200,12 +200,13 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
     | "SETRANGE" ->  // setrange key start bytes - no params are optional
         match msgArrLen with
         | 4     ->  choose{
-                        let  key        = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
-                        let  sOffset    = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
-                        let! offset     = Utils.ChoiceParseInt ErrorMsgs.valueNotIntegerOrOutOfRange sOffset
-                        let  bytes      = RespUtils.PartialGetMsgPayload msgArr.[3] 
-                        let  totalLen = offset + bytes.Length
-                        let! _    = ByteOffset.CreateChoice totalLen ErrorMsgs.valueNotIntegerOrOutOfRange //checks that an array longer than 512mb will not be needed
+                        let  key            = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToKey
+                        let  sOffset        = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToStr
+                        let! signedOffset   = Utils.ChoiceParsePosOrZeroInt ErrorMsgs.valueNotIntegerOrOutOfRange sOffset
+                        let  offset         = uint32 signedOffset
+                        let  bytes          = RespUtils.PartialGetMsgPayload msgArr.[3] 
+                        let  totalLen       = signedOffset + bytes.Length
+                        let! _              = ByteOffset.CreateChoice totalLen ErrorMsgs.valueNotIntegerOrOutOfRange //checks that an array longer than 512mb will not be needed
                         return FredisCmd.SetRange (key, offset, bytes)
                     }
 

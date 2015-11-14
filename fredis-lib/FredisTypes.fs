@@ -96,7 +96,7 @@ type FredisCmd =
     |Set            of Key*Bytes
     |SetBit         of Key*uint32*bool
     |SetNX          of Key*Bytes
-    |SetRange       of Key*int*Bytes
+    |SetRange       of Key*uint32*Bytes
     |Strlen         of Key
 
 
@@ -116,7 +116,7 @@ type BulkStrContents =
     member this.FormatDisplay =
         match this with
         | Nil           -> "Nil"
-        | Contents bs   -> (BytesToStr bs) |> sprintf "SimpleString: %s" 
+        | Contents bs   -> (BytesToStr bs) |> sprintf "BulkStr: %s" 
 
 
 
@@ -140,11 +140,14 @@ type Resp =
 
     member this.FormatDisplay =
         match this with
-        | SimpleString bs   -> sprintf "SimpleString: %s" (BytesToStr bs)
-        | Error        _    -> "Error"
-        | Integer      ii   -> sprintf "Integer:%d" ii
-        | BulkString   cn   -> match cn with
+        | SimpleString bs   ->  sprintf "SimpleString: %s" (BytesToStr bs)
+        | Error        bs   ->  sprintf "Error: %s" (BytesToStr bs)
+        | Integer      ii   ->  sprintf "Integer:%d" ii
+        | BulkString   cn   ->  match cn with
                                 | BulkStrContents.Contents bs   -> sprintf "BulkString: %s" (BytesToStr bs)
                                 | BulkStrContents.Nil           -> "BulkString: nil"
-        | Array        _    -> "Array"
+        | Array        xs   ->  let subStrs = xs |> Array.map (fun x -> x.FormatDisplay )
+                                let subStr = System.String.Join("\n\t", subStrs)
+                                System.String.Format("Array\n\t{0}", subStr)
+                                
 

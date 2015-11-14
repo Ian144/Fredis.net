@@ -101,5 +101,6 @@ let Process (op:BitOpInner) (hashMap:HashMap) =
                                                 | true, vv  ->  let res = ByteArrayNot vv
                                                                 hashMap.[destKey] <- res
                                                                 Resp.Integer res.LongLength
-                                                | false, _  ->  Resp.Integer  0L
+                                                | false, _  ->  hashMap.Remove(destKey) |> ignore
+                                                                Resp.Integer  0L
 
