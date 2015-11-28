@@ -186,7 +186,7 @@ let private ReadRESPInteger (msg:Resp) =
     | _                 ->  failwith "non integer RESP passed to ReadRESPInteger" 
 
 
-let private CountSetBitsReferenceImpl (bs:Bytes) =
+let private countSetBitsReferenceImpl (bs:Bytes) =
     let bitArray = System.Collections.BitArray(bs)
     let maxIndex = bitArray.Length - 1
     let mutable count = 0L
@@ -196,54 +196,17 @@ let private CountSetBitsReferenceImpl (bs:Bytes) =
     count
 
 
-// probably slow but probably correct reference implementation, to be used in property based testing
-let private findFirstSetBitposReference (searchVal:bool) (bytes:byte []) =
-    let ba = System.Collections.BitArray(bytes)
-    let arr = Array.zeroCreate<bool>(ba.Length)
-    
-    for idx = 0 to ba.Length - 1 do
-        arr.[idx] <- ba.Item(idx)
-
-    let exists = arr |> Array.exists (fun bl -> bl = searchVal)
-    match exists with
-    | true ->   let pos = arr |> Array.findIndex (fun bl -> bl = searchVal)
-                Utils.BitPosToRedis pos bytes
-    | false -> -1
 
 
-
-[<Fact>]
-let ``Bitpos FindFirstBitIndex returns 12`` () =
-    let bs = Array.zeroCreate<byte>(3)
-    bs.[0] <- 0xFFuy
-    bs.[1] <- 0xF0uy
-    let uIndx = bs.GetUpperBound(0)
-    test <@BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs = findFirstSetBitposReference false bs@>
-
-    
-
-//[<Property(Verbose = true, MaxTest = 9999)>]
-[<Property>]
+[<Property(Verbose = true, MaxTest = 9999)>]
+//[<Property>]
 let ``BitcountCmdProcessor.CountBitsInArrayRange agrees with alternate count method`` (bs:byte array) =
-    BitcountCmdProcessor.CountSetBitsInRange (bs, 0, bs.Length) = CountSetBitsReferenceImpl bs
-
-
-
-[<Property>]
-let ``BitposCmdProcessor.FindFirstBitIndex true equals reference implementation`` (bs:byte array) =
-    let uIndx = bs.GetUpperBound(0)
-    BitposCmdProcessor.FindFirstBitIndex 0 uIndx true bs =  findFirstSetBitposReference true bs
-
-[<Property>]
-let ``BitposCmdProcessor.FindFirstBitIndex false equals reference implementation`` (bs:byte array) =
-    let uIndx = bs.GetUpperBound(0)
-    BitposCmdProcessor.FindFirstBitIndex 0 uIndx false bs =  findFirstSetBitposReference false bs
-
+    BitcountCmdProcessor.CountSetBitsInRange (bs, 0, bs.Length) = countSetBitsReferenceImpl bs
 
 
 
 [<Property( Arbitrary = [| typeof<PositiveInt32SmallRange> |] )>]
-let ``SETBIT BITPOS roundtrip agree`` (offset:uint32) =
+let ``SETBIT BITPOS commands roundtrip`` (offset:uint32) =
     let key = Key "key"
     let value  = true
     let hashMap = HashMap()
@@ -260,7 +223,7 @@ let ``SETBIT BITPOS roundtrip agree`` (offset:uint32) =
 
 
 [<Property>]
-let ``SETBIT BITPOS roundtrip agree, set one bit to zero when all others are one`` (bitOffset:uint32) =
+let ``SETBIT BITPOS roundtrip, set one bit to zero when all others are one`` (bitOffset:uint32) =
     let key = Key "key"
     let hashMap = HashMap()
 

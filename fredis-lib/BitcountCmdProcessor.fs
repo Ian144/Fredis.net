@@ -24,7 +24,7 @@ let CountSetBitsInRange ((arr:Bytes), (ll:int32), (uu:int32)) =
                                                                         let bb = arr.[ctr]
                                                                         let index = int32 bb
                                                                         yield bitCountLookup.[index]    }
-                                                Seq.sum bitCounts    
+                                                Seq.sum bitCounts
 
 
 
@@ -36,7 +36,7 @@ let Process key (optIntPair:optByteOffsetPair) (hashMap:HashMap) =
     match (optIntPair, hashMap.ContainsKey(key)) with
     | (_, false)              ->    Resp.Integer 0L                          // key not in map
                                                         
-    | (None, true)            ->    let bs = hashMap.[key]       
+    | (None, true)            ->    let bs = hashMap.[key]
                                     let ret = CountSetBitsInRange (bs, 0, (bs.Length-1)) // no bounds supplied, so consider all bytes
                                     Resp.Integer ret
 
@@ -45,4 +45,4 @@ let Process key (optIntPair:optByteOffsetPair) (hashMap:HashMap) =
                                     let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu.Value arrayUBound
                                     match optBounds with
                                     | Some (lower2, upper2) -> CountSetBitsInRange (bs, lower2, upper2) |> Resp.Integer
-                                    | None                  -> Resp.Integer 0L  
+                                    | None                  -> Resp.Integer 0L
