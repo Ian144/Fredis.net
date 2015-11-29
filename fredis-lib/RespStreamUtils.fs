@@ -123,8 +123,8 @@ let private AsyncSendSimpleString2 (destStrm:Stream) (contents:byte array) =
 
 
 
-
-let private AsyncSendError (strm:Stream) (contents:byte array) =
+//#### 
+let AsyncSendError (strm:Stream) (contents:byte array) =
     async{
         do! strm.AsyncWrite errStrType
         do! strm.AsyncWrite contents

@@ -9,21 +9,26 @@ open Utils
 //type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
 type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 
-let errorBytes      = Utils.StrToBytes "-Error\r\n"
-
-
 
 
 // used by DECR, INCR, DECRBY and INCRBY
 let IncrementBy (hashMap:HashMap) kk increment =
     match hashMap.ContainsKey(kk) with 
-    | true  ->  let oVal = hashMap.[kk] |> BytesToStr |> FSharpx.FSharpOption.ParseInt64
+    | true  ->  let bs = hashMap.[kk]
+                let oVal = bs |> BytesToStr |> FSharpx.FSharpOption.ParseInt64
                 match oVal with
                 | Some ii   ->  let newVal = ii + increment 
-                                let bs = newVal |> System.Convert.ToString |> StrToBytes
-                                hashMap.[kk] <- bs
+                                let bs2 = newVal |> System.Convert.ToString |> StrToBytes
+                                hashMap.[kk] <- bs2
                                 Resp.Integer newVal
-                | None      ->  Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange
+
+                | None      ->  let strict_strtollHack = (not (Array.isEmpty bs)) && bs.[0] = 0uy
+                                match strict_strtollHack with
+                                | true ->   let newVal = increment
+                                            let bsOut = newVal |> System.Convert.ToString |> StrToBytes
+                                            hashMap.[kk] <- bsOut
+                                            Resp.Integer increment
+                                | false ->  Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange
                                                 
     | false ->  let newVal = increment
                 let bs = newVal |> System.Convert.ToString |> StrToBytes

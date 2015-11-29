@@ -68,8 +68,10 @@ let ClientListenerLoop (client:TcpClient) =
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
-                        | Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
+                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
+                        //| Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
+
 
 
 

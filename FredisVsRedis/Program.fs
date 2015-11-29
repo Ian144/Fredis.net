@@ -1,9 +1,6 @@
-﻿module FredisVsRedisTest
-
-
+﻿
 open System.Net.Sockets
 open FsCheck
-open FsCheck.Xunit
 open FredisTypes
 open RespStreamFuncs
 
@@ -47,9 +44,15 @@ let genByteOffset =
     |> Gen.map FredisTypes.ByteOffset.Create
     |> Gen.map (fun optBoffset -> optBoffset.Value)
 
+let shrinkByteOffset (bo:FredisTypes.ByteOffset) = 
+    let optBo2 = FredisTypes.ByteOffset.Create (bo.Value / 2)
+    let bo2 = optBo2.Value
+    seq{ yield bo2 }
+
 
 let genAlphaByte = Gen.choose(65,90) |> Gen.map byte 
 let genAlphaByteArray = Gen.arrayOfLength 16 genAlphaByte 
+
 
 
 
@@ -63,9 +66,14 @@ type Overrides() =
                                 (System.Math.Abs(f) > 0.00001 ) )
 
     static member Key() = Arb.fromGen genKey
-    static member ByteOffsets() = Arb.fromGen genByteOffset
+    static member ByteOffsets() = Arb.fromGenShrink (genByteOffset, shrinkByteOffset )
     static member Bytes() = Arb.fromGen genAlphaByteArray
+    
 
+
+
+
+Arb.register<Overrides>() |> ignore
 
 
 
@@ -76,9 +84,6 @@ let fredisPort = 6379
 
 let flushDBCmd = "FLUSHDB" |> (Utils.StrToBytes >> BulkStrContents.Contents >> Resp.BulkString)
 let arFlushDBCmd = FredisTypes.Resp.Array [| flushDBCmd |]
-
-
-
 
 
 let private sendReceive (client:TcpClient) (msg:Resp) =
@@ -94,7 +99,7 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
                 | Some respTypeByte -> 
                         if respTypeByte = 13uy then
                             let recBuf = Array.zeroCreate<byte> 8
-                            strm.Read(recBuf, 0, 8) |> ignore
+                            let ii = strm.Read(recBuf, 0, 8) 
                             let recStr = Utils.BytesToStr recBuf
                             let msgTxt = printfn "send: %A\nreceived:%s" msg recStr
                             System.Diagnostics.Debug.WriteLine msgTxt
@@ -108,27 +113,24 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
 
 
 
-
-[<Property( Arbitrary=[|typeof<Overrides>|], MaxTest=1000, Verbose = true )>]
-let ``test funcx`` (cmdsIn:FredisTypes.FredisCmd list) =
-
+let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
     
     let cmds = cmdsIn |> List.filter (fun cmd ->    match cmd with
 //                                                    | MSet _        -> false
 //                                                    | MGet _        -> false
-//                                                    | BitOp _       -> false
-//                                                    | Bitcount _    -> false
+                                                    | BitOp _       -> false
+                                                    | Bitcount _    -> false
 //                                                    | GetSet _      -> false
 //                                                    | GetBit _      -> false
 //                                                    | SetBit _      -> false
-//                                                    | SetRange _    -> false    // dstOffset - System.ArgumentOutOfRangeException
-//                                                    | GetRange _    -> false    // index is outside of legal range exception in fredis
+                                                    | SetRange _    -> false
+                                                    | GetRange _    -> false
                                                     | IncrByFloat _ -> false
-//                                                    | Bitpos _      -> false
-                                                    | IncrBy _      -> false
+                                                    | Bitpos _      -> false
+//                                                    | IncrBy _      -> false
 //                                                    | Incr _        -> false
-                                                    | Decr _        -> false
-                                                    | DecrBy _        -> false
+//                                                    | Decr _        -> false
+//                                                    | DecrBy _      -> false
                                                     | FlushDB _     -> false
                                                     | _             -> true)
 
@@ -144,22 +146,23 @@ let ``test funcx`` (cmdsIn:FredisTypes.FredisCmd list) =
     let ok = redisReplies = fredisReplies
     if not ok then
         let xs = List.zip3 respCmds2 redisReplies fredisReplies
-        System.Diagnostics.Debug.WriteLine("--------------###")
-        xs |> List.iter (fun x -> 
-                            let ss = sprintf "%A" x
-                            System.Diagnostics.Debug.WriteLine(ss) )
-        
-//    System.Threading.Thread.Sleep(500)
-
-
-    // this succeeds in redis, i suspect it should not because 0x00aaaaaa is not a decimal number, redis treats it as zero
-    // setrange key 1 "aaaaaa"
-    // decr key
-    // (integer) -1
-
-
-
-    redisClient.Close()
-    fredisClient.Close()
+        printfn "-------------------------------------------------------------------- begin"
+        xs |> List.iter (printfn "%A")
+        printfn "-------------------------------------------------------------------- end"
 
     ok
+
+
+
+let config = { FsCheck.Config.Default with MaxTest = 10000 }
+
+
+//Check.Quick propFredisVsRedis
+
+Check.One (config, propFredisVsRedis)
+
+printfn "press any key to exit"
+System.Console.ReadKey |> ignore
+System.Console.ReadKey |> ignore
+
+

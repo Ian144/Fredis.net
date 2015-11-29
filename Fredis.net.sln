@@ -27,6 +27,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor-test", "fDisrupt
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-vs-redis-test", "fredis-redis-test\fredis-vs-redis-test.fsproj", "{70345B34-10CE-401A-9A00-153ED7DE3166}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisVsRedis", "FredisVsRedis\FredisVsRedis.fsproj", "{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,10 @@ Global
 		{70345B34-10CE-401A-9A00-153ED7DE3166}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70345B34-10CE-401A-9A00-153ED7DE3166}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70345B34-10CE-401A-9A00-153ED7DE3166}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

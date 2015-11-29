@@ -14,7 +14,7 @@
 // Simple String:    "+"
 // Arrays:           "*"
 
-// redis cant store 'strings' larger than 512mb, fredis copy this behaviour
+// redis cant store 'strings' larger than 512mb
 let private maxByteOffset = (pown 2 29) - 1 // zero based, hence the -1
 let private minByteOffset = (pown 2 29) * -1 
 
@@ -34,9 +34,9 @@ type ByteOffset = private ByteOffset of int with
         else Choice2Of2 err
 
     // don't supply this property if it is a requirement to be opaque
-    member this.Value with get () = 
-                        let (ByteOffset ii) = this
-                        ii
+    member public this.Value with get () = 
+                                    let (ByteOffset ii) = this
+                                    ii
 
     member this.FormatDisplay = match this with ByteOffset ii -> sprintf "ByteOffset: %d" ii
 
@@ -71,8 +71,8 @@ type KeyBytes = (Key*Bytes)
 // making illegal states unrepresentable
 // 1. MGET must have at least one key, with an optional number of further keys, hence "|MGet of Key * Key list" and not "|MGet of Key list", so the type system enforces this
 // 2. MSET and MSETNX, as above but for KeyBytesPair
-// 3. SetBit and GetBit cannot have negative indices, hence uint
-// these changes enable fscheck to automatically generate FredisCmds less custom generation
+// 3. SetBit and GetBit cannot have negative indices, hence unsigned int
+// these changes help fscheck to automatically generate FredisCmds, however ByteOffsets require custom generators for their 29 bit range
 
 type FredisCmd = 
     |Append         of Key*Bytes
