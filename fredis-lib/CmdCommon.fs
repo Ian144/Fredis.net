@@ -4,10 +4,30 @@ module CmdCommon
 open FredisTypes
 open Utils
 
-// temporarily using ConcurrentDictionary in early development, just to have something that works from the multiple .net threadpool threads used by the async workflows + IOCP
-// will experiment with other data structures at a later stage when using the MailBox or LMAX disruptors to handle concurrency
-//type HashMap = System.Collections.Concurrent.ConcurrentDictionary<Key,Bytes>
+
+
+
 type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
+
+
+
+// can F# pattern match on arrays?
+    
+let private simulateStrtoll bs = 
+   
+    let isNotSpace (bb:byte) = 
+        let chr = char bb
+        System.Char.IsWhiteSpace chr |> not
+
+    let xx = (bs = [|0uy|])
+
+    let noWhiteSpace = bs |> Array.forall isNotSpace
+
+    let str = bs |> BytesToStr
+    match xx, noWhiteSpace with
+    | true, _  -> Some 0L
+    | _, true  -> str |> FSharpx.FSharpOption.ParseInt64
+    | _, false -> None
 
 
 
@@ -15,20 +35,14 @@ type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 let IncrementBy (hashMap:HashMap) kk increment =
     match hashMap.ContainsKey(kk) with 
     | true  ->  let bs = hashMap.[kk]
-                let oVal = bs |> BytesToStr |> FSharpx.FSharpOption.ParseInt64
+                let oVal = simulateStrtoll bs
                 match oVal with
                 | Some ii   ->  let newVal = ii + increment 
                                 let bs2 = newVal |> System.Convert.ToString |> StrToBytes
                                 hashMap.[kk] <- bs2
                                 Resp.Integer newVal
 
-                | None      ->  let strict_strtollHack = (not (Array.isEmpty bs)) && bs.[0] = 0uy
-                                match strict_strtollHack with
-                                | true ->   let newVal = increment
-                                            let bsOut = newVal |> System.Convert.ToString |> StrToBytes
-                                            hashMap.[kk] <- bsOut
-                                            Resp.Integer increment
-                                | false ->  Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange
+                | None      ->  Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange
                                                 
     | false ->  let newVal = increment
                 let bs = newVal |> System.Convert.ToString |> StrToBytes
@@ -57,45 +71,22 @@ let IncrementByFloat (hashMap:HashMap) kk increment =
     
 // converts negative offsets to positive, see http://redis.io/commands/getrange
 // ensures positive offsets are within array bounds and that lower <= upper
-// for zero based arrays only
 let RationaliseArrayBounds (ll:int) (uu:int) (uBound:int) = 
 
-    let convertLowerToZeroBasedIndex idx =
-        let idx1 = 
-            match idx with
-            | n when n >= 0 -> n
+    let strlen = uBound + 1
 
-            // if n is negative then it is a downwards offset from the array's upper bound
-            // -1 refers to the last element, hence the +1
-            | n             ->  let zeroBasedIdx = uBound + n + 1   // convert to +ve
-                                if (zeroBasedIdx < 0) then 0        // constrain to lower array bound
-                                else zeroBasedIdx
-        if (idx1 <= uBound) then 
-            Some idx1
-        else
-            None // having a lower bound higher than uBound means nothing in the array is referenced
+    // if n is negative then it is a downwards offset from the array's upper bound
+    let convertNegIndex idx = if idx >=0 then idx else strlen + idx
+    let constrainToZero idx = if idx < 0 then 0 else idx    // i'm not convinced this is what the setrange should do according to the command description, but its what redis does
+    let funcx = convertNegIndex >> constrainToZero
 
-    let convertUpperToZeroBasedIndex idx =
-        let idx1 = 
-            match idx with
-            | n when n >= 0 -> n
+    let ll1 = funcx ll
+    let uu1 = funcx uu
 
-            // if n is negative then it is a downwards offset from the array's upper bound
-            // -1 refers to the last element, hence the +1
-            | n             ->  let zeroBasedIdx = uBound + n + 1           // convert to +vw
-                                if (zeroBasedIdx > uBound) then uBound      // constrain to upper array bound
-                                else zeroBasedIdx
-        if (idx1 >= 0) then
-            Some idx1
-        else
-            None      // having an upperIndex less that zero means nothing in the array is referenced
+    let ll2 = ll1
+    let uu2 = if uu1 >= strlen then strlen - 1 else uu1
 
-    let optlower1 = convertLowerToZeroBasedIndex ll
-    let optUpper1 = convertUpperToZeroBasedIndex uu   
-
-    match optlower1, optUpper1 with
-    | None, _ | _, None     ->  None
-    | Some ll1, Some uu1    ->  if (ll1 <= uu1) then    // lower and upper indices are ok, but lower must be <= upper for both to be valid together
-                                    Some (ll1, uu1)
-                                else
-                                    None
+    match strlen, ll2, uu2 with
+    | 0, _, _                       -> None
+    | _, ll3, uu3 when ll3 > uu3    -> None
+    | _, ll3, uu3                   -> Some (ll3, uu3)

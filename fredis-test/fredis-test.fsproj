@@ -129,6 +129,8 @@
     <None Include="App.config" />
     <None Include="Scripts\load-references.fsx" />
     <None Include="Scripts\load-project.fsx" />
+    <None Include="Scripts\load-references-debug.fsx" />
+    <None Include="Scripts\load-project-debug.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\fredis-lib\fredis-lib.fsproj">

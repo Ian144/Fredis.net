@@ -25,8 +25,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sequence", "Sequence\Sequen
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor-test", "fDisruptor-test\fDisruptor-test.fsproj", "{3D6C5389-A123-4A08-A764-79E839E92E7C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-vs-redis-test", "fredis-redis-test\fredis-vs-redis-test.fsproj", "{70345B34-10CE-401A-9A00-153ED7DE3166}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisVsRedis", "FredisVsRedis\FredisVsRedis.fsproj", "{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}"
 EndProject
 Global
@@ -59,10 +57,6 @@ Global
 		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{70345B34-10CE-401A-9A00-153ED7DE3166}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{70345B34-10CE-401A-9A00-153ED7DE3166}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{70345B34-10CE-401A-9A00-153ED7DE3166}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{70345B34-10CE-401A-9A00-153ED7DE3166}.Release|Any CPU.Build.0 = Release|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Release|Any CPU.ActiveCfg = Release|Any CPU

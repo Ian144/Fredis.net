@@ -97,12 +97,6 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
                 match optRespTypeByte with
                 | None              ->  None
                 | Some respTypeByte -> 
-                        if respTypeByte = 13uy then
-                            let recBuf = Array.zeroCreate<byte> 8
-                            let ii = strm.Read(recBuf, 0, 8) 
-                            let recStr = Utils.BytesToStr recBuf
-                            let msgTxt = printfn "send: %A\nreceived:%s" msg recStr
-                            System.Diagnostics.Debug.WriteLine msgTxt
                         let respTypeInt = System.Convert.ToInt32(respTypeByte)
                         let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         Some respMsg
@@ -116,21 +110,16 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
 let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
     
     let cmds = cmdsIn |> List.filter (fun cmd ->    match cmd with
-//                                                    | MSet _        -> false
-//                                                    | MGet _        -> false
                                                     | BitOp _       -> false
                                                     | Bitcount _    -> false
-//                                                    | GetSet _      -> false
-//                                                    | GetBit _      -> false
-//                                                    | SetBit _      -> false
-                                                    | SetRange _    -> false
-                                                    | GetRange _    -> false
+//                                                    | SetRange _    -> false
+//                                                    | GetRange _    -> false
                                                     | IncrByFloat _ -> false
                                                     | Bitpos _      -> false
-//                                                    | IncrBy _      -> false
-//                                                    | Incr _        -> false
-//                                                    | Decr _        -> false
-//                                                    | DecrBy _      -> false
+                                                    | IncrBy _      -> false
+                                                    | Incr _        -> false
+                                                    | Decr _        -> false
+                                                    | DecrBy _      -> false
                                                     | FlushDB _     -> false
                                                     | _             -> true)
 
@@ -141,24 +130,21 @@ let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
     use redisClient     = new TcpClient(host, redisPort)
     use fredisClient    = new TcpClient(host, fredisPort)
     let fredisReplies = respCmds2 |> List.map (sendReceive fredisClient)
-    let redisReplies = respCmds2 |> List.map (sendReceive redisClient)
+    let redisReplies  = respCmds2 |> List.map (sendReceive redisClient) 
 
     let ok = redisReplies = fredisReplies
-    if not ok then
-        let xs = List.zip3 respCmds2 redisReplies fredisReplies
-        printfn "-------------------------------------------------------------------- begin"
-        xs |> List.iter (printfn "%A")
-        printfn "-------------------------------------------------------------------- end"
+//    if not ok then
+//        let xs = List.zip3 respCmds2 redisReplies fredisReplies
+//        printfn "-------------------------------------------------------------------- begin"
+//        xs |> List.iter (printfn "%A")
+//        printfn "-------------------------------------------------------------------- end"
 
     ok
 
 
 
 let config = { FsCheck.Config.Default with MaxTest = 10000 }
-
-
 //Check.Quick propFredisVsRedis
-
 Check.One (config, propFredisVsRedis)
 
 printfn "press any key to exit"
