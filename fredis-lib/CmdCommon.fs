@@ -11,20 +11,22 @@ type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 
 
 
-// can F# pattern match on arrays?
-    
+
+
+// simulate redis behaviour
+// redis will allow incr on a string such as "\x00DILMAUYZTHLMGUYS", i.e. when the first char is null zero
 let private simulateStrtoll bs = 
    
     let isNotSpace (bb:byte) = 
         let chr = char bb
         System.Char.IsWhiteSpace chr |> not
 
-    let xx = (bs = [|0uy|])
+    let firstIsNullZero = if Array.isEmpty bs then false else bs.[0] = 0uy
 
     let noWhiteSpace = bs |> Array.forall isNotSpace
 
     let str = bs |> BytesToStr
-    match xx, noWhiteSpace with
+    match firstIsNullZero, noWhiteSpace with
     | true, _  -> Some 0L
     | _, true  -> str |> FSharpx.FSharpOption.ParseInt64
     | _, false -> None

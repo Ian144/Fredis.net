@@ -112,15 +112,12 @@ let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
     let cmds = cmdsIn |> List.filter (fun cmd ->    match cmd with
                                                     | BitOp _       -> false
                                                     | Bitcount _    -> false
-//                                                    | SetRange _    -> false
-//                                                    | GetRange _    -> false
                                                     | IncrByFloat _ -> false
                                                     | Bitpos _      -> false
-                                                    | IncrBy _      -> false
-                                                    | Incr _        -> false
+//                                                    | IncrBy _      -> false
+//                                                    | Incr _        -> false
                                                     | Decr _        -> false
                                                     | DecrBy _      -> false
-                                                    | FlushDB _     -> false
                                                     | _             -> true)
 
 
@@ -133,12 +130,11 @@ let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
     let redisReplies  = respCmds2 |> List.map (sendReceive redisClient) 
 
     let ok = redisReplies = fredisReplies
-//    if not ok then
-//        let xs = List.zip3 respCmds2 redisReplies fredisReplies
-//        printfn "-------------------------------------------------------------------- begin"
-//        xs |> List.iter (printfn "%A")
-//        printfn "-------------------------------------------------------------------- end"
-
+    if not ok then
+        let xs = List.zip3 respCmds2 redisReplies fredisReplies
+        printfn "-------------------------------------------------------------------- begin"
+        xs |> List.iter (printfn "%A")
+        printfn "-------------------------------------------------------------------- end"
     ok
 
 

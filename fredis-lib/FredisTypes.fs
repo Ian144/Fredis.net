@@ -46,7 +46,7 @@ type ByteOffset = private ByteOffset of int with
 //type BitOffset = private BitOffsetvalCtor of int with
 
 type optByteOffsetPair = (ByteOffset*ByteOffset) option
-type Bytes = byte array
+type Bytes = byte array 
 type Key = Key of string
 
 // AND, OR and XOR need a destKey, srcKey and 0->N further source keys
@@ -144,10 +144,10 @@ type Resp =
         | Error        bs   ->  sprintf "Error: %s" (BytesToStr bs)
         | Integer      ii   ->  sprintf "Integer:%d" ii
         | BulkString   cn   ->  match cn with
-                                | BulkStrContents.Contents bs   -> sprintf "BulkString: %s" (BytesToStr bs)
-                                | BulkStrContents.Nil           -> "BulkString: nil"
+                                | BulkStrContents.Contents bs   -> sprintf "%s" (BytesToStr bs)
+                                | BulkStrContents.Nil           -> "nil"
         | Array        xs   ->  let subStrs = xs |> Array.map (fun x -> x.FormatDisplay )
-                                let subStr = System.String.Join("\n\t", subStrs)
-                                System.String.Format("Array\n\t{0}", subStr)
+                                let subStr = System.String.Join(", ", subStrs)
+                                System.String.Format("[|{0}|]", subStr)
                                 
 
