@@ -74,6 +74,7 @@ type KeyBytes = (Key*Bytes)
 // 3. SetBit and GetBit cannot have negative indices, hence unsigned int
 // these changes help fscheck to automatically generate FredisCmds, however ByteOffsets require custom generators for their 29 bit range
 
+[<StructuredFormatDisplay("{FormatDisplay}")>]
 type FredisCmd = 
     |Append         of Key*Bytes
     |Bitcount       of Key*optByteOffsetPair
@@ -98,6 +99,33 @@ type FredisCmd =
     |SetNX          of Key*Bytes
     |SetRange       of Key*uint32*Bytes
     |Strlen         of Key
+    member this.FormatDisplay =
+        match this with
+        |Append         (key, bs)               -> sprintf "Append"
+        |Bitcount       (key, optOffsetPair)    -> sprintf "Bitcount"
+        |BitOp          (bitOpInner)            -> sprintf "BitOp %A" bitOpInner
+        |Bitpos         (key, bool, range)      -> sprintf "Bitpos"
+        |Decr           (key)                   -> sprintf "Decr"
+        |DecrBy         (key, ii)               -> sprintf "DecrBy"
+        |Get            (key)                   -> sprintf "Get"
+        |GetBit         (key, uii)              -> sprintf "GetBit"
+        |GetRange       (key, lower, upper)     -> sprintf "GetRange"
+        |GetSet         (key, bs)               -> sprintf "GetSet %A %A" key bs
+        |Incr           (key)                   -> sprintf "Incr"
+        |IncrBy         (key, ii)               -> sprintf "IncrBy"
+        |IncrByFloat    (key, ff)               -> sprintf "IncrByFloat"
+        |MGet           (key, keys)             -> sprintf "MGet"
+        |MSet           (keyBs, keyBss)         -> sprintf "MSet"
+        |MSetNX         (keyBs, keyBss)         -> sprintf "MSetNX"
+        |Set            (key, bs)               -> sprintf "Set"
+        |SetBit         (key, uii, bool)        -> sprintf "SetBit"
+        |SetNX          (key, bs)               -> sprintf "SetNX"
+        |SetRange       (key, uii, bs)          -> sprintf "SetRange"
+        |Strlen         (key)                   -> sprintf "Strlen %A" key
+        |FlushDB                                -> sprintf "FlushDB"
+        |Ping                                   -> sprintf "Ping"
+
+
 
 
 

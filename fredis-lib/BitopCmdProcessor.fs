@@ -23,7 +23,7 @@ let Parse (msgArr:Resp []) =
                         let destKey = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToKey
                         
                         // three 'tails' to remove the cmd and bitop op, and destKey (#### f# 4.0 might add 'skip' to List)
-                        let srcKeys = msgArr |> Array.toList |>  List.tail |> List.tail |> List.tail |> List.map RespUtils.PartialGetMsgPayload |> List.map BytesToKey
+                        let srcKeys = msgArr |> Array.toList |>  List.tail |> List.tail |> List.tail |> List.map (RespUtils.PartialGetMsgPayload >> BytesToKey)
 
                         // there must be at least one srcKey as arrLen > 3, NOT requires exactly one src key
                         match operationStr.ToUpper(), srcKeys.Length with
@@ -70,15 +70,15 @@ let private ByteArrayBinOpAdaptor (binOp:byte -> byte -> byte) (bs:Bytes) (cs:By
 
 
 
-let private ByteArrayNot (bs:Bytes) =
+let private byteArrayNot (bs:Bytes) =
     [|  for b in bs do
         yield (~~~) b   |]
 
 
 
-let private ByteArrayAnd = ByteArrayBinOpAdaptor (&&&) 
-let private ByteArrayOr  = ByteArrayBinOpAdaptor (|||) 
-let private ByteArrayXor = ByteArrayBinOpAdaptor (^^^) 
+let private byteArrayAnd = ByteArrayBinOpAdaptor (&&&) 
+let private byteArrayOr  = ByteArrayBinOpAdaptor (|||) 
+let private byteArrayXor = ByteArrayBinOpAdaptor (^^^) 
 
 
 
@@ -87,18 +87,20 @@ let private applyBitOp (destKey:Key) (srcKey:Key) (srcKeysX:Key list) (hashMap:H
     let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.ContainsKey(srcKey))
     match anySrcKeyExists with
     | true ->
-                let res = srcKeys |> List.map (GetValOrEmpty hashMap)   |> List.reduce (fun bs cs -> byteArrayBitOp bs cs)
+                let res = srcKeys |> List.map (GetValOrEmpty hashMap)   |> List.reduce byteArrayBitOp
                 hashMap.[destKey] <- res
                 Resp.Integer res.LongLength
-    |false ->   Resp.Integer  0L 
+    |false ->   hashMap.Remove(destKey) |> ignore
+                Resp.Integer  0L 
+
 
 let Process (op:BitOpInner) (hashMap:HashMap) =
     match op with
-    | BitOpInner.AND (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayAnd
-    | BitOpInner.OR  (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayOr
-    | BitOpInner.XOR (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap ByteArrayXor
+    | BitOpInner.AND (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap byteArrayAnd
+    | BitOpInner.OR  (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap byteArrayOr
+    | BitOpInner.XOR (destKey, srcKey, srcKeys)   ->    applyBitOp destKey srcKey srcKeys hashMap byteArrayXor
     | BitOpInner.NOT (destKey, srcKey)    ->    match hashMap.TryGetValue(srcKey) with
-                                                | true, vv  ->  let res = ByteArrayNot vv
+                                                | true, vv  ->  let res = byteArrayNot vv
                                                                 hashMap.[destKey] <- res
                                                                 Resp.Integer res.LongLength
                                                 | false, _  ->  hashMap.Remove(destKey) |> ignore

@@ -14,14 +14,19 @@ type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 
 
 // simulate redis behaviour
-// redis will allow incr on a string such as "\x00DILMAUYZTHLMGUYS", i.e. when the first char is null zero
-let private simulateStrtoll bs = 
+// redis strict_Strtoll is not very strict, it will allow 
+//    incr on a string such as "\x00DILMAUYZTHLMGUYS", i.e. when the first char is null zero
+//    incr on -1\x00WKOPJXBVWAOIJNBV", whe the first char is a digit
+let private simulateStrict_Strtoll bs = 
    
     let isNotSpace (bb:byte) = 
         let chr = char bb
         System.Char.IsWhiteSpace chr |> not
 
-    let firstIsNullZero = if Array.isEmpty bs then false else bs.[0] = 0uy
+    let firstIsNullZero = if Array.isEmpty bs then 
+                            false
+                          else
+                            (bs.[0] = 0uy) || ( bs.[0] |> char |> System.Char.IsDigit)
 
     let noWhiteSpace = bs |> Array.forall isNotSpace
 
@@ -37,7 +42,7 @@ let private simulateStrtoll bs =
 let IncrementBy (hashMap:HashMap) kk increment =
     match hashMap.ContainsKey(kk) with 
     | true  ->  let bs = hashMap.[kk]
-                let oVal = simulateStrtoll bs
+                let oVal = simulateStrict_Strtoll bs
                 match oVal with
                 | Some ii   ->  let newVal = ii + increment 
                                 let bs2 = newVal |> System.Convert.ToString |> StrToBytes

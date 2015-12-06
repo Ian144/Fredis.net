@@ -25,10 +25,11 @@ let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) : in
     let indxs = [|lIndx..uIndx|]
 
     let cFirstByteContainingBitValIndex = FSharpx.Choice.protect ( Array.findIndex findFirstByte )
-    match cFirstByteContainingBitValIndex indxs with
-    | Choice2Of2 _          -> -1   // indicating there are no bits of the value being searched for
-    | Choice1Of2 byteIdx    ->  let firstFoundByte = bs.[byteIdx] |> int
-                                byteIdx * 8 + bitPosLookup.[firstFoundByte]
+    match searchVal, cFirstByteContainingBitValIndex indxs with
+    | true,     Choice2Of2 _        ->  -1   // indicating there are no bits of the value being searched for
+    | false,    Choice2Of2 _        ->  bs.Length * 8 // if searching for false and its not found, then bitop spec says return the first bit index one after the end of bs
+    | _,        Choice1Of2 byteIdx  ->  let firstFoundByte = bs.[byteIdx] |> int
+                                        byteIdx * 8 + bitPosLookup.[firstFoundByte]
 
 
 
