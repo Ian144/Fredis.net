@@ -45,11 +45,13 @@ let genByteOffset =
     |> Gen.map (fun optBoffset -> optBoffset.Value)
 
 let shrinkByteOffset (bo:FredisTypes.ByteOffset) = 
-    let optBo2 = FredisTypes.ByteOffset.Create (bo.Value / 2)
-    let bo2 = optBo2.Value
-    seq{ yield bo2 }
-
-
+    match (bo.Value / 2) with
+    | 0 -> Seq.empty
+    | n -> let optBo2 = FredisTypes.ByteOffset.Create n
+           let bo2 = optBo2.Value
+           seq{ yield bo2 }
+     
+    
 let genAlphaByte = Gen.choose(65,90) |> Gen.map byte 
 let genAlphaByteArray = Gen.arrayOfLength 16 genAlphaByte 
 
@@ -67,6 +69,7 @@ type Overrides() =
 
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGenShrink (genByteOffset, shrinkByteOffset )
+//    static member ByteOffsets() = Arb.fromGen genByteOffset
     static member Bytes() = Arb.fromGen genAlphaByteArray
     
 
@@ -82,8 +85,8 @@ let host = "127.0.0.1"
 let redisPort = 6380
 let fredisPort = 6379
 
-let flushDBCmd = "FLUSHDB" |> (Utils.StrToBytes >> BulkStrContents.Contents >> Resp.BulkString)
-let arFlushDBCmd = FredisTypes.Resp.Array [| flushDBCmd |]
+//let flushDBCmd = "FLUSHDB" |> (Utils.StrToBytes >> BulkStrContents.Contents >> Resp.BulkString)
+//let arFlushDBCmd = FredisTypes.Resp.Array [| flushDBCmd |]
 
 
 let private sendReceive (client:TcpClient) (msg:Resp) =
@@ -102,41 +105,51 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
                         Some respMsg
             return reply
         }
-    let reply = aa |> Async.RunSynchronously
-    reply
+
+
+    try
+        aa |> Async.RunSynchronously
+    with
+    | ex ->
+        None
 
 
 
-let propFredisVsRedis (cmdsIn:FredisTypes.FredisCmd list) =
+let redisClient     = new TcpClient(host, redisPort)
+let fredisClient    = new TcpClient(host, fredisPort)
+
+let propFredisVsRedis (cmds1:FredisTypes.FredisCmd list) =
     
-    let cmds = cmdsIn |> List.filter (fun cmd ->    match cmd with
+    let cmds2 = cmds1 |> List.filter (fun cmd ->    match cmd with
                                                     | IncrByFloat _ -> false
                                                     | IncrBy _      -> false
                                                     | Incr _        -> false
                                                     | Decr _        -> false
                                                     | DecrBy _      -> false
+                                                    | FlushDB _     -> false
                                                     | _             -> true)
 
+    if List.isEmpty cmds2 then
+        true
+    else
+        let cmds3 = FlushDB :: cmds2
+        let respCmds = cmds3 |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
 
-    let respCmds = cmds |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
-    let respCmds2 = arFlushDBCmd :: respCmds // flush live redis and fredis instances before running other cmds
+//        use redisClient     = new TcpClient(host, redisPort)
+//        use fredisClient    = new TcpClient(host, fredisPort)
+        let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
+        let redisReplies  = respCmds |> List.map (sendReceive redisClient) 
 
-    use redisClient     = new TcpClient(host, redisPort)
-    use fredisClient    = new TcpClient(host, fredisPort)
-    let fredisReplies = respCmds2 |> List.map (sendReceive fredisClient)
-    let redisReplies  = respCmds2 |> List.map (sendReceive redisClient) 
-
-    let ok = redisReplies = fredisReplies
-    if not ok then
-        let xs = List.zip3 respCmds2 redisReplies fredisReplies
-        printfn "-------------------------------------------------------------------- begin"
-        xs |> List.iter (printfn "%A")
-        printfn "-------------------------------------------------------------------- end"
-    ok
+        let ok = redisReplies = fredisReplies
+        if not ok then
+            let xs = List.zip3 cmds3 redisReplies fredisReplies
+            printfn "-------------------------------------------------------------------- begin"
+            xs |> List.iter (printfn "%A")
+            printfn "-------------------------------------------------------------------- end"
+        ok
 
 
-
-let config = { FsCheck.Config.Default with MaxTest = 10000 }
+let config = { FsCheck.Config.Default with MaxTest = 100000 }
 //Check.Quick propFredisVsRedis
 Check.One (config, propFredisVsRedis)
 

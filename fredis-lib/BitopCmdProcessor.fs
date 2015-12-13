@@ -44,26 +44,26 @@ let Parse (msgArr:Resp []) =
 
     
 
-let private GetValOrEmpty (hashMap:HashMap) (key:Key) : Bytes = 
+let private getValOrEmpty (hashMap:HashMap) (key:Key) : Bytes = 
     match hashMap.ContainsKey(key) with
     | true  -> hashMap.[key]
     | false -> [||]
 
 
 
-let private ByteArrayBinOpAdaptor (binOp:byte -> byte -> byte) (bs:Bytes) (cs:Bytes) =
+let private byteArrayBinOpAdaptor (binOp:byte -> byte -> byte) (bs:Bytes) (cs:Bytes) =
     let maxLen = max bs.Length cs.Length
     let maxIndex = maxLen - 1
     let dest:Bytes = Array.zeroCreate maxLen
 
-    let GetOrZero (xs:Bytes) idx = 
+    let getOrZero (xs:Bytes) idx = 
         match xs.Length > idx with
         | true  ->  xs.[idx]
         | false ->  0uy
 
     for idx = 0 to maxIndex do
-        let b:byte = GetOrZero bs idx
-        let c:byte = GetOrZero cs idx
+        let b:byte = getOrZero bs idx
+        let c:byte = getOrZero cs idx
         dest.[idx] <- binOp b c
 
     dest
@@ -76,9 +76,9 @@ let private byteArrayNot (bs:Bytes) =
 
 
 
-let private byteArrayAnd = ByteArrayBinOpAdaptor (&&&) 
-let private byteArrayOr  = ByteArrayBinOpAdaptor (|||) 
-let private byteArrayXor = ByteArrayBinOpAdaptor (^^^) 
+let private byteArrayAnd = byteArrayBinOpAdaptor (&&&) 
+let private byteArrayOr  = byteArrayBinOpAdaptor (|||) 
+let private byteArrayXor = byteArrayBinOpAdaptor (^^^) 
 
 
 
@@ -86,8 +86,11 @@ let private applyBitOp (destKey:Key) (srcKey:Key) (srcKeysX:Key list) (hashMap:H
     let srcKeys = srcKey :: srcKeysX
     let anySrcKeyExists = srcKeys |> List.exists  (fun srcKey -> hashMap.ContainsKey(srcKey))
     match anySrcKeyExists with
-    | true ->
-                let res = srcKeys |> List.map (GetValOrEmpty hashMap)   |> List.reduce byteArrayBitOp
+    | true ->   let srcArrays = srcKeys |> List.map (getValOrEmpty hashMap) 
+                let res = 
+                    match srcArrays with
+                    | [src] -> Array.copy src   // ensure that the result is a copy of src ([src] |> List.reduce returns the same array)
+                    | _     -> srcArrays |> List.reduce byteArrayBitOp
                 hashMap.[destKey] <- res
                 Resp.Integer res.LongLength
     |false ->   hashMap.Remove(destKey) |> ignore

@@ -74,6 +74,9 @@ type KeyBytes = (Key*Bytes)
 // 3. SetBit and GetBit cannot have negative indices, hence unsigned int
 // these changes help fscheck to automatically generate FredisCmds, however ByteOffsets require custom generators for their 29 bit range
 
+// 
+let BytesToStr  = System.Text.Encoding.UTF8.GetString
+
 [<StructuredFormatDisplay("{FormatDisplay}")>]
 type FredisCmd = 
     |Append         of Key*Bytes
@@ -87,7 +90,7 @@ type FredisCmd =
     |GetBit         of Key*uint32
     |GetRange       of Key*int*int
     |GetSet         of Key*Bytes
-    |Incr           of Key
+    |Incr           of Key 
     |IncrBy         of Key*int64
     |IncrByFloat    of Key*double
     |MGet           of Key*Key list
@@ -101,35 +104,30 @@ type FredisCmd =
     |Strlen         of Key
     member this.FormatDisplay =
         match this with
-        |Append         (key, bs)               -> sprintf "Append"
-        |Bitcount       (key, optOffsetPair)    -> sprintf "Bitcount"
+        |Append         (key, bs)               -> sprintf "Append %A %s" key (BytesToStr bs)
+        |Bitcount       (key, optOffsetPair)    -> sprintf "Bitcount %A %A" key optOffsetPair
         |BitOp          (bitOpInner)            -> sprintf "BitOp %A" bitOpInner
-        |Bitpos         (key, bool, range)      -> sprintf "Bitpos"
-        |Decr           (key)                   -> sprintf "Decr"
-        |DecrBy         (key, ii)               -> sprintf "DecrBy"
-        |Get            (key)                   -> sprintf "Get"
-        |GetBit         (key, uii)              -> sprintf "GetBit"
-        |GetRange       (key, lower, upper)     -> sprintf "GetRange"
-        |GetSet         (key, bs)               -> sprintf "GetSet %A %A" key bs
-        |Incr           (key)                   -> sprintf "Incr"
-        |IncrBy         (key, ii)               -> sprintf "IncrBy"
-        |IncrByFloat    (key, ff)               -> sprintf "IncrByFloat"
-        |MGet           (key, keys)             -> sprintf "MGet"
-        |MSet           (keyBs, keyBss)         -> sprintf "MSet"
-        |MSetNX         (keyBs, keyBss)         -> sprintf "MSetNX"
-        |Set            (key, bs)               -> sprintf "Set"
-        |SetBit         (key, uii, bool)        -> sprintf "SetBit"
-        |SetNX          (key, bs)               -> sprintf "SetNX"
-        |SetRange       (key, uii, bs)          -> sprintf "SetRange"
+        |Bitpos         (key, bb, range)        -> sprintf "Bitpos %A %A %A" key bb range
+        |Decr           (key)                   -> sprintf "Decr %A" key
+        |DecrBy         (key, ii)               -> sprintf "DecrBy %A %d" key ii
+        |Get            (key)                   -> sprintf "Get %A" key 
+        |GetBit         (key, uii)              -> sprintf "GetBit %A %d" key uii
+        |GetRange       (key, lower, upper)     -> sprintf "GetRange %A %d %d" key lower upper
+        |GetSet         (key, bs)               -> sprintf "GetSet %A %A" key (BytesToStr bs)
+        |Incr           (key)                   -> sprintf "Incr %A" key
+        |IncrBy         (key, ii)               -> sprintf "IncrBy %A %d" key ii
+        |IncrByFloat    (key, ff)               -> sprintf "IncrByFloat %A %f" key ff
+        |MGet           (key, keys)             -> sprintf "MGet %A %A" key keys
+        |MSet           (keyBs, keyBss)         -> sprintf "MSet %A %A" keyBs keyBss
+        |MSetNX         (keyBs, keyBss)         -> sprintf "MSetNX %A %A" keyBs keyBss
+        |Set            (key, bs)               -> sprintf "Set %A %A" key (BytesToStr bs)
+        |SetBit         (key, uii, bb)          -> sprintf "SetBit %A %d %A" key uii bb
+        |SetNX          (key, bs)               -> sprintf "SetNX %A %A" key bs
+        |SetRange       (key, uii, bs)          -> sprintf "SetRange %A %d %A" key uii (BytesToStr bs)
         |Strlen         (key)                   -> sprintf "Strlen %A" key
         |FlushDB                                -> sprintf "FlushDB"
         |Ping                                   -> sprintf "Ping"
 
-
-
-
-
-let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
 
 
 // an empty bulk string e.g. "" is not the same as a bulk string that was not found

@@ -15,21 +15,31 @@ let private falseBitPosLookup = [|0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0
 
 
 
+let notFound = -1
+
+let rec FindIndex (curIndex:int) (maxIndex:int) (pred:(int*Bytes)->bool) (bs:Bytes) : int = 
+    if curIndex > maxIndex then
+        notFound
+    else
+        match pred (curIndex, bs) with
+        | true  -> curIndex
+        | false -> FindIndex (curIndex+1) maxIndex pred bs
+
+
 let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) : int =
     
     let bitPosLookup, findFirstByte = 
             match searchVal with
-            | true  -> trueBitPosLookup,  (fun indx -> bs.[indx] <> 0uy)
-            | false -> falseBitPosLookup, (fun indx -> bs.[indx] <> 255uy)
+            | true  -> trueBitPosLookup,  (fun (indx, bs2:Bytes) -> bs2.[indx] <> 0uy)
+            | false -> falseBitPosLookup, (fun (indx, bs2:Bytes) -> bs2.[indx] <> 255uy)
 
-    let indxs = [|lIndx..uIndx|]
-
-    let cFirstByteContainingBitValIndex = FSharpx.Choice.protect ( Array.findIndex findFirstByte )
-    match searchVal, cFirstByteContainingBitValIndex indxs with
-    | true,     Choice2Of2 _        ->  -1   // indicating there are no bits of the value being searched for
-    | false,    Choice2Of2 _        ->  bs.Length * 8 // if searching for false and its not found, then bitop spec says return the first bit index one after the end of bs
-    | _,        Choice1Of2 byteIdx  ->  let firstFoundByte = bs.[byteIdx] |> int
-                                        byteIdx * 8 + bitPosLookup.[firstFoundByte]
+    let foundIndex = FindIndex lIndx uIndx findFirstByte bs
+    
+    match searchVal, foundIndex with
+    | true,     -1      ->  -1   // indicating there are no bits of the value being searched for
+    | false,    -1      ->  bs.Length * 8 // if searching for false and its not found, then bitop spec says return the first bit index one after the end of bs
+    | _,        byteIdx ->  let firstFoundByte = bs.[byteIdx] |> int
+                            byteIdx * 8 + bitPosLookup.[firstFoundByte]
 
 
 

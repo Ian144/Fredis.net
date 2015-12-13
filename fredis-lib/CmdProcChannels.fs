@@ -35,7 +35,7 @@ let private mbox =
                     with
                     | ex -> 
                         printfn "mailbox processor exception thrown: %s - %A" ex.Message (ex.GetType())
-                        do! strm.AsyncWrite (RespUtils.errorBytes, 0, RespUtils.errorBytes.Length)
+                        //do! strm.AsyncWrite (RespUtils.errorBytes, 0, RespUtils.errorBytes.Length) // strm has been disposed
                     
                     return! msgLoop () } 
         msgLoop () )

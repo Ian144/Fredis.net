@@ -77,8 +77,7 @@ let ClientListenerLoop (client:TcpClient) =
 
     Async.StartWithContinuations(
          asyncProcessClientRequests,
-         //(fun _     -> printfn "ClientListener completed" ),
-         (fun _     -> () ),
+         (fun _     -> printfn "ClientListener completed" ),
          ClientError,
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )
@@ -100,13 +99,23 @@ let ConnectionListenerLoop (listener:TcpListener) =
     )
 
 
+
+//let WaitForExitCmd2 () = 
+//    while not (System.Console.ReadKey().KeyChar = 'X') do
+//        ()
+
+let rec WaitForExitCmd () = 
+    match System.Console.ReadKey().KeyChar with
+    | 'X'   -> ()
+    | _     -> WaitForExitCmd ()
+
+
 let ipAddr = IPAddress.Parse(host)
 let listener = TcpListener( ipAddr, port) 
 listener.Start ()
 ConnectionListenerLoop listener
-printfn "fredis startup complete\nawaiting incoming connection requests\npress any key to exit"
-System.Console.ReadKey() |> ignore
-printfn ""
+printfn "fredis startup complete\nawaiting incoming connection requests\npress 'X' to exit"
+WaitForExitCmd ()
 do Async.CancelDefaultToken()
 printfn "cancelling asyncs"
 listener.Stop()
