@@ -42,7 +42,8 @@ let private simulateStrict_Strtoll bs =
 let IncrementBy (hashMap:HashMap) kk increment =
     match hashMap.ContainsKey(kk) with 
     | true  ->  let bs = hashMap.[kk]
-                let oVal = simulateStrict_Strtoll bs
+//                let oVal = simulateStrict_Strtoll bs
+                let oVal =  bs |> BytesToStr |> FSharpx.FSharpOption.ParseInt64
                 match oVal with
                 | Some ii   ->  let newVal = ii + increment 
                                 let bs2 = newVal |> System.Convert.ToString |> StrToBytes

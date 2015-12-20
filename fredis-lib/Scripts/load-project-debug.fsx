@@ -1,0 +1,18 @@
+// Warning: generated file; your changes could be lost when a new file is generated.
+#I __SOURCE_DIRECTORY__
+#load "load-references-debug.fsx"
+#load "../AssemblyInfo.fs"
+      "../FredisTypes.fs"
+      "../Utils.fs"
+      "../RespStreamUtils.fs"
+      "../RedisErrorMsgs.fs"
+      "../RespUtils.fs"
+      "../RespMsgProcessor.fs"
+      "../CmdCommon.fs"
+      "../BitposCmdProcessor.fs"
+      "../BitcountCmdProcessor.fs"
+      "../BitopCmdProcessor.fs"
+      "../RespToFredisCmdParser.fs"
+      "../FredisCmdProcessor.fs"
+      "../CmdProcChannels.fs"
+      "../FredisCmdToResp.fs"

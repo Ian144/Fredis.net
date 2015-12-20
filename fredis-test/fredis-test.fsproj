@@ -125,6 +125,7 @@
     <Compile Include="TestRESPParsingFSCheck.fs" />
     <Compile Include="TestFredisCmdsFSCheck.fs" />
     <Compile Include="TestFredisCmdToRESP.fs" />
+    <Compile Include="TestRedisVsFredis.fs" />
     <None Include="packages.config" />
     <None Include="App.config" />
     <None Include="Scripts\load-references.fsx" />

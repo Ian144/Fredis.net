@@ -3,8 +3,9 @@
 open Xunit
 open FsCheck
 open FsCheck.Xunit
-
 open Swensen.Unquote
+
+open FredisTypes
 
 
 type BitIndexBytes = {BitIndex:int; Bs:byte array}
@@ -88,7 +89,7 @@ let ``SetBit BitPos true roundtrip`` (bitIdxbufSz:BitIdxBufSz) =
 
     let bs = Array.zeroCreate<byte> bufSz
     Utils.SetBit bs bitIdx true
-    let foundIdx = BitposCmdProcessor.FindFirstBitIndex 0 (bs.Length-1)  true bs
+    let foundIdx = BitposCmdProcessor.FindFirstBitIndex 0 (bs.Length-1) true bs ArrayRange.All
     bitIdx = foundIdx
 
 
@@ -100,7 +101,7 @@ let ``SetBit BitPos false roundtrip`` (bitIdxbufSz:BitIdxBufSz) =
 
     let bs = Array.create<byte> bufSz 255uy
     Utils.SetBit bs bitIdx false
-    let foundIdx = BitposCmdProcessor.FindFirstBitIndex 0 (bs.Length-1) false bs
+    let foundIdx = BitposCmdProcessor.FindFirstBitIndex 0 (bs.Length-1) false bs ArrayRange.All
     bitIdx = foundIdx
 
 

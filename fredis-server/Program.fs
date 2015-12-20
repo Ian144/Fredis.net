@@ -67,7 +67,7 @@ let ClientListenerLoop (client:TcpClient) =
 //                        printfn "received: %A" respMsg
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
+                        | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
                         //| Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
@@ -77,7 +77,8 @@ let ClientListenerLoop (client:TcpClient) =
 
     Async.StartWithContinuations(
          asyncProcessClientRequests,
-         (fun _     -> printfn "ClientListener completed" ),
+//         (fun _     -> printfn "ClientListener completed" ),
+         ignore,
          ClientError,
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )
@@ -100,14 +101,14 @@ let ConnectionListenerLoop (listener:TcpListener) =
 
 
 
-//let WaitForExitCmd2 () = 
-//    while not (System.Console.ReadKey().KeyChar = 'X') do
-//        ()
+let WaitForExitCmd () = 
+    while System.Console.ReadKey().KeyChar <> 'X' do
+        ()
 
-let rec WaitForExitCmd () = 
-    match System.Console.ReadKey().KeyChar with
-    | 'X'   -> ()
-    | _     -> WaitForExitCmd ()
+//let rec WaitForExitCmd () = 
+//    match System.Console.ReadKey().KeyChar with
+//    | 'X'   -> ()
+//    | _     -> WaitForExitCmd ()
 
 
 let ipAddr = IPAddress.Parse(host)
