@@ -3,12 +3,9 @@
 
 open Xunit
 open FsCheck
-open FsCheck.Xunit
-
 open Swensen.Unquote
 
 open System.Threading
-open System.Collections.Generic
 
 
 
@@ -35,7 +32,7 @@ type private Sequence = Padded.Sequence
 
 
 
-let private Producerfunc (numMsgs:int, ringBuffer:(int*int) array, seqRead:Sequence, seqWrite:Sequence, seqWriteC:Sequence, lBufSize:int64, indexMask:int64) = 
+let private producerfunc (numMsgs:int, ringBuffer:(int*int) array, seqRead:Sequence, seqWrite:Sequence, seqWriteC:Sequence, lBufSize:int64, indexMask:int64) = 
 
     let tid = Thread.CurrentThread.ManagedThreadId
 
@@ -50,7 +47,7 @@ let private Producerfunc (numMsgs:int, ringBuffer:(int*int) array, seqRead:Seque
     
 
 
-let private ConsumerFunc (totalNumMsgs:int, msgsReceived:System.Collections.Generic.List<int*int>, ringBuffer:(int*int) array, seqRead:Sequence, seqWriteC:Sequence, lBufSize:int64, indexMask:int64) = 
+let private consumerFunc (totalNumMsgs:int, msgsReceived:System.Collections.Generic.List<int*int>, ringBuffer:(int*int) array, seqRead:Sequence, seqWriteC:Sequence, lBufSize:int64, indexMask:int64) = 
     let mutable ctr = 0L
     let total = int64 (totalNumMsgs)
     while ctr < total do
@@ -67,7 +64,7 @@ let private ConsumerFunc (totalNumMsgs:int, msgsReceived:System.Collections.Gene
 let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  = 
 
     let lBufSize = int64(bufSize)
-    let nSpin = 1024    
+    let nSpin = 1024
     let indexMask = lBufSize - 1L
     let seqWrite =      Sequence Disruptor.initialSeqVal
     let seqWriteC =     Sequence Disruptor.initialSeqVal
@@ -77,7 +74,7 @@ let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  =
 
     // create consumer task
     let msgsReceived = System.Collections.Generic.List<int*int>(totalNumMsgs)
-    let consumerAction () = ConsumerFunc (totalNumMsgs, msgsReceived, ringBuffer, seqRead, seqWriteC, lBufSize, indexMask )
+    let consumerAction () = consumerFunc (totalNumMsgs, msgsReceived, ringBuffer, seqRead, seqWriteC, lBufSize, indexMask )
     let consumerTask = Tasks.Task.Factory.StartNew consumerAction 
      
     // create producer tasks
@@ -88,7 +85,7 @@ let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  =
     // cant use tasks for producing, the test requires a separate thread for each sender
     let producerThreads =
                         [   for _ in 0 .. (numProducers - 1)  do
-                            let prodAction () = Producerfunc prodParams
+                            let prodAction () = producerfunc prodParams
                             let thrd = System.Threading.Thread( prodAction )
                             thrd.Start()
                             yield thrd ]

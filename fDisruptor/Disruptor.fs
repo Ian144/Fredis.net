@@ -2,7 +2,6 @@
 
 open System.Threading
 
-open System.Runtime.InteropServices
 
 
 
@@ -60,9 +59,9 @@ let ProducerWaitCAS( bufSize, waitingSeq:Sequence, targetSeq:Sequence) =
 // single producer single consumer producer wait func
 // not used in fredis
 let ProducerWait( bufSize, waitingSeq:Sequence, targetSeq: Sequence) =
-    let requestSeqVal = Thread.VolatileRead ( &waitingSeq._value ) // TODO; change to Thread.VolatileRead???
+    let requestSeqVal = Thread.VolatileRead ( &waitingSeq._value )
     let mutable targetSeqVal = Thread.VolatileRead ( & targetSeq._value )
-    while (requestSeqVal - targetSeqVal) > bufSize do  
+    while (requestSeqVal - targetSeqVal) > bufSize do
         System.Threading.Thread.SpinWait(nSpin)
         targetSeqVal <- Thread.VolatileRead ( &(targetSeq._value))
     let lastProdPosWritten = requestSeqVal - 1L

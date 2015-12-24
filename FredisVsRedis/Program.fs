@@ -114,7 +114,7 @@ let shrinkFredisCmd (cmd:FredisCmd) =
 
 
 let genFredisCmdList = Gen.nonEmptyListOf Arb.generate<FredisCmd>
-let shrinkFredisCmdList (xs:FredisCmd list) = Arb.shrink xs  // statck overflow once registered
+let shrinkFredisCmdList (xs:FredisCmd list) = Arb.shrink xs  // stack overflow once registered?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 
 
 
@@ -185,7 +185,6 @@ let propFredisVsRedis (cmds:FredisTypes.FredisCmd list) =
     if (ctr % 1000) = 0 then
         printfn "test num: %d" ctr
 
-
     // not restarting fredis and redis, so the first command is always a flush
     let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
     let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
@@ -217,7 +216,7 @@ let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
 let lenPreCond xs = (List.length xs) > 1
 
 let propFredisVsRedisWithPreCond  (cmds:FredisTypes.FredisCmd list) =
-     lenPreCond cmds ==> propFredisVsRedisNewConnection cmds
+     lenPreCond cmds ==> lazy propFredisVsRedisNewConnection cmds
 
 
 let config = {  Config.Default with 

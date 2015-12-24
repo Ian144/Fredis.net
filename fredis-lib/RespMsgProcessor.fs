@@ -36,31 +36,31 @@ let LF = 10
 
 
 let ReadUntilCRLF (strm:Stream) : int list = 
-    let rec ReadInner (ns:Stream) bs : int list = 
+    let rec readInner (ns:Stream) bs : int list = 
         match ns.ReadByte() with    // annoyingly ReadByte returns an int32
         | -1    ->  []              // end of stream, #### reconsider if returning an empty list is correct
         | CR    ->  RespStreamFuncs.Eat1 ns         //#### assuming the next char is LF
                     bs
-        | b     ->  b :: (ReadInner ns bs) 
-    ReadInner strm []
+        | b     ->  b :: (readInner ns bs) 
+    readInner strm []
 
 
 
 let ReadCRLFDelimitedStr (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp = 
-    let rec ReadInner (ns:Stream) bs : byte list = 
+    let rec readInner (ns:Stream) bs : byte list = 
         match ns.ReadByte() with
         | -1    ->  []      // end of stream, #### reconsider if returning an empty list is correct
         | CR    ->  RespStreamFuncs.Eat1 ns //#### assuming the next char is LF
                     bs
         | ii    ->  let bb = System.Convert.ToByte ii
-                    bb :: (ReadInner ns bs) 
-    ReadInner strm [] |> Array.ofList |> makeRESPMsg
+                    bb :: (readInner ns bs) 
+    readInner strm [] |> Array.ofList |> makeRESPMsg
 
 
 // an attempt at a functional,immutable int64 reader
 let ReadInt64F (strm:Stream) = 
     let foldInt = (fun cur nxt -> cur * 10L + nxt)
-    let AsciiDigitToDigit (asciiCode:int32) = (int64 asciiCode) - 48L
+    let asciiDigitToDigit (asciiCode:int32) = (int64 asciiCode) - 48L
     let asciiCodes = ReadUntilCRLF strm
 
     if asciiCodes.IsEmpty
@@ -70,7 +70,7 @@ let ReadInt64F (strm:Stream) =
                 match asciiCodes.Head with
                 | 45    -> -1L, asciiCodes.Tail
                 | _     ->  1L, asciiCodes
-            let ii1 = asciiCodes2 |> List.map AsciiDigitToDigit |> List.fold foldInt 0L
+            let ii1 = asciiCodes2 |> List.map asciiDigitToDigit |> List.fold foldInt 0L
             ii1 * sign
 
 
@@ -125,7 +125,7 @@ let ReadInt32 = ReadInt32Imp
 // copies from the stream directly into the array that will be used as a key or value
 let ReadBulkString (rcvBufSz:int) (strm:Stream) = 
 
-    let rec ReadInner (strm:Stream) (numBytesReadSoFar:int) (totalBytesToRead:int) (byteArray:byte array) =
+    let rec readInner (strm:Stream) (numBytesReadSoFar:int) (totalBytesToRead:int) (byteArray:byte array) =
         let numBytesRemainingToRead = totalBytesToRead - numBytesReadSoFar 
         let numBytesToReadThisTime = if numBytesRemainingToRead > rcvBufSz then rcvBufSz else numBytesRemainingToRead
         let numBytesRead = strm.Read (byteArray, numBytesReadSoFar, numBytesToReadThisTime)
@@ -133,14 +133,14 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
         match numBytesReadSoFar2 with
         | num when num > totalBytesToRead ->    failwith "ReadBulkString read more bytes than expected"
         | num when num = totalBytesToRead ->    ()
-        | _                               ->    ReadInner strm numBytesReadSoFar2 totalBytesToRead byteArray // ####TCO?
+        | _                               ->    readInner strm numBytesReadSoFar2 totalBytesToRead byteArray // ####TCO?
 
     let lenToRead = ReadInt32 strm
 
     match lenToRead with
     | -1    ->  Resp.BulkString BulkStrContents.Nil
     | len   ->  let byteArr = Array.zeroCreate<byte> len
-                do ReadInner strm  0 len byteArr
+                do readInner strm  0 len byteArr
 //                StreamFuncs.EatCRLF strm
                 strm.ReadByte() |> ignore
                 strm.ReadByte() |> ignore
