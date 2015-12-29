@@ -47,7 +47,15 @@ type ByteOffset = private ByteOffset of int with
 
 type optByteOffsetPair = (ByteOffset*ByteOffset) option
 type Bytes = byte array 
+
 type Key = Key of string
+    with
+        override this.ToString () = 
+            let (Key ss) = this
+            ss
+
+
+
 
 // AND, OR and XOR need a destKey, srcKey and 0->N further source keys
 // making 'illegal states unrepresentable' by not having all source keys in a list, as that would allow zero source keys

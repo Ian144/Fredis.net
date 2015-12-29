@@ -12,8 +12,8 @@ let port = 6379
 // for responding to 'raw' non-RESP pings
 [<Literal>]
 let PingL = 80  // P - redis-benchmark PING_INLINE just sends PING\r\n, not encoded as RESP
-let pongBytes  = Utils.StrToBytes "+PONG\r\n"
 
+let pongBytes  = "+PONG\r\n"B
 
 
 let HandleSocketError (name:string) (ex:System.Exception) = 
@@ -31,6 +31,22 @@ let HandleSocketError (name:string) (ex:System.Exception) =
 
 let ClientError ex =  HandleSocketError "client error" ex
 let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
+
+
+
+
+//type BufferSegment =
+//  { Buffer : System.ArraySegment<byte>
+//    Offset : int
+//    Length : int }
+//
+//
+//[<NoComparison>]
+//type Connection =  { 
+//    Client      : TcpClient
+//    Segments    : BufferSegment list }
+//    with member this.Async.ReadByte   
+
 
 
 let ClientListenerLoop (client:TcpClient) =
@@ -63,7 +79,8 @@ let ClientListenerLoop (client:TcpClient) =
                         Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         do! strm.AsyncWrite pongBytes
                     else
-                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
+//                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
+                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
 //                        printfn "received: %A" respMsg
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 

@@ -15,10 +15,14 @@ let BytesToInt64 bs = System.BitConverter.ToInt64(bs, 0)
 let BytesToKey = BytesToStr >> Key
 
 
-let keyToBytes = BytesToStr >> Key
 
 
-// in redis offset 0 is MSB and offset 7 is LSB:
+
+
+
+
+
+// in redis offset 0 is MSB and offset 7 is LSB
 let SetBit (bs:byte []) (bitIndexIn:int) (value:bool) =
     let byteIndex   = bitIndexIn / 8
     let bitIndex = bitIndexIn % 8

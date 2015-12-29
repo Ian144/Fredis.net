@@ -1,13 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-server", "fredis-server\fredis-server.fsproj", "{7EC4CF4F-D4B4-4025-947D-C0F6639C0DD8}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-lib", "fredis-lib\fredis-lib.fsproj", "{2B4825FD-73B1-4105-A6E7-32ECF0263400}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-test", "fredis-test\fredis-test.fsproj", "{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisTest", "fredis-test\FredisTest.fsproj", "{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{40CC5AE8-B84E-438B-82C1-964D4534C9A0}"
 	ProjectSection(SolutionItems) = preProject

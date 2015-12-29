@@ -20,6 +20,7 @@ let Eat1 (ns:Stream) =
     ns.ReadByte() |> ignore
 
 
+// EatNNoArray funcs are for 'no allocation' tests
 
 let Eat5NoArray (ns:Stream) = 
     ns.ReadByte() |> ignore
@@ -54,25 +55,14 @@ type Net.Sockets.NetworkStream with
         return bs.[0]
         }
 
-    // read a single byte,  returns 'None' when there is nothing to read - probably due to client shutting down without closing the socket
-    member ns.AsyncReadByte2 () = async{
-        let bytes = Array.create 1 0uy
-        let tsk = ns.ReadAsync(bytes, 0, 1)
+    // read a single byte, return None if client disconnected
+    member ns.AsyncReadByte3 buf = async{
+        let tsk = ns.ReadAsync(buf, 0, 1)
         let! numBytesRead = Async.AwaitTask tsk
         let ret = 
                 match numBytesRead with
                 | 0 -> None
-                | _ -> Some bytes.[0]
-        return ret
-        }
-
-    member ns.AsyncReadByte3 bytes = async{
-        let tsk = ns.ReadAsync(bytes, 0, 1)
-        let! numBytesRead = Async.AwaitTask tsk
-        let ret = 
-                match numBytesRead with
-                | 0 -> None
-                | _ -> Some bytes.[0]
+                | _ -> Some buf.[0]
         return ret
         }
 
@@ -82,11 +72,9 @@ type Net.Sockets.NetworkStream with
 
 
 let private crlf = [|13uy; 10uy |]
-let private simpStrType = "+" |> Utils.StrToBytes
-let private errStrType = "-"  |> Utils.StrToBytes
-
-
-let nilBulkStrBytes = "$-1\r\n" |> Utils.StrToBytes
+let private simpStrType = "+"B
+let private errStrType  = "-"B
+let nilBulkStrBytes = "$-1\r\n"B
 
 
 
@@ -102,7 +90,8 @@ let private AsyncSendBulkString (strm:Stream) (contents:BulkStrContents) =
     | BulkStrContents.Nil         ->    async{ do! strm.AsyncWrite nilBulkStrBytes }
 
 
-let pongBytes  = Utils.StrToBytes "+PONG\r\n"
+let pongBytes  = "+PONG\r\n"B
+
 
 let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
 //    strm.AsyncWrite pongBytes // 

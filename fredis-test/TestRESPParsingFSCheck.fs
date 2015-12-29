@@ -34,7 +34,7 @@ let genAlphaByteArray = Gen.arrayOf genAlphaByte
 
 let genPopulatedRespBulkString = 
     gen{
-        let! bytes = genAlphaByteArray    
+        let! bytes = genAlphaByteArray
         return RespUtils.MakeBulkStr bytes
     }
 
@@ -48,13 +48,13 @@ let genRespBulkString = Gen.frequency [10, genPopulatedRespBulkString;
 
 let genRespSimpleString = 
     gen{
-        let! bytes = genAlphaByteArray    
+        let! bytes = genAlphaByteArray
         return Resp.SimpleString bytes
     }
 
 let genRespError = 
     gen{
-        let! bytes = genAlphaByteArray    
+        let! bytes = genAlphaByteArray
         return Resp.Error bytes
     }
 
@@ -75,18 +75,27 @@ and genResp = Gen.frequency [ 1, genRespSimpleString; 1, genRespError; 2, genRes
 
 
 //ArbResp makes valid RESP only
-type ArbResp = 
+type ArbOverrides = 
     static member Resp() = Arb.fromGen (genResp )
-
-type BufferSizes = 
     static member Ints() =
         Arb.fromGen (Gen.choose(1, 8096*8096))
 
 
 
 
+[<Property( Arbitrary=[|typeof<ArbOverrides>|] )>]
+let ``Async Write-Read Resp stream roundtrip`` (bufSize:int)  (respIn:FredisTypes.Resp) =
+    use strm = new System.IO.MemoryStream()
+    RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
+    strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
+    let respOut = AsyncRespMsgProcessor.LoadRESPMsgInner bufSize strm |> Async.RunSynchronously
+    let isEof = strm.Position = strm.Length
+    respIn = respOut && isEof
 
-[<Property( Arbitrary=[|typeof<BufferSizes>; typeof<ArbResp>|] )>]
+
+
+
+[<Property( Arbitrary=[|typeof<ArbOverrides>|] )>]
 let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     use strm = new MemoryStream()
     RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously

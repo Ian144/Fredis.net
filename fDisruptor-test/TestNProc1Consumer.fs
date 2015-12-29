@@ -114,9 +114,8 @@ let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  =
     let allSortedAscending = xxs |> List.forall (fun xs -> xs = expected)
 
     let badSeqs = xxs |> Seq.filter (fun xs -> xs <> expected) |> List.ofSeq
-
-
-    let ok = allMsgsReceived && allSortedAscending
+    
+    let ok = allMsgsReceived && allSortedAscending && badSeqs.IsEmpty
     ok
 
 

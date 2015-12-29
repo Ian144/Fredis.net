@@ -34,48 +34,40 @@ let LF = 10
 
 
 
-
-let ReadUntilCRLF (strm:Stream) : int list = 
-    let rec readInner (ns:Stream) bs : int list = 
-        match ns.ReadByte() with    // annoyingly ReadByte returns an int32
-        | -1    ->  []              // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  RespStreamFuncs.Eat1 ns         //#### assuming the next char is LF
-                    bs
-        | b     ->  b :: (readInner ns bs) 
-    readInner strm []
+// #### reading a single byte at at time is probably inefficient, consider a more efficient version of this function
+let rec ReadUntilCRLF (ns:Stream) : int list = 
+    match ns.ReadByte() with    // annoyingly ReadByte returns an int32
+    | -1    ->  failwith "ReadUntilCRLF EOS before CRLF"
+    | CR    ->  RespStreamFuncs.Eat1 ns         // #### assuming the next char is LF, and eating it
+                []
+    | b     ->  b :: (ReadUntilCRLF ns ) 
 
 
 
-let ReadCRLFDelimitedStr (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp = 
-    let rec readInner (ns:Stream) bs : byte list = 
-        match ns.ReadByte() with
-        | -1    ->  []      // end of stream, #### reconsider if returning an empty list is correct
-        | CR    ->  RespStreamFuncs.Eat1 ns //#### assuming the next char is LF
-                    bs
-        | ii    ->  let bb = System.Convert.ToByte ii
-                    bb :: (readInner ns bs) 
-    readInner strm [] |> Array.ofList |> makeRESPMsg
 
 
-// an attempt at a functional,immutable int64 reader
+let ReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Resp = 
+    let bs = ReadUntilCRLF strm 
+    bs |> List.map byte |> Array.ofList |> makeRESPMsg
+
+
+// an attempt at a functional int64 reader
 let ReadInt64F (strm:Stream) = 
     let foldInt = (fun cur nxt -> cur * 10L + nxt)
     let asciiDigitToDigit (asciiCode:int32) = (int64 asciiCode) - 48L
     let asciiCodes = ReadUntilCRLF strm
 
-    if asciiCodes.IsEmpty
-    then    0L
+    if asciiCodes.IsEmpty then 0L
     else
-            let sign, asciiCodes2 = 
-                match asciiCodes.Head with
-                | 45    -> -1L, asciiCodes.Tail
-                | _     ->  1L, asciiCodes
-            let ii1 = asciiCodes2 |> List.map asciiDigitToDigit |> List.fold foldInt 0L
-            ii1 * sign
+        let sign, asciiCodes2 = 
+            match asciiCodes.Head with
+            | 45    -> -1L, asciiCodes.Tail
+            | _     ->  1L, asciiCodes
+        let ii1 = asciiCodes2 |> List.map asciiDigitToDigit |> List.fold foldInt 0L
+        ii1 * sign
 
 
-// an imperative int64 reader
-// adapted from sider code
+// an imperative int64 reader, adapted from sider code
 let ReadInt64Imp (strm:Stream) = 
     let mutable num = 0L
     let mutable b = strm.ReadByte()
@@ -85,14 +77,14 @@ let ReadInt64Imp (strm:Stream) =
         while b <> CR do
             num <- num * 10L + (int64 b) - 48L
             b <- strm.ReadByte()
-        strm.ReadByte() |> ignore // tthrow away the CRLF
+        strm.ReadByte() |> ignore // throw away the CRLF
         num * -1L
     else
         while b <> CR do
             num <- num * 10L + (int64 b) - 48L
             b <- strm.ReadByte()
-        strm.ReadByte() |> ignore // tthrow away the CRLF
-        num        
+        strm.ReadByte() |> ignore // throw away the CRLF
+        num
 
 
 // an imperative int64 reader
@@ -106,13 +98,13 @@ let ReadInt32Imp (strm:Stream) =
         while b <> CR do
             num <- num * 10 + b - 48
             b <- strm.ReadByte()
-        strm.ReadByte() |> ignore // tthrow away the CRLF
+        strm.ReadByte() |> ignore // throw away the CRLF
         num * -1
     else
         while b <> CR do
             num <- num * 10 + b - 48
             b <- strm.ReadByte()
-        strm.ReadByte() |> ignore // tthrow away the CRLF
+        strm.ReadByte() |> ignore // throw away the CRLF
         num 
 
 let ReadInt64 = ReadInt64Imp
@@ -168,8 +160,8 @@ and LoadRESPMsgInner (rcvBuffSz:int) (strm:Stream)  =
 
 and LoadRESPMsg (rcvBufSz:int) (respType:int) (strm:Stream) = 
     match respType with
-    | SimpleStringL -> ReadCRLFDelimitedStr Resp.SimpleString strm
-    | ErrorL        -> ReadCRLFDelimitedStr Resp.Error strm
+    | SimpleStringL -> ReadDelimitedResp Resp.SimpleString strm
+    | ErrorL        -> ReadDelimitedResp Resp.Error strm
     | IntegerL      -> ReadRESPInteger strm
     | BulkStringL   -> ReadBulkString rcvBufSz strm
     | ArrayL        -> LoadRESPMsgArray rcvBufSz strm
