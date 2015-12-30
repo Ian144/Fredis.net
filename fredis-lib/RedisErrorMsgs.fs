@@ -3,33 +3,31 @@ module ErrorMsgs
 
 
 
-let numArgsSet                     = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'set' command")
-let numArgsSetNX                   = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'setnx' command")
-let numArgsGet                     = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'get' command")
-let numArgsMSet                    = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'mset' command")
-let numArgsMSetNX                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'msetnx' command")
-let numArgsMGet                    = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'mget' command")
-let numArgsAppend                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'append' command")
-let numArgsBitcount                = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'bitcount' command")
-let numArgsBitop                   = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'bitop' command")
-let numArgsBitpos                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'bitpos' command")
-let numArgsGetRange                = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'getrange' command")
-let numArgsSetRange                = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'setrange' command")
-let badBitArgBitpos                = System.Text.Encoding.UTF8.GetBytes("ERR The bit argument must be 1 or 0.");
-let numKeysBitopNot                = System.Text.Encoding.UTF8.GetBytes("ERR BITOP NOT must be called with a single source key")
+let badBitArgBitpos                 = "ERR The bit argument must be 1 or 0."B
+let bitNotIntegerOrOutOfRange       = "ERR bit is not an integer or out of range"B
+let bitOffsetNotIntegerOrOutOfRange = "ERR bit offset is not an integer or out of range"B
+let numArgsAppend                   = "ERR wrong number of arguments for 'append' command"B
+let numArgsBitcount                 = "ERR wrong number of arguments for 'bitcount' command"B
+let numArgsBitop                    = "ERR wrong number of arguments for 'bitop' command"B
+let numArgsBitpos                   = "ERR wrong number of arguments for 'bitpos' command"B
+let numArgsDecr                     = "ERR wrong number of arguments for 'decr' command"B
+let numArgsDecrBy                   = "ERR wrong number of arguments for 'decrby' command"B
+let numArgsGet                      = "ERR wrong number of arguments for 'get' command"B
+let numArgsGetbit                   = "ERR wrong number of arguments for 'getbit' command"B
+let numArgsGetRange                 = "ERR wrong number of arguments for 'getrange' command"B
+let numArgsGetSet                   = "ERR wrong number of arguments for 'getset' command"B
+let numArgsIncr                     = "ERR wrong number of arguments for 'incr' command"B
+let numArgsIncrBy                   = "ERR wrong number of arguments for 'incrby' command"B
+let numArgsIncrByFloat              = "ERR wrong number of arguments for 'incrbyfloat' command"B
+let numArgsMGet                     = "ERR wrong number of arguments for 'mget' command"B
+let numArgsMSet                     = "ERR wrong number of arguments for 'mset' command"B
+let numArgsMSetNX                   = "ERR wrong number of arguments for 'msetnx' command"B
+let numArgsSet                      = "ERR wrong number of arguments for 'set' command"B
+let numArgsSetbit                   = "ERR wrong number of arguments for 'setbit' command"B
+let numArgsSetNX                    = "ERR wrong number of arguments for 'setnx' command"B
+let numArgsSetRange                 = "ERR wrong number of arguments for 'setrange' command"B
+let numKeysBitopNot                 = "ERR BITOP NOT must be called with a single source key"B
+let syntaxError                     = "ERR syntax error"B
+let valueNotAValidFloat             = "ERR value is not a valid float"B
+let valueNotIntegerOrOutOfRange     = "ERR value is not an integer or out of range"B
 
-let numArgsDecr                    = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'decr' command")
-let numArgsIncr                    = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'incr' command")
-let numArgsDecrBy                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'decrby' command")
-let numArgsIncrBy                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'incrby' command")
-let numArgsIncrByFloat             = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'incrbyfloat' command")
-let numArgsSetbit                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'setbit' command")
-let numArgsGetbit                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'getbit' command")
-let numArgsGetSet                  = System.Text.Encoding.UTF8.GetBytes("ERR wrong number of arguments for 'getset' command")
-
-
-let syntaxError                     = System.Text.Encoding.UTF8.GetBytes("ERR syntax error")
-let valueNotIntegerOrOutOfRange     = System.Text.Encoding.UTF8.GetBytes("ERR value is not an integer or out of range")
-let valueNotAValidFloat             = System.Text.Encoding.UTF8.GetBytes("ERR value is not a valid float")
-let bitOffsetNotIntegerOrOutOfRange = System.Text.Encoding.UTF8.GetBytes("ERR bit offset is not an integer or out of range")
-let bitNotIntegerOrOutOfRange       = System.Text.Encoding.UTF8.GetBytes("ERR bit is not an integer or out of range")

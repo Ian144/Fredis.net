@@ -34,11 +34,11 @@ let LF = 10
 
 
 
-// #### reading a single byte at at time is probably inefficient, consider a more efficient version of this function
+// TODO reading a single byte at at time is probably inefficient, consider a more efficient version of this function
 let rec ReadUntilCRLF (ns:Stream) : int list = 
     match ns.ReadByte() with    // annoyingly ReadByte returns an int32
     | -1    ->  failwith "ReadUntilCRLF EOS before CRLF"
-    | CR    ->  RespStreamFuncs.Eat1 ns         // #### assuming the next char is LF, and eating it
+    | CR    ->  RespStreamFuncs.Eat1 ns         // TODO assuming the next char is LF, and eating it
                 []
     | b     ->  b :: (ReadUntilCRLF ns ) 
 
@@ -125,7 +125,7 @@ let ReadBulkString (rcvBufSz:int) (strm:Stream) =
         match numBytesReadSoFar2 with
         | num when num > totalBytesToRead ->    failwith "ReadBulkString read more bytes than expected"
         | num when num = totalBytesToRead ->    ()
-        | _                               ->    readInner strm numBytesReadSoFar2 totalBytesToRead byteArray // ####TCO?
+        | _                               ->    readInner strm numBytesReadSoFar2 totalBytesToRead byteArray // TODOTCO?
 
     let lenToRead = ReadInt32 strm
 

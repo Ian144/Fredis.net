@@ -51,7 +51,7 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 let ClientListenerLoop (client:TcpClient) =
 
-    //#### todo set from config
+    //TODO Set from config
     client.NoDelay <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
     client.ReceiveBufferSize    <- 8 * 1024
     client.SendBufferSize       <- 8 * 1024
@@ -79,14 +79,12 @@ let ClientListenerLoop (client:TcpClient) =
                         Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         do! strm.AsyncWrite pongBytes
                     else
-//                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //#### receiving invalid RESP will cause an exception here which will kill the client connection
-                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-//                        printfn "received: %A" respMsg
+                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //TODO receiving invalid RESP will cause an exception here which will kill the client connection
+//                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
-                        //| Choice2Of2 err    ->  do! strm.AsyncWrite err // err strings are in RESP format
         }
 
 

@@ -49,7 +49,7 @@ let rec AsyncReadUntilCRLF (ns:Stream) = async{
     match bs.[0] with
     | CRb   ->  let! lf = ns.AsyncRead(1)    // assuming the next char is LF, and eating it
                 return []
-    | hd    ->  let! tl = AsyncReadUntilCRLF ns      // TODO no TCO in AsyncReadUntilCRLF
+    | hd    ->  let! tl = AsyncReadUntilCRLF ns      // FIX no TCO in AsyncReadUntilCRLF
                 return (hd :: tl)
 }
 

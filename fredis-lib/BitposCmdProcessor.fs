@@ -59,7 +59,7 @@ let Process key (bitVal:bool) (range:ArrayRange) (hashMap:HashMap) =
         | (ArrayRange.Lower ll, true)               ->  let bs = hashMap.[key] 
                                                         let arrayUBound = bs.Length - 1
                                                         let uu = arrayUBound
-                                                        let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu arrayUBound //#### consider a function to only rationalise the lower bound here
+                                                        let optBounds = CmdCommon.RationaliseArrayBounds ll.Value uu arrayUBound //TODO consider a function to only rationalise the lower bound here
                                                         match optBounds with
                                                         | Some (lower2, upper2) -> (FindFirstBitIndex lower2 upper2 bitVal bs range) |> int64
                                                         | None                  -> -1L

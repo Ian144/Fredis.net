@@ -1,6 +1,6 @@
 ﻿module Utils
 
-//#### use less generic name than Utils and/or separate into multiple files
+//TODO use less generic name than Utils and/or separate into multiple files
 
 open FSharpx.Choice
 

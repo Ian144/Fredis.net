@@ -22,7 +22,7 @@ let Parse (msgArr:Resp []) =
     | n when n > 3  ->  let operationStr   = RespUtils.PartialGetMsgPayload msgArr.[1] |> BytesToStr
                         let destKey = RespUtils.PartialGetMsgPayload msgArr.[2] |> BytesToKey
                         
-                        // three 'tails' to remove the cmd and bitop op, and destKey (#### f# 4.0 might add 'skip' to List)
+                        // three 'tails' to remove the cmd and bitop op, and destKey (TODO f# 4.0 might add 'skip' to List)
                         let srcKeys = msgArr |> Array.toList |>  List.tail |> List.tail |> List.tail |> List.map (RespUtils.PartialGetMsgPayload >> BytesToKey)
 
                         // there must be at least one srcKey as arrLen > 3, NOT requires exactly one src key

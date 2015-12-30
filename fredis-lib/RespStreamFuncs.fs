@@ -71,10 +71,10 @@ type Net.Sockets.NetworkStream with
 
 
 
-let private crlf = [|13uy; 10uy |]
+let private crlf        = "\r\n"B
 let private simpStrType = "+"B
 let private errStrType  = "-"B
-let nilBulkStrBytes = "$-1\r\n"B
+let nilBulkStrBytes     = "$-1\r\n"B
 
 
 
@@ -90,11 +90,8 @@ let private AsyncSendBulkString (strm:Stream) (contents:BulkStrContents) =
     | BulkStrContents.Nil         ->    async{ do! strm.AsyncWrite nilBulkStrBytes }
 
 
-let pongBytes  = "+PONG\r\n"B
-
 
 let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
-//    strm.AsyncWrite pongBytes // 
     async{
         do! strm.AsyncWrite simpStrType
         do! strm.AsyncWrite contents
@@ -112,7 +109,6 @@ let private AsyncSendSimpleString2 (destStrm:Stream) (contents:byte array) =
 
 
 
-//#### 
 let AsyncSendError (strm:Stream) (contents:byte array) =
     async{
         do! strm.AsyncWrite errStrType

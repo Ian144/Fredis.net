@@ -24,7 +24,7 @@ let StrToBulkStr = Utils.StrToBytes >> RespUtils.MakeBulkStr
 
 
 
-// #### DRY violation
+// FIX DRY violation
 let private readRESPInteger (msg:Resp) = 
     match msg with
     | Resp.Integer ii   ->  ii

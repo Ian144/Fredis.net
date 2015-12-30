@@ -13,18 +13,18 @@ open Utils
 
 
 
-// #### this is a partial function - fix this
+// TODO this is a partial function - fix this
 // zeroth element contains mset
-// even indices are keys
-// odd indices are values
+// odd indices are keys
+// even indices are values
 let private GetMSetParamPairs (msgArr:Resp []) = 
     let maxIdx = msgArr.Length - 1
     [   for idx in 2 .. 2 .. maxIdx do
         let keyIdx = idx - 1
         let keyBytes = RespUtils.PartialGetMsgPayload msgArr.[keyIdx]
         let key = BytesToKey keyBytes
-        let valBytes = RespUtils.PartialGetMsgPayload msgArr.[idx]
-        yield key, valBytes]
+        let vval = RespUtils.PartialGetMsgPayload msgArr.[idx]
+        yield key, vval]
 
 
 
@@ -34,7 +34,7 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
     let msgStr      = BytesToStr(msgBytes)
     let msgArrLen   = Array.length msgArr
 
-    //#### consider replacing this ever growing match statement with a map of string to function
+    //TODO consider replacing this ever growing match statement with a map of string to function
     match msgStr.ToUpper() with
     | "APPEND" -> 
         match msgArrLen with

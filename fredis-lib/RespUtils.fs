@@ -5,7 +5,7 @@ module RespUtils
 open FredisTypes
 
 
-let errorBytes  = Utils.StrToBytes "-Error\r\n"
+
 
 let RespStrLen (str:string) = Resp.Integer (int64 str.Length)
 
@@ -14,14 +14,16 @@ let MakeBulkStr = BulkStrContents.Contents >> Resp.BulkString
 let emptyBulkStr = Resp.BulkString (BulkStrContents.Contents [||]) // i.e. an empty byte array
 let nilBulkStr = Resp.BulkString BulkStrContents.Nil
 
-let okSimpleStr = "OK" |> Utils.StrToBytes |> Resp.SimpleString
-let pingSimpleStr = "PING" |> Utils.StrToBytes |> Resp.SimpleString
-let pongSimpleStr = "PONG" |> Utils.StrToBytes |> Resp.SimpleString
+let errorBytes  = "-Error\r\n"B
+
+let okSimpleStr     = "OK"B     |> Resp.SimpleString
+let pingSimpleStr   = "PING"B   |> Resp.SimpleString
+let pongSimpleStr   = "PONG"B   |> Resp.SimpleString
 
 
 
 
-// #### remove the need for partial functions
+// TODO remove the need for partial functions
 let PartialGetMsgPayload respMsg = 
     match respMsg with
     | Resp.Array _              ->  failwith "invalid PartialGetMsgPayload call"

@@ -7,3 +7,4 @@
       "../TestRESPParsingFSCheck.fs"
       "../TestFredisCmdsFSCheck.fs"
       "../TestFredisCmdToRESP.fs"
+      "../TestRedisVsFredis.fs"
