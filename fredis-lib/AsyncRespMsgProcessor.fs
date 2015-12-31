@@ -4,8 +4,6 @@ module AsyncRespMsgProcessor
 open System.IO
 open FredisTypes
 open Utils
-
-open FSharp.Control.AsyncSeq
 open FSharp.Control.AsyncSeqExtensions
 
 
@@ -157,10 +155,10 @@ let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) : Async<Resp> =
             for _ in 0L .. (numArrayElements - 1L) do
             let! msg = LoadRESPMsgInner rcvBuffSz ns
             yield msg
-        }
+        } |> FSharp.Control.AsyncSeq.toArrayAsync
 
     async{
-        let! msgs = FSharp.Control.AsyncSeq.toArray asyncSeqResp
+        let! msgs = asyncSeqResp
         return Resp.Array msgs
     }
 
