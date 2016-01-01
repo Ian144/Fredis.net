@@ -12,7 +12,7 @@ type BitIndexBytes = {BitIndex:int; Bs:byte array}
 
 let genBitIndexBytes = 
     gen{
-        let! arraySize = Gen.choose (1, 4096)
+        let! arraySize = Gen.choose (1, 4096 * 128)
         let! bs = Gen.arrayOfLength arraySize Arb.generate<byte>
         let  maxBitIndex = (bs.Length * 8) - 1
         let!  bitIndex = Gen.choose(0, maxBitIndex)
@@ -29,7 +29,7 @@ type BitIdxBufSz = {BitIdx:int; BufSz:int}
 
 let BitIdxBufSz = 
     gen{
-        let! bufSz = Gen.choose (1, 4096)
+        let! bufSz = Gen.choose (1, 4096 * 128)
         let  maxBitIndex = (bufSz * 8) - 1
         let!  bitIdx = Gen.choose(0, maxBitIndex)
         return {BitIdx = bitIdx; BufSz = bufSz}

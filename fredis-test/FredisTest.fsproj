@@ -64,7 +64,6 @@
     <Compile Include="TestRedisVsFredis.fs" />
     <Content Include="packages.config" />
     <Content Include="App.config" />
-    <Compile Include="AssemblyInfo.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FsCheck">
