@@ -198,8 +198,8 @@ let private countSetBitsReferenceImpl (bs:Bytes) =
 
 
 
-[<Property(Verbose = true, MaxTest = 9999)>]
-//[<Property>]
+//[<Property(Verbose = true, MaxTest = 9999)>]
+[<Property>]
 let ``BitcountCmdProcessor.CountBitsInArrayRange agrees with alternate count method`` (bs:byte array) =
     BitcountCmdProcessor.CountSetBitsInRange (bs, 0, bs.Length) = countSetBitsReferenceImpl bs
 

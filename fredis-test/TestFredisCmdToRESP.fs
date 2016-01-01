@@ -111,7 +111,7 @@ type Overrides() =
 
 
 
-[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=true, MaxTest=1000 )>]
+[<Property( Arbitrary=[|typeof<Overrides>|], Verbose=false, MaxTest=1000 )>]
 let ``fredis cmd to resp to fredis cmd roundtrip`` (cmdIn:FredisTypes.FredisCmd) =
     let resp = FredisCmdToResp.FredisCmdToRESP cmdIn
     match  FredisCmdParser.ParseRESPtoFredisCmds resp with
