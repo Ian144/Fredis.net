@@ -1,16 +1,6 @@
-FsCheck
 FsCheck.Xunit
-FSharp.Control.AsyncSeq
-FSharp.Core
-FSharpx.Async
-FSharpx.Collections
 FSharpx.Extras
 MSBuild.Extension.Pack
 Unquote
 xunit
-xunit.abstractions
-xunit.assert
-xunit.core
-xunit.extensibility.core
-xunit.extensibility.execution
 xunit.runner.visualstudio
