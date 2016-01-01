@@ -1,0 +1,6 @@
+FsCheck
+FsCheck.Xunit
+FSharp.Core
+xunit.abstractions
+xunit.extensibility.core
+xunit.extensibility.execution
