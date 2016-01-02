@@ -82,7 +82,7 @@ let AsyncReadInt64 (strm:Stream) = async{
 }
 
 
-// an attempt at a functional int64 reader
+// an attempt at a functional int32 reader
 let AsyncReadInt32 (strm:Stream) = async{
     let foldInt = (fun cur nxt -> cur * 10 + nxt)
     let asciiToDigit (asciiCode:byte) = (int asciiCode) - 48

@@ -402,4 +402,5 @@
   <Import Project="..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_props).props" Condition="Exists('..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_props).props')" Label="Paket" />
   <Import Project="..\packages\MSBuild.Extension.Pack\build\$(__paket__MSBuild_Extension_Pack_targets).targets" Condition="Exists('..\packages\MSBuild.Extension.Pack\build\$(__paket__MSBuild_Extension_Pack_targets).targets')" Label="Paket" />
   <Import Project="..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_targets).targets" Condition="Exists('..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_targets).targets')" Label="Paket" />
+  <Import Project="..\.paket\paket.targets" />
 </Project>

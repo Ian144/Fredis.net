@@ -22,11 +22,6 @@ type NumThreads =
         |> Arb.fromGen
 
 
-//[<Property( Arbitrary = [| typeof<RingBufSize>; typeof<NumThreads> |])>]
-//let ``ReadInt64 basic`` (sz:int) (nt:int64) =
-//    printfn "ringBufSize: %d - num threads: %d" sz nt
-//    true
-
 
 type private Sequence = Padded.Sequence
 
@@ -64,7 +59,7 @@ let private consumerFunc (totalNumMsgs:int, msgsReceived:System.Collections.Gene
 let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  = 
 
     let lBufSize = int64(bufSize)
-    let nSpin = 1024
+//    let nSpin = 1024
     let indexMask = lBufSize - 1L
     let seqWrite =      Sequence Disruptor.initialSeqVal
     let seqWriteC =     Sequence Disruptor.initialSeqVal
@@ -98,22 +93,22 @@ let TestDisruptor (bufSize:int) (numProducers:int) (numMsgsPerProducer:int)  =
 
     let allMsgsReceived = msgsReceived.Count = totalNumMsgs
 
-//     get rid of the List.ofSeq when using F# 4.O, which has List.groupBy
 //     group msgs received by sending threadID into by tid subsequences
 //     then check all subsequences are
 //          the same length,
 //          sorted - indicating msg ordering is preserved
 
+
     let xxs = msgsReceived 
-                |> Seq.groupBy (fun (tid,_) -> tid) // group by threadid
-                |> Seq.map (fun (_,xs) -> xs |> Seq.map snd |> List.ofSeq) // strip the threadID, both the groupby key and the first tuple element
-                |> Seq.toList
+                |> List.ofSeq
+                |> List.groupBy (fun (tid,_) -> tid) // group by threadid
+                |> List.map (fun (_,xs) -> xs |> List.map snd ) // strip the threadID, both the groupby key and the first tuple element
 
     let expected = [0..(numMsgsPerProducer-1)]
 
     let allSortedAscending = xxs |> List.forall (fun xs -> xs = expected)
 
-    let badSeqs = xxs |> Seq.filter (fun xs -> xs <> expected) |> List.ofSeq
+    let badSeqs = xxs |> List.filter (fun xs -> xs <> expected)
     
     let ok = allMsgsReceived && allSortedAscending && badSeqs.IsEmpty
     ok
