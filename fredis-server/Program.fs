@@ -83,7 +83,7 @@ let ClientListenerLoop (client:TcpClient) =
 //                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
+                        | Choice1Of2 cmd    ->  do CmdProcChannel.MailBoxChannel (strm, cmd)
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
         }
 
