@@ -91,8 +91,11 @@ let private applyBitOp (destKey:Key) (srcKey:Key) (srcKeysX:Key list) (hashMap:H
                     match srcArrays with
                     | [src] -> Array.copy src   // ensure that the result is a copy of src ([src] |> List.reduce returns the same array)
                     | _     -> srcArrays |> List.reduce byteArrayBitOp
-                hashMap.[destKey] <- res
-                Resp.Integer res.LongLength
+                match res.Length with
+                | 0 ->  hashMap.Remove destKey |> ignore
+                        Resp.Integer  0L 
+                | _ ->  hashMap.[destKey] <- res
+                        Resp.Integer res.LongLength
     |false ->   hashMap.Remove(destKey) |> ignore
                 Resp.Integer  0L 
 
@@ -103,9 +106,12 @@ let Process (op:BitOpInner) (hashMap:HashMap) =
     | BitOpInner.OR  (destKey, srcKey, srcKeys)     ->  applyBitOp destKey srcKey srcKeys hashMap byteArrayOr
     | BitOpInner.XOR (destKey, srcKey, srcKeys)     ->  applyBitOp destKey srcKey srcKeys hashMap byteArrayXor
     | BitOpInner.NOT (destKey, srcKey)              ->  match hashMap.TryGetValue(srcKey) with
-                                                        | true, vv  ->  let res = byteArrayNot vv
-                                                                        hashMap.[destKey] <- res
-                                                                        Resp.Integer res.LongLength
+                                                        | true, vv  ->  match vv.LongLength with
+                                                                        | 0L    ->  hashMap.Remove(destKey) |> ignore // matching redis behaviour
+                                                                                    Resp.Integer 0L
+                                                                        | _     ->  let res = byteArrayNot vv
+                                                                                    hashMap.[destKey] <- res
+                                                                                    Resp.Integer res.LongLength
                                                         | false, _  ->  hashMap.Remove(destKey) |> ignore
                                                                         Resp.Integer  0L
 
