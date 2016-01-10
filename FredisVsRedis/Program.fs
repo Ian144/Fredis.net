@@ -91,18 +91,30 @@ let shrinkFredisCmd (cmd:FredisCmd) =
     |Incr           _                       ->  Seq.empty
     |IncrBy         (key, ii)               ->  Arb.shrink ii |> Seq.map (fun ii2 -> IncrBy (key, ii2) )
     |IncrByFloat    (key, ff)               ->  Arb.shrink ff |> Seq.map (fun ff2 -> IncrByFloat (key, ff2) )
-    |MGet           (key, keys)             ->  query{  for xs in Arb.shrink (key::keys) do     // DRY violation in these query expressions?
-                                                        where (not (List.isEmpty xs))
-                                                        yield MGet (xs.Head, xs.Tail) }
-    |MSet           (keyBs, keyBss)         ->  query{  for xs in Arb.shrink (keyBs::keyBss) do
-                                                        where (not (List.isEmpty xs))
-                                                        yield MSet (xs.Head, xs.Tail) }
-    |MSetNX         (keyBs, keyBss)         ->  query{  for xs in Arb.shrink (keyBs::keyBss) do
-                                                        where (not (List.isEmpty xs))
-                                                        yield MSetNX (xs.Head, xs.Tail) }
+    |MGet           (key, keys)             ->  let mgets = query{  for xs in Arb.shrink (key::keys) do
+                                                                    where (not (List.isEmpty xs))
+                                                                    yield MGet (xs.Head, xs.Tail)   } 
+                                                let gets = (key::keys) |> List.map Get // consider Get to be a 'shrunk' MGet
+                                                seq{ yield! gets; yield! mgets } 
+    
+    |MSet           (keyBs, keyBss)         ->  let msets = query{  for xs in Arb.shrink (keyBs::keyBss) do
+                                                                    where (not (List.isEmpty xs))
+                                                                    yield MSet (xs.Head, xs.Tail) }
+                                                let sets = (keyBs::keyBss) |> List.map Set // consider Set to be a 'shrunk' MSet
+                                                seq{ yield! sets; yield! msets } 
+
+    |MSetNX         (keyBs, keyBss)         ->  let msetnxs =   query{  for xs in Arb.shrink (keyBs::keyBss) do
+                                                                        where (not (List.isEmpty xs))
+                                                                        yield MSetNX (xs.Head, xs.Tail) }
+                                                let sets = (keyBs::keyBss) |> List.map Set // consider Set to be a 'shrunk' MSetNX
+                                                seq{ yield! sets; yield! msetnxs } 
+
     |Set            (key, bs)               ->  Arb.shrink bs |> Seq.map (fun bs2 -> Set (key, bs2) )
     |SetBit         (key, uii, bb)          ->  Arb.shrink uii |> Seq.map (fun uii2 -> SetBit (key, uii2, bb) )
-    |SetNX          (key, bs)               ->  Arb.shrink bs |> Seq.map (fun bs2 -> SetNX (key, bs2) )
+    |SetNX          (key, bs)               ->  let setNxs  = Arb.shrink bs |> Seq.map (fun bs2 -> SetNX (key, bs2) )
+                                                let sets    = Arb.shrink bs |> Seq.map (fun bs2 -> Set (key, bs2) ) // consider Set to be a 'shrunk' MSetNX
+                                                seq{yield! sets; yield! setNxs}
+
     |SetRange       (key, uii, bs)          ->  Arb.shrink (uii, bs) |> Seq.map (fun (uii2, bs2) -> SetRange (key, uii2, bs2))
     |Strlen         _                       ->  Seq.empty
     |FlushDB                                ->  Seq.empty
@@ -213,6 +225,13 @@ let propFredisVsRedisNewConnectionShrinkGif (cmds:FredisTypes.FredisCmd list) =
     let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
     let redisReplies  = respCmds |> List.map (sendReceive redisClient) 
     redisReplies .=. fredisReplies
+//    let ok = redisReplies = fredisReplies
+////    if not ok then
+//////        System.Console.Clear()
+////        printfn "####: %A\n%A\n%A" cmds fredisReplies redisReplies
+////    ok
+//    //redisReplies .=. fredisReplies
+//    ok
 
 
 

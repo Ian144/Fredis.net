@@ -20,9 +20,9 @@ type CmdProcChannelMsg =
     end
 
 
-//let DirectChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
-//    let respReply = FredisCmdProcessor.Execute hashMap cmd 
-//    StreamFuncs.AsyncSendResp strm respReply
+let DirectChannel (strm:System.IO.Stream, cmd:FredisCmd) = 
+    let respReply = FredisCmdProcessor.Execute hashMap cmd 
+    RespStreamFuncs.AsyncSendResp strm respReply
 
 //let private mbox =
 //    MailboxProcessor.Start( fun inbox ->
@@ -71,7 +71,6 @@ let pongBytes  = Utils.StrToBytes "+PONG\r\n"
 
 
 let private DisruptorConsumerFunc () = 
-    printfn "starting new consumer"
 
     let mutable ctr = 0L
     while true do
