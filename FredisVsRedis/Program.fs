@@ -61,8 +61,6 @@ let FredisCmdFilterNoNumOps cmd =
     match cmd with
     | IncrByFloat _ | IncrBy _  | Incr _    -> false
     | Decr _  | DecrBy _                    -> false
-//    | FlushDB _                             -> false
-//    | Ping                                  -> false
     | _                                     -> true
 
  
@@ -128,11 +126,9 @@ type ArbOverrides() =
 
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGenShrink (genByteOffset, shrinkByteOffset )
-    static member Bytes() = Arb.fromGen genAlphaByteArray
+//    static member Bytes() = Arb.fromGen genAlphaByteArray
     static member FredisCmd() = Arb.fromGenShrink (genFredisCmd,  shrinkFredisCmd) 
                                 |> Arb.filter FredisCmdFilterNoNumOps
-//    static member FredisCmdList() = Arb.fromGenShrink (genFredisCmdList,  shrinkFredisCmd) 
-
 
 
 
@@ -171,7 +167,7 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
 
 
 // |@ is the fscheck 'property labelling to the left' operator
-let (.=.) left right = left = right |@ sprintf "%A = %A" left right
+let (.=.) left right = left = right |@ sprintf "\n%A =\n%A" left right
 
 
 let mutable ctr = 0
@@ -211,12 +207,20 @@ let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
     redisReplies .=. fredisReplies
 
 
+let propFredisVsRedisNewConnectionShrinkGif (cmds:FredisTypes.FredisCmd list) =
+    // not restarting fredis and redis, so the first command is always a flush
+    let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
+    let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
+    let redisReplies  = respCmds |> List.map (sendReceive redisClient) 
+    redisReplies .=. fredisReplies
+
+
 
 
 let lenPreCond xs = (List.length xs) > 1
 
 let propFredisVsRedisWithPreCond  (cmds:FredisTypes.FredisCmd list) =
-     lenPreCond cmds ==> lazy propFredisVsRedisNewConnection cmds
+     lenPreCond cmds ==> lazy propFredisVsRedisNewConnectionShrinkGif cmds
 
 
 let config = {  Config.Default with 
@@ -227,12 +231,14 @@ let config = {  Config.Default with
 
 Check.One (config, propFredisVsRedisWithPreCond)
 
-printfn "press 'X' to exit"
+printfn "tests complete"
 
-let rec WaitForExitCmd () = 
-    match System.Console.ReadKey().KeyChar with
-    | 'X'   -> ()
-    | _     -> WaitForExitCmd ()
+//printfn "press 'X' to exit"
+//
+//let rec WaitForExitCmd () = 
+//    match System.Console.ReadKey().KeyChar with
+//    | 'X'   -> ()
+//    | _     -> WaitForExitCmd ()
 
-WaitForExitCmd ()
+//WaitForExitCmd ()
 

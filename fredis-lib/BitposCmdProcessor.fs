@@ -35,12 +35,13 @@ let FindFirstBitIndex (lIndx:int) (uIndx:int) (searchVal:bool) (bs:byte []) (ran
 
     let foundIndex = FindIndex lIndx uIndx findFirstByte bs
     
-    match searchVal, foundIndex, rangeType with
-    | true,     -1,         _               ->  -1              // indicating there are no bits of the value being searched for
-    | false,    -1,         LowerUpper _    ->  -1              // see bitpos spec 'However, this behavior changes if you are looking for clear bits ...'
-    | false,    -1,         _               ->  bs.Length * 8   // see bitpos spec 'However, this behavior changes if you are looking for clear bits ...'
-    | _,        byteIdx,    _               ->  let firstFoundByte = bs.[byteIdx] |> int
-                                                byteIdx * 8 + bitPosLookup.[firstFoundByte]
+    match searchVal, foundIndex, rangeType, bs.Length with
+    | false,    -1,         _            , 0   ->   -1              // see bitpos spec 'However, this behavior changes if you are looking for clear bits ...'
+    | true,     -1,         _            , _   ->   -1              // indicating there are no bits of the value being searched for
+    | false,    -1,         LowerUpper _ , _   ->   -1              // see bitpos spec 'However, this behavior changes if you are looking for clear bits ...'
+    | false,    -1,         _            , _   ->   bs.Length * 8   // see bitpos spec 'However, this behavior changes if you are looking for clear bits ...'
+    | _,        byteIdx,    _            , _   ->   let firstFoundByte = bs.[byteIdx] |> int
+                                                    byteIdx * 8 + bitPosLookup.[firstFoundByte]
 
 
 

@@ -48,12 +48,14 @@ type ByteOffset = private ByteOffset of int with
 type optByteOffsetPair = (ByteOffset*ByteOffset) option
 type Bytes = byte array 
 
+[<StructuredFormatDisplay("{FormatDisplay}")>]
 type Key = Key of string
     with
         override this.ToString () = 
             let (Key ss) = this
             ss
-
+        member this.FormatDisplay =
+            this.ToString()
 
 
 
@@ -64,6 +66,13 @@ type BitOpInner =
     |OR     of (Key * Key * Key list)
     |XOR    of (Key * Key * Key list)
     |NOT    of (Key * Key)
+    with
+        override this.ToString () = 
+            match this with
+            |AND (k1, k2, ks )  -> sprintf "AND %O %O %A" k1 k2 ks
+            |OR  (k1, k2, ks )  -> sprintf "OR  %O %O %A" k1 k2 ks
+            |XOR (k1, k2, ks )  -> sprintf "XOR %O %O %A" k1 k2 ks
+            |NOT (k1, k2     )  -> sprintf "NOT %O %O"    k1 k2        
 
 
 type ArrayRange =
@@ -72,7 +81,6 @@ type ArrayRange =
     | LowerUpper of ByteOffset * ByteOffset
 
 
-// to simplify 
 type KeyBytes = (Key*Bytes)
 
 
@@ -112,27 +120,27 @@ type FredisCmd =
     |Strlen         of Key
     member this.FormatDisplay =
         match this with
-        |Append         (key, bs)               -> sprintf "Append %A %s" key (BytesToStr bs)
-        |Bitcount       (key, optOffsetPair)    -> sprintf "Bitcount %A %A" key optOffsetPair
-        |BitOp          (bitOpInner)            -> sprintf "BitOp %A" bitOpInner
-        |Bitpos         (key, bb, range)        -> sprintf "Bitpos %A %A %A" key bb range
-        |Decr           (key)                   -> sprintf "Decr %A" key
-        |DecrBy         (key, ii)               -> sprintf "DecrBy %A %d" key ii
-        |Get            (key)                   -> sprintf "Get %A" key 
-        |GetBit         (key, uii)              -> sprintf "GetBit %A %d" key uii
-        |GetRange       (key, lower, upper)     -> sprintf "GetRange %A %d %d" key lower upper
-        |GetSet         (key, bs)               -> sprintf "GetSet %A %A" key (BytesToStr bs)
-        |Incr           (key)                   -> sprintf "Incr %A" key
-        |IncrBy         (key, ii)               -> sprintf "IncrBy %A %d" key ii
-        |IncrByFloat    (key, ff)               -> sprintf "IncrByFloat %A %f" key ff
-        |MGet           (key, keys)             -> sprintf "MGet %A %A" key keys
+        |Append         (key, bs)               -> sprintf "Append %O %s" key (BytesToStr bs)
+        |Bitcount       (key, optOffsetPair)    -> sprintf "Bitcount %O %A" key optOffsetPair
+        |BitOp          (bitOpInner)            -> sprintf "BitOp %O" bitOpInner
+        |Bitpos         (key, bb, range)        -> sprintf "Bitpos %O %b %A" key bb range
+        |Decr           (key)                   -> sprintf "Decr %O" key
+        |DecrBy         (key, ii)               -> sprintf "DecrBy %O %d" key ii
+        |Get            (key)                   -> sprintf "Get %O" key 
+        |GetBit         (key, uii)              -> sprintf "GetBit %O %d" key uii
+        |GetRange       (key, lower, upper)     -> sprintf "GetRange %O %d %d" key lower upper
+        |GetSet         (key, bs)               -> sprintf "GetSet %O %s" key (BytesToStr bs)
+        |Incr           (key)                   -> sprintf "Incr %O" key
+        |IncrBy         (key, ii)               -> sprintf "IncrBy %O %d" key ii
+        |IncrByFloat    (key, ff)               -> sprintf "IncrByFloat %O %f" key ff
+        |MGet           (key, keys)             -> sprintf "MGet %O %A" key keys
         |MSet           (keyBs, keyBss)         -> sprintf "MSet %A %A" keyBs keyBss
         |MSetNX         (keyBs, keyBss)         -> sprintf "MSetNX %A %A" keyBs keyBss
-        |Set            (key, bs)               -> sprintf "Set %A %A" key (BytesToStr bs)
-        |SetBit         (key, uii, bb)          -> sprintf "SetBit %A %d %A" key uii bb
-        |SetNX          (key, bs)               -> sprintf "SetNX %A %A" key bs
-        |SetRange       (key, uii, bs)          -> sprintf "SetRange %A %d %A" key uii (BytesToStr bs)
-        |Strlen         (key)                   -> sprintf "Strlen %A" key
+        |Set            (key, bs)               -> sprintf "Set %O %s" key (BytesToStr bs)
+        |SetBit         (key, uii, bb)          -> sprintf "SetBit %O %d %A" key uii bb
+        |SetNX          (key, bs)               -> sprintf "SetNX %O %s" key (BytesToStr bs)
+        |SetRange       (key, uii, bs)          -> sprintf "SetRange %O %d %s" key uii (BytesToStr bs)
+        |Strlen         (key)                   -> sprintf "Strlen %O" key
         |FlushDB                                -> sprintf "FlushDB"
         |Ping                                   -> sprintf "Ping"
 

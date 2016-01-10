@@ -30,4 +30,5 @@ let numKeysBitopNot                 = "ERR BITOP NOT must be called with a singl
 let syntaxError                     = "ERR syntax error"B
 let valueNotAValidFloat             = "ERR value is not a valid float"B
 let valueNotIntegerOrOutOfRange     = "ERR value is not an integer or out of range"B
+let unknownCmd                      = "ERR unknown command"B
 

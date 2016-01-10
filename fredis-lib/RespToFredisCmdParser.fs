@@ -278,7 +278,7 @@ let ParseRESPtoFredisCmds (msgArr:Resp []) =
 
     | "FLUSHDB"     ->  Choice1Of2 FredisCmd.FlushDB
 
-    | _             ->  Choice2Of2 RespUtils.errorBytes   // unsupported or invalid redis command
+    | _             ->  Choice2Of2 ErrorMsgs.unknownCmd
 
     
 

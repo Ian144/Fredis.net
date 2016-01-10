@@ -23,7 +23,6 @@ let ExtendBytes (lenRequired:int) (bs:Bytes) =
 
 //TODO consider replacing this with a hashmap of commands to handlers
 let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
-    printfn "Execute: %A" cmd
     match cmd with
     | FredisCmd.Append (kk,vappend)             ->  match hashMap.ContainsKey(kk) with 
                                                     | true  -> let val1 = hashMap.[kk]
@@ -150,12 +149,14 @@ let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
                                                     let offset = int unSignedOffset
                                                     let len = (int offset) + srcBytes.Length
                                                     match hashMap.ContainsKey(key), srcBytes.Length with 
-                                                    | _, 0     ->   Resp.Integer 0L
-                                                    | false, _ ->   let destBytes = Array.zeroCreate<byte> (len) 
+                                                    | false, 0  ->  Resp.Integer 0L // key did not exist before setrange, so len is zero
+                                                    | true,  0  ->  let len = hashMap.[key].LongLength // key did exist before setrange
+                                                                    Resp.Integer len
+                                                    | false, _  ->  let destBytes = Array.zeroCreate<byte> (len) 
                                                                     System.Buffer.BlockCopy(srcBytes, 0, destBytes, offset, srcBytes.Length)
                                                                     hashMap.[key] <- destBytes
                                                                     Resp.Integer (int64 len)
-                                                    | true, _  ->   let currentBytes = hashMap.[key]
+                                                    | true,  _  ->  let currentBytes = hashMap.[key]
                                                                     let destLen = currentBytes.Length
                                                                     if destLen >= len then
                                                                         System.Buffer.BlockCopy(srcBytes, 0, currentBytes, offset, srcBytes.Length)
