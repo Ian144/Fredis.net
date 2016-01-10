@@ -71,10 +71,10 @@
     <Compile Include="FredisCmdProcessor.fs" />
     <Compile Include="CmdProcChannels.fs" />
     <Compile Include="FredisCmdToResp.fs" />
-    <Content Include="paket.references" />
     <Compile Include="RespToFredisCmdParser.fs" />
     <Compile Include="AsyncRespMsgProcessor.fs" />
     <Compile Include="RespMsgProcessor.fs" />
+    <Content Include="paket.references" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />
     <None Include="Scripts\load-references-release.fsx" />

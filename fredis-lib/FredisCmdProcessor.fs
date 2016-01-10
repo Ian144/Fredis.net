@@ -23,6 +23,7 @@ let ExtendBytes (lenRequired:int) (bs:Bytes) =
 
 //TODO consider replacing this with a hashmap of commands to handlers
 let Execute (hashMap:HashMap) (cmd:FredisCmd) : Resp =
+    printfn "Execute: %A" cmd
     match cmd with
     | FredisCmd.Append (kk,vappend)             ->  match hashMap.ContainsKey(kk) with 
                                                     | true  -> let val1 = hashMap.[kk]

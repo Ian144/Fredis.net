@@ -45,7 +45,7 @@ let CRb = 13uy
 let rec AsyncReadUntilCRLF (ns:Stream) = async{
     let! bs = ns.AsyncRead(1) 
     match bs.[0] with
-    | CRb   ->  let! lf = ns.AsyncRead(1)    // assuming the next char is LF, and eating it
+    | CRb   ->  let! _ = ns.AsyncRead(1)    // assuming the next char is LF, and eating it
                 return []
     | hd    ->  let! tl = AsyncReadUntilCRLF ns      // FIX no TCO in AsyncReadUntilCRLF
                 return (hd :: tl)
@@ -53,7 +53,8 @@ let rec AsyncReadUntilCRLF (ns:Stream) = async{
 
 
 
-let AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Async<Resp> = async{
+let AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Async<Resp> = 
+    async{
         let! bs = AsyncReadUntilCRLF strm
         let resp = bs |> Array.ofList |> makeRESPMsg
         return resp

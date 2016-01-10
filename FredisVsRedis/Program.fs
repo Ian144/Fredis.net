@@ -61,8 +61,8 @@ let FredisCmdFilterNoNumOps cmd =
     match cmd with
     | IncrByFloat _ | IncrBy _  | Incr _    -> false
     | Decr _  | DecrBy _                    -> false
-    | FlushDB _                             -> false
-    | Ping                                  -> false
+//    | FlushDB _                             -> false
+//    | Ping                                  -> false
     | _                                     -> true
 
  
