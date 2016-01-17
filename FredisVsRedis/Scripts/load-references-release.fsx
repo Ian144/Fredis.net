@@ -3,4 +3,4 @@
 #r "System.Core.dll"
 #r "System.dll"
 #r "System.Numerics.dll"
-#r "../../packages/FsCheck.2.2.4/lib/net45/FsCheck.dll"
+#r "../../packages/FsCheck/lib/net45/FsCheck.dll"

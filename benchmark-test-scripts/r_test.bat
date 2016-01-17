@@ -1,0 +1,9 @@
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 1   -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 2   -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 4   -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 8   -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 16  -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 32  -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 64  -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 128 -t ping,set,get,incr,mset -n 10000 -q -c 8
+C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -r 256 -t ping,set,get,incr,mset -n 10000 -q -c 8

@@ -79,11 +79,11 @@ let ClientListenerLoop (client:TcpClient) =
                         Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         do! strm.AsyncWrite pongBytes
                     else
-                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm //TODO receiving invalid RESP will cause an exception here which will kill the client connection
-//                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+//                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  do CmdProcChannel.DisruptorChannel (strm, cmd)
+                        | Choice1Of2 cmd    ->  do  CmdProcChannel.MailBoxChannel (strm, cmd)
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
         }
 
