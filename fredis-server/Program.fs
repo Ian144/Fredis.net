@@ -1,7 +1,6 @@
 ﻿open System.Net
 open System.Net.Sockets
 
-open Utils
 open RespStreamFuncs
 
 
@@ -27,7 +26,10 @@ let HandleSocketError (name:string) (ex:System.Exception) =
                             sprintf "%s | %s" msg innerMsg
     
     let msg = handleExInner ex
-    printfn "%s --> %s" name msg
+
+    // Microsoft redis-benchmark does not close its socket connections down cleanly
+    if not (msg.Contains("forcibly closed")) then
+        printfn "%s --> %s" name msg
 
 let ClientError ex =  HandleSocketError "client error" ex
 let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
@@ -35,56 +37,48 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 
-//type BufferSegment =
-//  { Buffer : System.ArraySegment<byte>
-//    Offset : int
-//    Length : int }
-//
-//
-//[<NoComparison>]
-//type Connection =  { 
-//    Client      : TcpClient
-//    Segments    : BufferSegment list }
-//    with member this.Async.ReadByte   
 
+let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
-
-let ClientListenerLoop (client:TcpClient) =
-
-    //TODO Set from config
     client.NoDelay <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
-    client.ReceiveBufferSize    <- 8 * 1024
-    client.SendBufferSize       <- 8 * 1024
+    client.ReceiveBufferSize    <- bufSize
+    client.SendBufferSize       <- bufSize
     
-//    printfn "new connection"
-//    let buf = Array.zeroCreate<byte>(256)
     let buf = Array.zeroCreate 1 
 
     let asyncProcessClientRequests =
-        //let mutable (loopAgain:bool) = true // enable with F#4.0
-        let loopAgain = ref true
+        let mutable loopAgain = true
         async{
             use client = client // without this Dispose would not be called on client
-            use strm = client.GetStream() 
-            while (client.Connected && !loopAgain) do
+            use netStrm = client.GetStream()
+
+            // msdn  "BufferedStream also buffers reads and writes in a shared buffer. 
+            // It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them."
+            // Having a single BufferedStream for both sending and receiving blocks inside an async call
+            use strmSend = new System.IO.BufferedStream( netStrm, bufSize )
+            use strmRecv = new System.IO.BufferedStream( netStrm, bufSize )
+            while (client.Connected && loopAgain) do
 
                 // reading from the socket is mostly synchronous after this point, until current redis msg is processed
-                let! optRespTypeByte = strm.AsyncReadByte3 buf
+                let! optRespTypeByte = strmRecv.AsyncReadByte buf
                 match optRespTypeByte with
                 | None              ->
-                    loopAgain := false  // client disconnected
+                    loopAgain <- false  // client disconnected
                 | Some respTypeByte -> 
                     let respTypeInt = System.Convert.ToInt32(respTypeByte)
                     if respTypeInt = PingL then 
-                        Eat5NoArray strm  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                        do! strm.AsyncWrite pongBytes
+                        Eat5NoArray strmRecv  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                        do! strmSend.AsyncWrite pongBytes
+                        let tsk = strmSend.FlushAsync()
+                        do! tsk |> Async.AwaitTask
                     else
-//                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strmRecv
+//                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  do  CmdProcChannel.MailBoxChannel (strm, cmd)
-                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
+                        | Choice1Of2 cmd    ->  do  CmdProcChannel.DisruptorChannel (strmSend, cmd)
+                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strmSend err
+                                                do! strmSend.FlushAsync() |> Async.AwaitTask
         }
 
 
@@ -98,13 +92,13 @@ let ClientListenerLoop (client:TcpClient) =
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
     )
 
-let ConnectionListenerLoop (listener:TcpListener) =
+let ConnectionListenerLoop (bufSize:int) (listener:TcpListener) =
     let asyncConnectionListener =
         async {
             while true do
                 let acceptClientTask = listener.AcceptTcpClientAsync ()
                 let! client = Async.AwaitTask acceptClientTask
-                do ClientListenerLoop client
+                do ClientListenerLoop bufSize client
         }
 
     Async.StartWithContinuations(
@@ -120,22 +114,37 @@ let WaitForExitCmd () =
     while System.Console.ReadKey().KeyChar <> 'X' do
         ()
 
-//let rec WaitForExitCmd () = 
-//    match System.Console.ReadKey().KeyChar with
-//    | 'X'   -> ()
-//    | _     -> WaitForExitCmd ()
 
 
-let ipAddr = IPAddress.Parse(host)
-let listener = TcpListener( ipAddr, port) 
-listener.Start ()
-ConnectionListenerLoop listener
-printfn "fredis startup complete\nawaiting incoming connection requests\npress 'X' to exit"
-WaitForExitCmd ()
-do Async.CancelDefaultToken()
-printfn "cancelling asyncs"
-listener.Stop()
-printfn "stopped"
+
+[<EntryPoint>]
+let main argv = 
 
 
+    
+    let cBufSize =     
+        if argv.Length = 1 then
+            Utils.ChoiceParseInt (sprintf "invalid integer %s" argv.[0]) argv.[0]
+        else
+            Choice1Of2 (8 * 1024)
+    
+    
+
+    match cBufSize with
+    | Choice1Of2 bufSize -> 
+        printfn "buffer size: %d"  bufSize
+
+        let ipAddr = IPAddress.Parse(host)
+        let listener = TcpListener(ipAddr, port) 
+        listener.Start ()
+        ConnectionListenerLoop bufSize listener
+        printfn "fredis startup complete\nawaiting incoming connection requests\npress 'X' to exit"
+        WaitForExitCmd ()
+        do Async.CancelDefaultToken()
+        printfn "cancelling asyncs"
+        listener.Stop()
+        printfn "stopped"
+        0 // return an integer exit code
+    | Choice2Of2 msg -> printf "%s" msg
+                        1 // non-zero exit code
 

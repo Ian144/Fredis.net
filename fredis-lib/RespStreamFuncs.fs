@@ -46,17 +46,17 @@ let Eat13NoArray (ns:Stream) =
 
 
 
-// extension methods on NetworkStream
-type Net.Sockets.NetworkStream with
+// extension methods on Stream
+type Stream with
 
-    // read a single byte, throw if client disconnected
-    member ns.AsyncReadByte () = async{
-        let! bs = ns.AsyncRead (1)
-        return bs.[0]
-        }
+//    // read a single byte, throw if client disconnected
+//    member ns.AsyncReadByte () = async{
+//        let! bs = ns.AsyncRead (1)
+//        return bs.[0]
+//        }
 
     // read a single byte, return None if client disconnected
-    member ns.AsyncReadByte3 buf = async{
+    member ns.AsyncReadByte buf = async{
         let tsk = ns.ReadAsync(buf, 0, 1)
         let! numBytesRead = Async.AwaitTask tsk
         let ret = 
@@ -81,9 +81,9 @@ let nilBulkStrBytes     = "$-1\r\n"B
 let private AsyncSendBulkString (strm:Stream) (contents:BulkStrContents) =
 
     match contents with
-    | BulkStrContents.Contents bs   ->  let bulkStrPrefixAndLength = (sprintf "$%d\r\n" bs.Length) |> Utils.StrToBytes
+    | BulkStrContents.Contents bs   ->  let prefix = (sprintf "$%d\r\n" bs.Length) |> Utils.StrToBytes
                                         async{
-                                            do! strm.AsyncWrite bulkStrPrefixAndLength
+                                            do! strm.AsyncWrite prefix
                                             do! strm.AsyncWrite bs
                                             do! strm.AsyncWrite crlf
                                         }
@@ -91,21 +91,23 @@ let private AsyncSendBulkString (strm:Stream) (contents:BulkStrContents) =
 
 
 
-let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
-    async{
-        do! strm.AsyncWrite simpStrType
-        do! strm.AsyncWrite contents
-        do! strm.AsyncWrite crlf
-    }
+//let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
+//    async{
+//        do! strm.AsyncWrite simpStrType
+//        do! strm.AsyncWrite contents
+//        do! strm.AsyncWrite crlf
+//    }
 
-let private AsyncSendSimpleString2 (destStrm:Stream) (contents:byte array) =
+let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
     let len = 3 + contents.Length
     let arr = Array.zeroCreate<byte> len
     arr.[0] <- 43uy
     contents.CopyTo (arr,1)
     arr.[len-2] <- 13uy
     arr.[len-1] <- 10uy
-    destStrm.AsyncWrite (arr, 0, len)
+    strm.AsyncWrite (arr, 0, len)
+    
+
 
 
 
@@ -122,13 +124,16 @@ let private AsyncSendInteger (strm:Stream) (ii:int64) =
     strm.AsyncWrite bs
 
 
-let rec AsyncSendResp (strm:Stream) (msg:Resp) = 
-    match msg with
-    | Resp.Array arr            -> AsyncSendArray strm arr
-    | Resp.BulkString contents  -> AsyncSendBulkString strm contents
-    | Resp.SimpleString bs      -> AsyncSendSimpleString2 strm bs
-    | Resp.Error err            -> AsyncSendError strm err
-    | Resp.Integer ii           -> AsyncSendInteger strm ii
+let rec AsyncSendResp (strm:Stream) (msg:Resp) =
+    async{
+        do!    match msg with
+                | Resp.Array arr            -> AsyncSendArray strm arr
+                | Resp.BulkString contents  -> AsyncSendBulkString strm contents
+                | Resp.SimpleString bs      -> AsyncSendSimpleString strm bs
+                | Resp.Error err            -> AsyncSendError strm err
+                | Resp.Integer ii           -> AsyncSendInteger strm ii
+        do! strm.FlushAsync() |> Async.AwaitTask
+    }
 
 and private AsyncSendArray (strm:Stream) (arr:Resp []) =
     let lenBytes = sprintf "*%d\r\n" arr.Length |> Utils.StrToBytes

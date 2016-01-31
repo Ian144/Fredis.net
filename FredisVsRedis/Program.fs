@@ -161,7 +161,7 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
     let aa = 
         async{
             let buf = Array.zeroCreate 1
-            let! optRespTypeByte = strm.AsyncReadByte3 buf
+            let! optRespTypeByte = strm.AsyncReadByte buf
             let reply = 
                 match optRespTypeByte with
                 | None              ->  None

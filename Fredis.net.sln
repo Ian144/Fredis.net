@@ -29,6 +29,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisVsRedis", "FredisVsRe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark test scripts", "benchmark test scripts", "{E309643F-8703-4436-A38C-48212B969916}"
 	ProjectSection(SolutionItems) = preProject
+		benchmark-test-scripts\bufSize.ps1 = benchmark-test-scripts\bufSize.ps1
 		benchmark-test-scripts\c_test.bat = benchmark-test-scripts\c_test.bat
 		benchmark-test-scripts\d_test.bat = benchmark-test-scripts\d_test.bat
 		benchmark-test-scripts\r_test.bat = benchmark-test-scripts\r_test.bat

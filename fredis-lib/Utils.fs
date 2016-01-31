@@ -19,9 +19,6 @@ let BytesToKey = BytesToStr >> Key
 
 
 
-
-
-
 // in redis offset 0 is MSB and offset 7 is LSB
 let SetBit (bs:byte []) (bitIndexIn:int) (value:bool) =
     let byteIndex   = bitIndexIn / 8
@@ -48,7 +45,9 @@ let OptionToChoice (optFunc:'a -> 'b option) (xx:'a) choice2Of2Val  =
     | None      -> Choice2Of2 choice2Of2Val
                     
                     
-let ChoiceParseInt failureMsg str : Choice<int,byte[]> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
+//let ChoiceParseInt failureMsg str : Choice<int,byte[]> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
+
+let ChoiceParseInt failureMsg str : Choice<int,'t> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
 
 
 

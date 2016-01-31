@@ -16,25 +16,25 @@ type HashMap = System.Collections.Generic.Dictionary<Key,Bytes>
 // simulate redis behaviour
 // redis strict_Strtoll is not very strict, it will allow 
 //    incr on a string such as "\x00DILMAUYZTHLMGUYS", i.e. when the first char is null zero
-//    incr on -1\x00WKOPJXBVWAOIJNBV", whe the first char is a digit
-let private simulateStrict_Strtoll bs = 
-   
-    let isNotSpace (bb:byte) = 
-        let chr = char bb
-        System.Char.IsWhiteSpace chr |> not
-
-    let firstIsNullZero = if Array.isEmpty bs then 
-                            false
-                          else
-                            (bs.[0] = 0uy) || ( bs.[0] |> char |> System.Char.IsDigit)
-
-    let noWhiteSpace = bs |> Array.forall isNotSpace
-
-    let str = bs |> BytesToStr
-    match firstIsNullZero, noWhiteSpace with
-    | true, _  -> Some 0L
-    | _, true  -> str |> FSharpx.FSharpOption.ParseInt64
-    | _, false -> None
+//    incr on -1\x00WKOPJXBVWAOIJNBV", when the first char is a digit
+//let private simulateStrict_Strtoll bs = 
+//   
+//    let isNotSpace (bb:byte) = 
+//        let chr = char bb
+//        System.Char.IsWhiteSpace chr |> not
+//
+//    let firstIsNullZero = if Array.isEmpty bs then 
+//                            false
+//                          else
+//                            (bs.[0] = 0uy) || ( bs.[0] |> char |> System.Char.IsDigit)
+//
+//    let noWhiteSpace = bs |> Array.forall isNotSpace
+//
+//    let str = bs |> BytesToStr
+//    match firstIsNullZero, noWhiteSpace with
+//    | true, _  -> Some 0L
+//    | _, true  -> str |> FSharpx.FSharpOption.ParseInt64
+//    | _, false -> None
 
 
 

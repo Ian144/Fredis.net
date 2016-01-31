@@ -146,8 +146,8 @@ type FredisCmd =
 
 
 
-// an empty bulk string e.g. "" is not the same as a bulk string that was not found
-// without having this the Resp algebraic data type does not fully model RESP
+// an empty bulk string e.g. "" is not the same as a Nil bulk string
+// without this the Resp algebraic data type does not fully model RESP
 
 //type BulkStrContents = Nil | Contents of Bytes
 
