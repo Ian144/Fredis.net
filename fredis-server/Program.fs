@@ -3,6 +3,8 @@ open System.Net.Sockets
 
 open RespStreamFuncs
 
+open System.IO
+
 
 //let host = """127.0.0.1"""
 let host = """0.0.0.0"""
@@ -53,32 +55,32 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             use netStrm = client.GetStream()
 
             // msdn  "BufferedStream also buffers reads and writes in a shared buffer. 
-            // It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them."
-            // Having a single BufferedStream for both sending and receiving blocks inside an async call
-            use strmSend = new System.IO.BufferedStream( netStrm, bufSize )
-            use strmRecv = new System.IO.BufferedStream( netStrm, bufSize )
+            // TODO msdn:"It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
+            // TODO is BufferedStream the right class to use here? what do perf tests say
+            use strm = new System.IO.BufferedStream( netStrm, bufSize )
             while (client.Connected && loopAgain) do
 
                 // reading from the socket is mostly synchronous after this point, until current redis msg is processed
-                let! optRespTypeByte = strmRecv.AsyncReadByte buf
+                let! optRespTypeByte = strm.AsyncReadByte buf 
                 match optRespTypeByte with
-                | None              ->
-                    loopAgain <- false  // client disconnected
+                | None              ->  loopAgain <- false  // client disconnected
                 | Some respTypeByte -> 
                     let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                    if respTypeInt = PingL then 
-                        Eat5NoArray strmRecv  // redis-cli and redis-benchmark send pings (PING_INLINE) as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                        do! strmSend.AsyncWrite pongBytes
-                        let tsk = strmSend.FlushAsync()
-                        do! tsk |> Async.AwaitTask
+                    if respTypeInt = PingL then // redis-cli and redis-benchmark PING_INLINE cmds as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                        Eat5NoAlloc strm  
+                        do! strm.AsyncWrite pongBytes
+                        do! strm.FlushAsync() |> Async.AwaitTask
                     else
-                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strmRecv
+                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
 //                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        strm.Flush()
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  do  CmdProcChannel.DisruptorChannel (strmSend, cmd)
-                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strmSend err
-                                                do! strmSend.FlushAsync() |> Async.AwaitTask
+                        | Choice1Of2 cmd    ->  let! resp =  CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                                do! RespStreamFuncs.AsyncSendResp strm resp
+                                                do! strm.FlushAsync() |> Async.AwaitTask
+                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
+                                                do! strm.FlushAsync() |> Async.AwaitTask
         }
 
 
@@ -118,17 +120,15 @@ let WaitForExitCmd () =
 
 
 [<EntryPoint>]
-let main argv = 
+let main argv =
 
-
-    
-    let cBufSize =     
+    let cBufSize =
         if argv.Length = 1 then
             Utils.ChoiceParseInt (sprintf "invalid integer %s" argv.[0]) argv.[0]
         else
             Choice1Of2 (8 * 1024)
-    
-    
+
+
 
     match cBufSize with
     | Choice1Of2 bufSize -> 

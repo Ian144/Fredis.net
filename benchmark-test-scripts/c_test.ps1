@@ -23,4 +23,4 @@ C:\ProgramData\chocolatey\lib\redis-64\redis-benchmark -t ping,set,get,incr,mset
 
 
 
-REM .\redis-server .\redis.windows.nosave.conf
+# .\redis-server .\redis.windows.nosave.conf

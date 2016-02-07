@@ -20,7 +20,7 @@
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <WarningLevel>5</WarningLevel>
     <DocumentationFile>bin\Debug\fredis_lib.xml</DocumentationFile>
     <OtherFlags>--warnon:1182</OtherFlags>
@@ -85,16 +85,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\fDisruptor\fDisruptor.fsproj">
-      <Name>fDisruptor</Name>
-      <Project>{a4cdd6f4-5370-4f3c-9979-16721c669776}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Sequence\Sequence.csproj">
-      <Name>Sequence</Name>
-      <Project>{0a401880-0b72-46ac-bb56-aef1db84533b}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

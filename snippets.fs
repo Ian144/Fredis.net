@@ -2,7 +2,7 @@
 //        //let mutable (loopAgain:bool) = true
 //        let loopAgain = ref true
 //
-//        let pongBytes  = Utils.StrToBytes "+PONG\r\n"
+//        let pongBytes  = "+PONG\r\n"B
 //        let totalBytesRead = ref 0
 //        let buffers = Array.create<byte[]> 100000 [||]
 //

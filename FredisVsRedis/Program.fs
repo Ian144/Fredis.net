@@ -239,7 +239,7 @@ let propFredisVsRedisNewConnectionShrinkGif (cmds:FredisTypes.FredisCmd list) =
 let lenPreCond xs = (List.length xs) > 1
 
 let propFredisVsRedisWithPreCond  (cmds:FredisTypes.FredisCmd list) =
-     lenPreCond cmds ==> lazy propFredisVsRedisNewConnectionShrinkGif cmds
+     lenPreCond cmds ==> lazy propFredisVsRedisNewConnection cmds
 
 
 let config = {  Config.Default with 

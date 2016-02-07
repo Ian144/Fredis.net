@@ -19,18 +19,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		snippets.fs = snippets.fs
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor", "fDisruptor\fDisruptor.fsproj", "{A4CDD6F4-5370-4F3C-9979-16721C669776}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sequence", "Sequence\Sequence.csproj", "{0A401880-0B72-46AC-BB56-AEF1DB84533B}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fDisruptor-test", "fDisruptor-test\fDisruptor-test.fsproj", "{3D6C5389-A123-4A08-A764-79E839E92E7C}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisVsRedis", "FredisVsRedis\FredisVsRedis.fsproj", "{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark test scripts", "benchmark test scripts", "{E309643F-8703-4436-A38C-48212B969916}"
 	ProjectSection(SolutionItems) = preProject
 		benchmark-test-scripts\bufSize.ps1 = benchmark-test-scripts\bufSize.ps1
-		benchmark-test-scripts\c_test.bat = benchmark-test-scripts\c_test.bat
+		benchmark-test-scripts\c_test.ps1 = benchmark-test-scripts\c_test.ps1
 		benchmark-test-scripts\d_test.bat = benchmark-test-scripts\d_test.bat
 		benchmark-test-scripts\r_test.bat = benchmark-test-scripts\r_test.bat
 	EndProjectSection
@@ -53,18 +47,6 @@ Global
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A4CDD6F4-5370-4F3C-9979-16721C669776}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0A401880-0B72-46AC-BB56-AEF1DB84533B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3D6C5389-A123-4A08-A764-79E839E92E7C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}.Release|Any CPU.ActiveCfg = Release|Any CPU

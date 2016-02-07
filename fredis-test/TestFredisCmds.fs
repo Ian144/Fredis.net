@@ -19,7 +19,7 @@ let private ``range (0,3)`` = ArrayRange.LowerUpper (``byteOffset 0``, ``byteOff
 
 
 let private key = Key "key"
-let private bs  = "This is a string" |> Utils.StrToBytes
+let private bs  = "This is a string"B
 let StrToBulkStr = Utils.StrToBytes >> RespUtils.MakeBulkStr
 
 
@@ -97,7 +97,7 @@ type ``Execute GETSET`` () =
     [<Fact>]
     static member ``getset, new key sets value and returns nil``() =
         let hashMap = HashMap()
-        let bsVal = (Utils.StrToBytes "val")
+        let bsVal = "val"B
         let cmd = FredisCmd.GetSet (key, bsVal)
         let result = FredisCmdProcessor.Execute hashMap cmd
         test <@ bsVal = hashMap.[key] && RespUtils.nilBulkStr = result @>
@@ -106,9 +106,9 @@ type ``Execute GETSET`` () =
     [<Fact>]
     static member ``getset, existing key sets new value and returns old``() =
         let hashMap = HashMap()
-        let bsOldVal = "oldVal"     |> Utils.StrToBytes 
+        let bsOldVal = "oldVal"B
         let strOldVal = bsOldVal    |> RespUtils.MakeBulkStr
-        let bsNewVal = "newVal"     |> Utils.StrToBytes
+        let bsNewVal = "newVal"B
         hashMap.[key] <- bsOldVal
         let cmd = FredisCmd.GetSet (key, bsNewVal)
         let result = FredisCmdProcessor.Execute hashMap cmd 
@@ -124,14 +124,15 @@ type ``Execute SET GET`` () =
     static member ``set get cmds, roundtrip``() =
         let hashMap = HashMap()
         let hkey = Key "key"
-        let rawVal = "val"
-        let hval = (Utils.StrToBytes rawVal)
+        let hval = "val"B
         let setCmd = FredisCmd.Set (hkey, hval)
         let setResult = FredisCmdProcessor.Execute hashMap setCmd
         let getCmd = FredisCmd.Get hkey
         let getResult = FredisCmdProcessor.Execute hashMap getCmd
-        let expected =  rawVal |> StrToBulkStr
+        let expected =  hval |> RespUtils.MakeBulkStr
         test <@ setResult = RespUtils.okSimpleStr && expected = getResult @>
+
+
 
 
 
@@ -141,9 +142,6 @@ type ``Execute SET GET`` () =
         let key = Key "key"
         let getCmd = FredisCmd.Get key
         test <@ RespUtils.nilBulkStr = FredisCmdProcessor.Execute hashMap getCmd @>
-
-
-
 
 
 
@@ -189,13 +187,13 @@ type ``Execute INCRBY`` () =
 //        let actual = FredisCmdProcessor.Execute hashMap cmd 
 //        let expected = Resp.Integer 0L
 //        test <@ expected = actual @>
-//        test <@ Utils.StrToBytes "0" = hashMap.["key"] @>
+//        test <@ "0"B = hashMap.["key"] @>
 //
 //
 //    [<Fact>]
 //    static member ``"INCRBY key 89" returns resp integer 99 when key is "10"`` () =
 //        let hashMap = HashMap()
-//        let bVal = Utils.StrToBytes "10"
+//        let bVal = "10"B
 //        let key = Key "key"
 //        let setCmd = FredisCmd.Set (key, bVal)
 //        let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -208,13 +206,13 @@ type ``Execute INCRBY`` () =
 //        let hashMap = HashMap()
 //        let cmd = FredisCmd.IncrBy ("key", 99L)
 //        test <@ Resp.Integer 99L = FredisCmdProcessor.Execute hashMap cmd @>
-//        test <@ Utils.StrToBytes "99" = hashMap.["key"] @>
+//        test <@ "99"B = hashMap.["key"] @>
 
 
     [<Fact>]
     static member ``"INCRBY key 99" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "234293482390480948029348230948"
+        let bVal = "234293482390480948029348230948"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -225,7 +223,7 @@ type ``Execute INCRBY`` () =
     [<Fact>]
     static member ``"INCRBY key 99"not an int" returns error`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "not an int"
+        let bVal = "not an int"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -240,7 +238,7 @@ type ``Execute INCR`` () =
     [<Fact>]
     static member ``"INCR key" returns resp integer 11 when key is "10"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "10"
+        let bVal = "10"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -254,13 +252,13 @@ type ``Execute INCR`` () =
         let key = Key "key"
         let decrCmd = FredisCmd.Incr key
         test <@ Resp.Integer 1L = FredisCmdProcessor.Execute hashMap decrCmd @>
-        test <@ Utils.StrToBytes "1" = hashMap.[key] @>
+        test <@ "1"B = hashMap.[key] @>
 
 
     [<Fact>]
     static member ``"INCR key" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "234293482390480948029348230948"
+        let bVal = "234293482390480948029348230948"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -271,7 +269,7 @@ type ``Execute INCR`` () =
     [<Fact>]
     static member ``"INCR key" returns error when value is "not an int"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "not an int"
+        let bVal = "not an int"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -284,7 +282,7 @@ type ``Execute DECR`` () =
     [<Fact>]
     static member ``"DECR key" returns resp integer 9 when key is "10"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "10"
+        let bVal = "10"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -298,13 +296,13 @@ type ``Execute DECR`` () =
         let key = Key "key"
         let decrCmd = FredisCmd.Decr key
         test <@ Resp.Integer -1L = FredisCmdProcessor.Execute hashMap decrCmd @>
-        test <@ Utils.StrToBytes "-1" = hashMap.[key] @>
+        test <@ "-1"B = hashMap.[key] @>
 
 
     [<Fact>]
     static member ``"DECR key" returns error when value is "234293482390480948029348230948"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "234293482390480948029348230948"
+        let bVal = "234293482390480948029348230948"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -315,7 +313,7 @@ type ``Execute DECR`` () =
     [<Fact>]
     static member ``"DECR key" returns error when value is "not an int"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "not an int"
+        let bVal = "not an int"B
         let key = Key "key"
         let setCmd = FredisCmd.Set (key, bVal)
         let _ = FredisCmdProcessor.Execute hashMap setCmd
@@ -330,7 +328,7 @@ type ``Execute BITOP`` () =
     [<Fact>]
     static member ``"BITOP AND destKey srcKey" returns resp integer 3 when val is "val"`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "val"
+        let bVal = "val"B
         let srcKey = Key "srcKey"
         let destKey = Key "destKey"
         let setCmd = FredisCmd.Set (srcKey, bVal)
@@ -344,8 +342,8 @@ type ``Execute BITOP`` () =
     [<Fact>]
     static member ``"BITOP AND destKey srcKey1 srcKey2" result is length of longest value`` () =
         let hashMap = HashMap()
-        let bVal1 = Utils.StrToBytes "abcdef"
-        let bVal2 = Utils.StrToBytes "qwe"
+        let bVal1 = "abcdef"B
+        let bVal2 = "qwe"B
         let destKey = Key "destKey"
         let srcKey1 = Key "srcKey1"
         let srcKey2 = Key "srcKey2"
@@ -376,8 +374,8 @@ type ``Execute BITOP`` () =
     [<Fact>]
     static member ``"BITOP AND destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
         let hashMap = HashMap()
-        let bVal1 = Utils.StrToBytes "abcdef"
-        let bVal2 = Utils.StrToBytes "qwe"
+        let bVal1 = "abcdef"B
+        let bVal2 = "qwe"B
         let destKey = Key "destKey"
         let srcKey1 = Key "srcKey1"
         let srcKey2 = Key "srcKey2"
@@ -397,8 +395,8 @@ type ``Execute BITOP`` () =
     [<Fact>]
     static member ``"BITOP OR destKey srcKey1 srcKey2" vals different lengths, result matches redis`` () =
         let hashMap = HashMap()
-        let bVal1 = Utils.StrToBytes "abcdef"
-        let bVal2 = Utils.StrToBytes "qwe"
+        let bVal1 = "abcdef"B
+        let bVal2 = "qwe"B
         let destKey = Key "destKey"
         let srcKey1 = Key "srcKey1"
         let srcKey2 = Key "srcKey2"
@@ -421,8 +419,8 @@ type ``Execute BITOP`` () =
         let destKey = Key "destKey"
         let srcKey1 = Key "srcKey1"
         let srcKey2 = Key "srcKey2"
-        let bVal1 = Utils.StrToBytes "abcdef"
-        let bVal2 = Utils.StrToBytes "qwe"
+        let bVal1 = "abcdef"B
+        let bVal2 = "qwe"B
         let set1 = FredisCmd.Set (srcKey1, bVal1)
         let _ = FredisCmdProcessor.Execute hashMap set1
         let set2 = FredisCmd.Set (srcKey2, bVal2)
@@ -441,7 +439,7 @@ type ``Execute BITOP`` () =
         let hashMap = HashMap()
         let destKey = Key "destKey"
         let srcKey  = Key "srcKey"
-        let bVal = Utils.StrToBytes "abcdef" 
+        let bVal = "abcdef"B
         let set = FredisCmd.Set (srcKey, bVal)
         let _ = FredisCmdProcessor.Execute hashMap set
         let boi = FredisTypes.BitOpInner.NOT (destKey, srcKey)
@@ -470,7 +468,7 @@ type ``Execute BITOP`` () =
     [<Fact>]
     static member ``"BITOP AND destKey srcKey" destKey contains copy of srcKey val`` () =
         let hashMap = HashMap()
-        let bVal = Utils.StrToBytes "val"
+        let bVal = "val"B
         let destKey = Key "destKey"
         let srcKey = Key "srcKey"
         let setCmd = FredisCmd.Set (srcKey, bVal)
