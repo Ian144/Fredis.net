@@ -25,7 +25,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark test scripts", "b
 	ProjectSection(SolutionItems) = preProject
 		benchmark-test-scripts\bufSize.ps1 = benchmark-test-scripts\bufSize.ps1
 		benchmark-test-scripts\c_test.ps1 = benchmark-test-scripts\c_test.ps1
-		benchmark-test-scripts\d_test.bat = benchmark-test-scripts\d_test.bat
+		benchmark-test-scripts\c_test.sh = benchmark-test-scripts\c_test.sh
+		benchmark-test-scripts\c_test_big_d.ps1 = benchmark-test-scripts\c_test_big_d.ps1
+		benchmark-test-scripts\d_test.ps1 = benchmark-test-scripts\d_test.ps1
 		benchmark-test-scripts\r_test.bat = benchmark-test-scripts\r_test.bat
 	EndProjectSection
 EndProject

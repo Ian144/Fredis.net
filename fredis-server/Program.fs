@@ -54,29 +54,29 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             use client = client // without this Dispose would not be called on client
             use netStrm = client.GetStream()
 
-            // msdn  "BufferedStream also buffers reads and writes in a shared buffer. 
-            // TODO msdn:"It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
-            // TODO is BufferedStream the right class to use here? what do perf tests say
+            // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
+            // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
+            // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
+            // The F# async workflow sequences async reads and writes so none are simultaneous.i
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
             while (client.Connected && loopAgain) do
 
-                // reading from the socket is mostly synchronous after this point, until current redis msg is processed
+                // reading from the socket is synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte buf 
                 match optRespTypeByte with
                 | None              ->  loopAgain <- false  // client disconnected
                 | Some respTypeByte -> 
                     let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                    if respTypeInt = PingL then // redis-cli and redis-benchmark PING_INLINE cmds as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                    if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         Eat5NoAlloc strm  
                         do! strm.AsyncWrite pongBytes
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
                         let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
 //                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-                        strm.Flush()
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  let! resp =  CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                        | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
                                                 do! RespStreamFuncs.AsyncSendResp strm resp
                                                 do! strm.FlushAsync() |> Async.AwaitTask
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
