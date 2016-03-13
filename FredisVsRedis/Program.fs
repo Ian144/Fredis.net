@@ -29,8 +29,8 @@ let key5 = Gen.constant (Key "key5")
 let key6 = Gen.constant (Key "key6")
 let key7 = Gen.constant (Key "key7")
 let key8 = Gen.constant (Key "key8")
-//let genKey = Gen.frequency[(1, key1); (1, key2); (1, key3); (1, key4); (1, key5); (1, key6); (1, key7); (1, key8) ]
-let genKey = Gen.frequency[(1, key1); (1, key2); (1, key3); (1, key4) ]
+let genKey = Gen.frequency[(1, key1); (1, key2); (1, key3); (1, key4); (1, key5); (1, key6); (1, key7); (1, key8) ]
+//let genKey = Gen.frequency[(1, key1); (1, key2); (1, key3); (1, key4) ]
 
 
 // create an Arbitrary<ByteOffset> so as to avoid the runtime error below
@@ -53,16 +53,31 @@ let shrinkByteOffset (bo:ByteOffset) =
      
     
 let genAlphaByte = Gen.choose(65,90) |> Gen.map byte 
-let genAlphaByteArray = Gen.arrayOfLength 16 genAlphaByte 
+let genAlphaByteArray = Gen.arrayOfLength 80 genAlphaByte 
 
 
 
 let FredisCmdFilterNoNumOps cmd = 
     match cmd with
-    | IncrByFloat _ | IncrBy _  | Incr _    -> false
-    | Decr _  | DecrBy _                    -> false
-    | _                                     -> true
+////    | Incr _                        -> false
+////    | IncrByFloat                   _ -> false
+////    | IncrBy _                      -> false
+////    | Decr _  | DecrBy _            -> false
+//    | SetRange _                    -> false
+    | _                             -> true
 
+
+//let FredisCmdFilterNoNumOps cmd = 
+//    match cmd with
+////    | Incr _                        -> false
+////    | IncrByFloat                   _ -> false
+////    | IncrBy _                      -> false
+////    | Decr _  | DecrBy _            -> false
+//    | SetBit _                      -> true
+//    | Get _                         -> true
+//    | Incr _                        -> true
+//    | Set _                         -> true
+//    | _                             -> false
  
 
 let FredisCmdFilterBitOps cmd = 
@@ -74,6 +89,14 @@ let FredisCmdFilterBitOps cmd =
 
 let genFredisCmd = Arb.generate<FredisCmd>
 
+
+
+
+let crapShrink (bs:Bytes) = 
+    let len = bs.Length * 2 / 3
+    let bs2 = Array.zeroCreate<byte>( len )
+    Array.blit bs 0 bs2 0 len
+    seq{ yield bs2 }
 
 
 let shrinkFredisCmd (cmd:FredisCmd) = 
@@ -110,6 +133,7 @@ let shrinkFredisCmd (cmd:FredisCmd) =
                                                 seq{ yield! sets; yield! msetnxs } 
 
     |Set            (key, bs)               ->  Arb.shrink bs |> Seq.map (fun bs2 -> Set (key, bs2) )
+
     |SetBit         (key, uii, bb)          ->  Arb.shrink uii |> Seq.map (fun uii2 -> SetBit (key, uii2, bb) )
     |SetNX          (key, bs)               ->  let setNxs  = Arb.shrink bs |> Seq.map (fun bs2 -> SetNX (key, bs2) )
                                                 let sets    = Arb.shrink bs |> Seq.map (fun bs2 -> Set (key, bs2) ) // consider Set to be a 'shrunk' MSetNX
@@ -119,6 +143,7 @@ let shrinkFredisCmd (cmd:FredisCmd) =
     |Strlen         _                       ->  Seq.empty
     |FlushDB                                ->  Seq.empty
     |Ping                                   ->  Seq.empty
+
 
 
 
@@ -139,6 +164,7 @@ type ArbOverrides() =
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGenShrink (genByteOffset, shrinkByteOffset )
 //    static member Bytes() = Arb.fromGen genAlphaByteArray
+    static member Bytes() = Arb.fromGenShrink (genAlphaByteArray, crapShrink)
     static member FredisCmd() = Arb.fromGenShrink (genFredisCmd,  shrinkFredisCmd) 
                                 |> Arb.filter FredisCmdFilterNoNumOps
 
@@ -219,19 +245,23 @@ let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
     redisReplies .=. fredisReplies
 
 
+
+
+
+
 let propFredisVsRedisNewConnectionShrinkGif (cmds:FredisTypes.FredisCmd list) =
     // not restarting fredis and redis, so the first command is always a flush
     let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
-    let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
-    let redisReplies  = respCmds |> List.map (sendReceive redisClient) 
-    redisReplies .=. fredisReplies
-//    let ok = redisReplies = fredisReplies
-////    if not ok then
-//////        System.Console.Clear()
-////        printfn "####: %A\n%A\n%A" cmds fredisReplies redisReplies
-////    ok
-//    //redisReplies .=. fredisReplies
-//    ok
+    let fredisReplies = respCmds |> List.map (sendReceive fredisClient) |> List.map (fun optVal -> optVal.Value)
+    let redisReplies  = respCmds |> List.map (sendReceive redisClient)  |> List.map (fun optVal -> optVal.Value)
+//    redisReplies .=. fredisReplies
+    let ok = redisReplies = fredisReplies
+    if not ok then
+        System.Console.Clear()
+        printfn "cmds:   %A\nfredis: %A\nredis:  %A\n\n" cmds fredisReplies redisReplies
+//        printfn "cmds: %A" cmds
+        System.Threading.Thread.Sleep(250)
+    ok
 
 
 
@@ -242,22 +272,28 @@ let propFredisVsRedisWithPreCond  (cmds:FredisTypes.FredisCmd list) =
      lenPreCond cmds ==> lazy propFredisVsRedisNewConnection cmds
 
 
+
+
 let config = {  Config.Default with 
+//                    EveryShrink = (sprintf "%A" )
+                    Replay = Some (Random.StdGen (310046944,296129814))
+//                    StartSize = 32
                     MaxFail = 1000000
                     MaxTest = 100000 }
 
+
 //Check.Verbose propFredisVsRedis
 
-Check.One (config, propFredisVsRedisWithPreCond)
-
-printfn "tests complete"
-
+Check.One (config, propFredisVsRedisNewConnectionShrinkGif)
+//
+//printfn "tests complete"
+//
 //printfn "press 'X' to exit"
 //
 //let rec WaitForExitCmd () = 
 //    match System.Console.ReadKey().KeyChar with
 //    | 'X'   -> ()
 //    | _     -> WaitForExitCmd ()
-
+//
 //WaitForExitCmd ()
 

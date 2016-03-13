@@ -61,6 +61,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Sequence\Sequence.csproj">
       <Name>Sequence</Name>
       <Project>{0a401880-0b72-46ac-bb56-aef1db84533b}</Project>
