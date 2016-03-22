@@ -61,8 +61,6 @@ for ctr = 0 to (maxNumConnections - 1) do
     saeaPool.Push(saea)
 
 
-
-
 type UserToken = {
     mutable Socket: Socket
     mutable Tcs: TaskCompletionSource<byte []>
@@ -72,6 +70,15 @@ type UserToken = {
     mutable SaeaBufEnd: int
     }
 
+    
+type UserToken2<'t> = {
+    mutable Socket: Socket
+    mutable Tcs: TaskCompletionSource<'t>
+    mutable ClientBuf: byte[]
+    mutable ClientBufPos: int
+    mutable SaeaBufStart: int
+    mutable SaeaBufEnd: int
+    }
 
 
 let rec ProcessReceive (saea:SocketAsyncEventArgs) =
@@ -81,19 +88,19 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
 
     match saea.SocketError, bytesTransferred, bytesRequired with
     | SocketError.Success, tran, req when req = tran ->
-            Array.Copy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
+            Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
             ut.ClientBufPos <- ut.ClientBuf.Length
             ut.SaeaBufStart <- bytesRequired
             ut.SaeaBufEnd   <- bytesTransferred
 
     | SocketError.Success, tran, req when req < tran ->
-            Array.Copy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
+            Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
             ut.ClientBufPos <- ut.ClientBuf.Length
             ut.SaeaBufStart <- saeaBufSize
             ut.SaeaBufEnd   <- saeaBufSize
 
     | SocketError.Success, tran, req when req > tran ->
-            Array.Copy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, bytesTransferred)
+            Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, bytesTransferred)
             ut.ClientBufPos <- ut.ClientBufPos + bytesTransferred
             ut.SaeaBufStart <- saeaBufSize
             ut.SaeaBufEnd   <- saeaBufSize
@@ -101,42 +108,42 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
             if not ioPending then
                 ProcessReceive(saea)
 
-    | SocketError.Success, 0, _                 ->
-            ut.Tcs.SetCanceled()    // is this enough? will it cause the async loop to terminate and use will call dispose on the client socket?
-            failwith "client disconnection not implemented"
+    | SocketError.Success, 0, _ -> 
+            ut.Tcs.SetCanceled()    // client has disconnected
 
     | err, _, _ ->
-            // todo ut.Tcs.SetException(err)
-            failwith "socket error handling not implemented"
+            let msg = sprintf "receive socket error: %O" err
+            let ex = new Exception(msg)
+            ut.Tcs.SetException(ex)
 
 
 
-let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte[]) : Task =
+
+// requires a buffer to be supplied, enabling pre-allocated buffers to be reused
+let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
     let ut = saea.UserToken :?> UserToken
     ut.ClientBuf <- dest
     ut.ClientBufPos <- 0   // AsyncRead will always read into the client Buffer starting at index zero
 
-    let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read already, by a previous read operation
+    let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read-in already, by a previous read operation
 
     match availableBytes with
     | _ when availableBytes >= dest.Length ->
-            Array.Copy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, dest.Length) // able to satisfy the entire read request from bytes already available
-            ut.SaeaBufStart <- ut.SaeaBufStart + dest.Length
-            Task.CompletedTask
+            Buffer.BlockCopy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, dest.Length) // able to satisfy the entire read request from bytes already available
+            ut.SaeaBufStart <- ut.SaeaBufStart + dest.Length // mark the new begining of the unread bytes
+            Task.FromResult(dest) |> Async.AwaitTask
 
     | _ when availableBytes > 0 ->
-            Array.Copy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, availableBytes)
-            ut.SaeaBufStart <- saeaBufSize
-            ut.SaeaBufEnd   <- saeaBufSize
+            Buffer.BlockCopy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, availableBytes)
             ut.ClientBufPos <- availableBytes // availableBytes have been written into the client array (aka 'dest'), so the first unread index is 'availableBytes' because dest is zero based
             let tcs = new TaskCompletionSource<byte[]>()
             ut.Tcs <- tcs
-
+            ut.SaeaBufStart <- saeaBufSize
+            ut.SaeaBufEnd   <- saeaBufSize
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessReceive(saea)
-
-            tcs.Task :> Task    //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
+            tcs.Task  |> Async.AwaitTask
 
     | _ ->
             let tcs = new TaskCompletionSource<byte[]>()
@@ -146,7 +153,13 @@ let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte[]) : Task =
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessReceive(saea)
-            tcs.Task :> Task    //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
+            tcs.Task |> Async.AwaitTask
+
+
+// does not require a buffer to be supplied
+let AsyncRead2 (saea:SocketAsyncEventArgs) (count:int) : Async<byte[]> =
+    let dest = Array.zeroCreate count
+    AsyncRead saea dest
 
 
 
@@ -159,11 +172,11 @@ let rec ProcessSend (saea:SocketAsyncEventArgs) =
 
     match saea.SocketError, ut.ClientBuf.Length - ut.ClientBufPos with
     | SocketError.Success, 0 -> 
-            Array.Copy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
+            Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
             ut.Tcs.SetResult(null) // todo: ut.Tcs.SetResult(null) - how is a non-generic Task signalled as being complete
 
     | SocketError.Success, lenRemaining    ->
-            Array.Copy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
+            Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
             ut.Tcs.SetResult(null) // todo: ut.Tcs.SetResult(null) - how is a non-generic Task signalled as being complete
             let lenToSend = 
                     if lenRemaining > saeaBufSize
@@ -174,15 +187,16 @@ let rec ProcessSend (saea:SocketAsyncEventArgs) =
             if not ioPending then
                 ProcessSend(saea)
 
-    | _   ->
-            // todo ut.Tcs.SetException
-            ()
+    | err   ->
+            let msg = sprintf "send socket error: %O" err
+            let ex = new Exception(msg)
+            ut.Tcs.SetException(ex)
 
 
 
 
 
-let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Task =
+let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
     let ut = saea.UserToken :?> UserToken
     ut.ClientBuf <- bs
     ut.ClientBufPos <- 0
@@ -191,23 +205,19 @@ let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Task =
 
     match bs.Length <= saeaBufSize with
     | true  ->
-            Array.Copy(bs, saea.Buffer, bs.Length)
+            Buffer.BlockCopy(bs, 0, saea.Buffer, 0, bs.Length)
             saea.SetBuffer(0, bs.Length)
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessSend(saea)
-            tcs.Task :> Task    //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
+            tcs.Task :> Task |> Async.AwaitTask   //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
     | false ->
-            Array.Copy(bs, saea.Buffer, saeaBufSize)
+            Buffer.BlockCopy(bs, 0, saea.Buffer, 0, saeaBufSize)
             ut.ClientBufPos <- saeaBufSize
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessSend(saea)
-            tcs.Task :> Task    //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
-
-
-
-
+            tcs.Task :> Task  |> Async.AwaitTask  //todo: converting a Task<byte[]> to a non-generic Task, this requires fixing
 
 
 
@@ -216,7 +226,6 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
     use client = client // without this Dispose would not be called on client
     use netStrm = client.GetStream()
-
 
     match saeaPool.TryPop() with
     | true, saea    ->
@@ -236,7 +245,8 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 //        client.ReceiveBufferSize    <- bufSize
 //        client.SendBufferSize       <- bufSize
 
-        let buf = Array.zeroCreate 1
+        let buf1 = Array.zeroCreate 1
+        let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
         let asyncProcessClientRequests =
             let mutable loopAgain = true
@@ -245,29 +255,25 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                 // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
                 // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
                 // The F# async workflow sequences async reads and writes so none are simultaneous.
-                use strm = new System.IO.BufferedStream( netStrm, bufSize )
-                while (client.Connected && loopAgain) do
-
-                    // reading from the socket is synchronous after this point, until current redis msg is processed
-                    let! optRespTypeByte = strm.AsyncReadByte buf
-                    match optRespTypeByte with
-                    | None              ->  loopAgain <- false  // client disconnected
-                    | Some respTypeByte ->
-                        let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                        if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                            Eat5NoAlloc strm
-                            do! strm.AsyncWrite pongBytes
-                            do! strm.FlushAsync() |> Async.AwaitTask
-                        else
-                            let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-    //                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-                            let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                            match choiceFredisCmd with
-                            | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                                    do! RespStreamFuncs.AsyncSendResp strm resp
-                                                    do! strm.FlushAsync() |> Async.AwaitTask
-                            | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
-                                                    do! strm.FlushAsync() |> Async.AwaitTask
+                use strm = new System.IO.BufferedStream ( netStrm, bufSize )
+                while (client.Connected ) do
+                    let! _ = AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
+                    let respTypeInt = System.Convert.ToInt32(buf1.[0])
+                    if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                        // todo: could manually adjust the saea userToken to eat 5 chars
+                        let! _ = AsyncRead saea buf5        // todo: let! _ is ugly, fix
+                        do! AsyncWrite saea pongBytes 
+                        ()
+                    else
+//                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                        match choiceFredisCmd with
+                        | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                                do! RespStreamFuncs.AsyncSendResp strm resp
+                                                do! strm.FlushAsync() |> Async.AwaitTask
+                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
+                                                do! strm.FlushAsync() |> Async.AwaitTask
             }
 
         Async.StartWithContinuations(
@@ -319,8 +325,6 @@ let main argv =
             Utils.ChoiceParseInt (sprintf "invalid integer %s" argv.[0]) argv.[0]
         else
             Choice1Of2 (8 * 1024)
-
-
 
     match cBufSize with
     | Choice1Of2 bufSize ->

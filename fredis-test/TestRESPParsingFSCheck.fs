@@ -1,5 +1,7 @@
 ﻿module TestRESPParsingFSCheck
 
+#nowarn "21"
+#nowarn "40"
 
 
 open System.IO
