@@ -19,3 +19,4 @@
       "../AsyncRespMsgParser.fs"
       "../SocAsyncEventArgFuncs.fs"
       "../SaeaAsyncRespMsgParser.fs"
+      "../SaeaRespStreamFuncs.fs"

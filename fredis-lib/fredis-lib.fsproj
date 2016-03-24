@@ -76,6 +76,7 @@
     <Compile Include="AsyncRespMsgParser.fs" />
     <Compile Include="SocAsyncEventArgFuncs.fs" />
     <Compile Include="SaeaAsyncRespMsgParser.fs" />
+    <Compile Include="SaeaRespStreamFuncs.fs" />
     <Content Include="paket.references" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />

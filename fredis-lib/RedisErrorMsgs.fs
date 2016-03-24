@@ -2,7 +2,6 @@
 module ErrorMsgs
 
 
-
 let badBitArgBitpos                 = "ERR The bit argument must be 1 or 0."B
 let bitNotIntegerOrOutOfRange       = "ERR bit is not an integer or out of range"B
 let bitOffsetNotIntegerOrOutOfRange = "ERR bit offset is not an integer or out of range"B
