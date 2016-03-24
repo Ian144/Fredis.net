@@ -72,10 +72,10 @@
     <Compile Include="CmdProcChannels.fs" />
     <Compile Include="FredisCmdToResp.fs" />
     <Compile Include="RespToFredisCmdParser.fs" />
-    <Compile Include="RespMsgProcessor.fs" />
-    <Compile Include="AsyncRespMsgProcessor.fs" />
+    <Compile Include="RespMsgParser.fs" />
+    <Compile Include="AsyncRespMsgParser.fs" />
     <Compile Include="SocAsyncEventArgFuncs.fs" />
-    <Compile Include="SaeaAsyncRespMsgProcessor.fs" />
+    <Compile Include="SaeaAsyncRespMsgParser.fs" />
     <Content Include="paket.references" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />

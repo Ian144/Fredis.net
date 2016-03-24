@@ -17,7 +17,7 @@ let ``ReadUntilCRLF basic`` () =
     let bs = "678\r\n"B
     strm.Write( bs, 0, bs.Length)
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    test <@ [54;55;56] = RespMsgProcessor.ReadUntilCRLF( strm ) @>
+    test <@ [54;55;56] = RespMsgParser.ReadUntilCRLF( strm ) @>
 
 
 
@@ -27,7 +27,7 @@ let ``ReadUntilCRLF not empty after CRLF`` () =
     let bs = "678\r\n123"B
     strm.Write( bs, 0, bs.Length)
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    test <@ [54;55;56] = RespMsgProcessor.ReadUntilCRLF( strm ) @>
+    test <@ [54;55;56] = RespMsgParser.ReadUntilCRLF( strm ) @>
 
 
 
@@ -38,7 +38,7 @@ let ``ReadInt32 basic`` (ii:int32) =
     let bs = sprintf "%d\r\n" ii |> Utils.StrToBytes 
     do  strm.Write( bs, 0, bs.Length)
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    ii = RespMsgProcessor.ReadInt32( strm )
+    ii = RespMsgParser.ReadInt32( strm )
 
 
 [<Property>]
@@ -47,7 +47,7 @@ let ``ReadInt64 basic`` (ii:int64) =
     let bs = sprintf "%d\r\n" ii |> Utils.StrToBytes 
     do  strm.Write( bs, 0, bs.Length)
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    let actual = RespMsgProcessor.ReadInt64( strm )
+    let actual = RespMsgParser.ReadInt64( strm )
     ii = actual
 
 

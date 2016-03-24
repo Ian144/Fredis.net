@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module AsyncRespMsgProcessor
+module AsyncRespMsgParser
 
 open System.IO
 open FredisTypes

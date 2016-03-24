@@ -90,7 +90,7 @@ let ``Async Write-Read Resp stream roundtrip`` (bufSize:int)  (respIn:FredisType
     use strm = new System.IO.MemoryStream()
     RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    let respOut = AsyncRespMsgProcessor.LoadRESPMsgInner bufSize strm |> Async.RunSynchronously
+    let respOut = AsyncRespMsgParser.LoadRESPMsgInner bufSize strm |> Async.RunSynchronously
     let isEof = strm.Position = strm.Length
     respIn = respOut && isEof
 
@@ -103,7 +103,7 @@ let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
     let respTypeByte = strm.ReadByte() 
-    let respOut = RespMsgProcessor.LoadRESPMsg bufSize respTypeByte strm
+    let respOut = RespMsgParser.LoadRESPMsg bufSize respTypeByte strm
     let isEof = strm.Position = strm.Length
     respIn = respOut && isEof
 
@@ -112,9 +112,9 @@ let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
 let ``ReadInt64 Write-Read roundtrip`` (ii:int64)  =
     use strm = new MemoryStream()
     let bytes = (sprintf "%d\r\n" ii) |> Utils.StrToBytes
-    let _ = strm.Write (bytes, 0, bytes.Length)
+    strm.Write (bytes, 0, bytes.Length) |> ignore
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
-    let iiOut = RespMsgProcessor.ReadInt64(strm)
+    let iiOut = RespMsgParser.ReadInt64(strm)
     let isEof = strm.Position = strm.Length
     ii = iiOut && isEof
 

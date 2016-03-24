@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module RespMsgProcessor
+module RespMsgParser
 
 open System.IO
 open FredisTypes

@@ -193,7 +193,7 @@ let private sendReceive (client:TcpClient) (msg:Resp) =
                 | None              ->  None
                 | Some respTypeByte -> 
                         let respTypeInt = System.Convert.ToInt32(respTypeByte)
-                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         Some respMsg
             return reply
         }

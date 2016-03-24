@@ -60,7 +60,6 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             // The F# async workflow sequences async reads and writes so none are simultaneous.i
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
             while (client.Connected && loopAgain) do
-
                 // reading from the socket is synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte buf 
                 match optRespTypeByte with
@@ -72,8 +71,8 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                         do! strm.AsyncWrite pongBytes
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
-                        let respMsg = RespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-//                        let! respMsg = AsyncRespMsgProcessor.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+//                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread

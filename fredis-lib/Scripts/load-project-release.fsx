@@ -15,5 +15,5 @@
       "../CmdProcChannels.fs"
       "../FredisCmdToResp.fs"
       "../RespToFredisCmdParser.fs"
-      "../AsyncRespMsgProcessor.fs"
-      "../RespMsgProcessor.fs"
+      "../AsyncRespMsgParser.fs"
+      "../RespMsgParser.fs"
