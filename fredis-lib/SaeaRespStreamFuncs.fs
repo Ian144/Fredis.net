@@ -63,12 +63,12 @@ let private AsyncSendBulkString (strm:IFredisStreamSink) (contents:BulkStrConten
 
 
 
-let private AsyncSendSimpleString2 (strm:IFredisStreamSink) (contents:byte array) =
-    async{
-        do! strm.AsyncWriteBuf simpStrType
-        do! strm.AsyncWriteBuf contents
-        do! strm.AsyncWriteBuf crlf
-    }
+//let private AsyncSendSimpleString2 (strm:IFredisStreamSink) (contents:byte array) =
+//    async{
+//        do! strm.AsyncWriteBuf simpStrType
+//        do! strm.AsyncWriteBuf contents
+//        do! strm.AsyncWriteBuf crlf
+//    }
 
 let private AsyncSendSimpleString (strm:IFredisStreamSink) (contents:byte array) =
     let len = 3 + contents.Length

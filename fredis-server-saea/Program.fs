@@ -77,6 +77,10 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
         let buf1 = Array.zeroCreate 1
         let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
+        let saeaSrc = SaeaStreamSource saea
+        let saeaSink = SaeaStreamSink saea
+
+
         let asyncProcessClientRequests =
             async{
                 // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
@@ -94,11 +98,13 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                         ()
                     else
 //                        let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        //let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with
                         | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                                do! RespStreamFuncs.AsyncSendResp strm resp
+                                                do! AsyncRespStreamFuncs.AsyncSendResp saeaSink resp
+//                                                do! RespStreamFuncs.AsyncSendResp strm resp
                                                 do! strm.FlushAsync() |> Async.AwaitTask
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
                                                 do! strm.FlushAsync() |> Async.AwaitTask

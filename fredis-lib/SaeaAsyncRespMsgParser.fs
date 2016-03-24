@@ -40,12 +40,6 @@ let CRb = 13uy
 
 
 
-//type IFredisStreamSource =
-//    abstract AsyncReadUntilCRLF : unit -> Async<byte[]>
-//    abstract AsyncReadNBytes : int -> Async<byte[]>
-//    abstract AsyncReadByte : unit -> Async<byte>
-//    abstract AsyncEatCRLF: unit -> Async<unit> // could be just a convenience wrapper arount AsyncReadN, but sometimes might be able to avoid array alloc and copying 
-
 
 
 let private AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:IFredisStreamSource) : Async<Resp> = 
