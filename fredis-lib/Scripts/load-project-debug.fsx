@@ -15,5 +15,7 @@
       "../CmdProcChannels.fs"
       "../FredisCmdToResp.fs"
       "../RespToFredisCmdParser.fs"
-      "../AsyncRespMsgProcessor.fs"
       "../RespMsgProcessor.fs"
+      "../AsyncRespMsgProcessor.fs"
+      "../SocAsyncEventArgFuncs.fs"
+      "../SaeaAsyncRespMsgProcessor.fs"

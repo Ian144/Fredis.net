@@ -72,8 +72,10 @@
     <Compile Include="CmdProcChannels.fs" />
     <Compile Include="FredisCmdToResp.fs" />
     <Compile Include="RespToFredisCmdParser.fs" />
-    <Compile Include="AsyncRespMsgProcessor.fs" />
     <Compile Include="RespMsgProcessor.fs" />
+    <Compile Include="AsyncRespMsgProcessor.fs" />
+    <Compile Include="SocAsyncEventArgFuncs.fs" />
+    <Compile Include="SaeaAsyncRespMsgProcessor.fs" />
     <Content Include="paket.references" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />
@@ -84,6 +86,8 @@
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

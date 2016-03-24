@@ -3,7 +3,7 @@ module RespMsgProcessor
 
 open System.IO
 open FredisTypes
-open Utils
+//open Utils
 
 
 
@@ -66,7 +66,6 @@ let ReadInt64F (strm:Stream) =
         let ii1 = asciiCodes2 |> List.map asciiDigitToDigit |> List.fold foldInt 0L
         ii1 * sign
 
-
 // an imperative int64 reader, adapted from sider code
 let ReadInt64Imp (strm:Stream) = 
     let mutable num = 0L
@@ -85,6 +84,7 @@ let ReadInt64Imp (strm:Stream) =
             b <- strm.ReadByte()
         strm.ReadByte() |> ignore // throw away the CRLF
         num
+
 
 
 // an imperative int64 reader
