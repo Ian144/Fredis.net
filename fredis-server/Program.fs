@@ -110,7 +110,7 @@ let ConnectionListenerLoop (bufSize:int) (listener:TcpListener) =
     )
 
 
-
+#nowarn "52"
 let WaitForExitCmd () = 
     while System.Console.ReadKey().KeyChar <> 'X' do
         ()
