@@ -129,6 +129,7 @@ let ProcessAccept (saeaAccept:SocketAsyncEventArgs) =
         SaeaBufEnd = saeaBufSize
     }
 
+    // get a client saea from a pool
     clientSaea.UserToken <- clientUt
     tcs.SetResult(clientSaea)
 
@@ -145,8 +146,9 @@ let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
 
 
 
-[<Fact>]
-let ``server AsyncRead exp test`` () =
+
+[<Property>]
+let ``server AsyncRead single send-receive property test`` (bsToSend:byte[]) =
 
     let ipAddr = IPAddress.Parse(host)
     let localEndPoint = IPEndPoint (ipAddr, port)
@@ -156,10 +158,6 @@ let ``server AsyncRead exp test`` () =
 
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-
-    // cant let! on listenerSocket.clientConnected and 
-
-    // do i need threads or a pair of asyncs
 
     let bsToSend:byte[] = "abcdefg"B
 
@@ -172,15 +170,103 @@ let ``server AsyncRead exp test`` () =
     let asyncSend = async{
         use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
         do!  clientClientSocket.MyConnectAsync(ipAddr, port)
-        let! _ = clientClientSocket.MySendAsync(bsToSend) // put the receiving code after this?
-        return bsToSend // asyncSend needs to be of the same type as asyncReceive
+        let! _ = clientClientSocket.MySendAsync(bsToSend)
+        return bsToSend // asyncSend needs to be of the same type as asyncReceive to run in parallel
     } 
-    
  
     
     let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
 
-    match xx with
-    |[|sent; received|] -> test <@ sent = received @>
-    | _                 -> test <@ false @>
+    let ok = 
+        match xx with
+        |[|sent; received|] -> sent = received
+        | _                 -> false
 
+
+    // CLEANUP CONNECTIONS, USE use
+
+    ok
+
+
+
+
+
+[<Fact>]
+let ``server AsyncRead 14 char send, 2x7char reads `` () =
+
+    let ipAddr = IPAddress.Parse(host)
+    let localEndPoint = IPEndPoint (ipAddr, port)
+    use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+    listenSocket.Bind(localEndPoint)
+    listenSocket.Listen numClients
+
+    let acceptEventArg = new SocketAsyncEventArgs()
+    acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
+
+    let bsToSend:byte[] = "abcdefgabcdefg"B
+
+    let asyncReceive = async{
+        let! saea = StartAccept listenSocket acceptEventArg
+        let! _ = SocAsyncEventArgFuncs.AsyncRead2 saea 7
+        return! SocAsyncEventArgFuncs.AsyncRead2 saea 7
+    }
+    
+
+    let asyncSend = async{
+        use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+        do!  clientClientSocket.MyConnectAsync(ipAddr, port)
+        let! _ = clientClientSocket.MySendAsync(bsToSend)
+        return bsToSend // asyncSend needs to be of the same type as asyncReceive to run in parallel
+    } 
+ 
+
+    let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
+
+
+    let expected = "abcdefg"B
+
+    match xx with
+    |[|_; received|]    -> test<@ expected = received @>
+    | _                 -> test<@ false  @>
+
+
+
+
+[<Fact>]
+let ``server AsyncRead 2x7 char sends, 1x14 char read `` () =
+
+    let ipAddr = IPAddress.Parse(host)
+    let localEndPoint = IPEndPoint (ipAddr, port)
+    use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+    listenSocket.Bind(localEndPoint)
+    listenSocket.Listen numClients
+
+    let acceptEventArg = new SocketAsyncEventArgs()
+    acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
+
+    let bsToSend:byte[] = "abcdefg"B
+
+    let asyncReceive = async{
+        let! saea = StartAccept listenSocket acceptEventArg
+        do! Async.Sleep 200
+        return! SocAsyncEventArgFuncs.AsyncRead2 saea 14
+    }
+    
+
+    let asyncSend = async{
+        use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+        do!  clientClientSocket.MyConnectAsync(ipAddr, port)
+        let! _ = clientClientSocket.MySendAsync(bsToSend)
+        let! _ = clientClientSocket.MySendAsync(bsToSend)
+        return bsToSend // asyncSend needs to be of the same type as asyncReceive to run in parallel
+    } 
+ 
+
+    let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
+
+
+    let expected = "abcdefgabcdefg"B
+
+    match xx with
+    |[|_; received|]    -> test <@ expected = received @>
+    | _                 -> test <@ false @>
