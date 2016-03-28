@@ -62,6 +62,7 @@
     <Compile Include="TestFredisCmdsFSCheck.fs" />
     <Compile Include="TestFredisCmdToRESP.fs" />
     <Compile Include="TestRedisVsFredis.fs" />
+    <Compile Include="TestSAEA.fs" />
     <Content Include="paket.references" />
     <Content Include="App.config" />
   </ItemGroup>

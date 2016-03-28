@@ -36,14 +36,13 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 
-
-let maxNumConnections = 2
+let maxNumConnections = 1
 let saeaBufSize = SocAsyncEventArgFuncs.saeaBufSize
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
 let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
 
 for ctr = 0 to (maxNumConnections - 1) do
-    let saea = new SocketAsyncEventArgs()
+    let saea   = new SocketAsyncEventArgs()
     let offset = ctr*saeaBufSize
     saea.SetBuffer(saeaSharedBuffer, offset, saeaBufSize)
     saea.add_Completed (fun _ b -> SocAsyncEventArgFuncs.OnClientIOCompleted b)
@@ -126,11 +125,14 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
         Async.StartWithContinuations(
                 asyncProcessClientRequests,
-                (fun () -> saeaPool.Push saea),
-                (fun ex -> saeaPool.Push saea
-                           ClientError ex),
-                (fun ct -> saeaPool.Push saea
-                           printfn "ClientListener cancelled: %A" ct)
+                (fun () ->  client.Dispose()
+                            saeaPool.Push saea),
+                (fun ex ->  client.Dispose() 
+                            saeaPool.Push saea
+                            ClientError ex),
+                (fun ct ->  client.Dispose() 
+                            saeaPool.Push saea
+                            printfn "ClientListener cancelled: %A" ct)
         )
 
 
@@ -231,13 +233,10 @@ let ProcessAccept (saeaAccept:SocketAsyncEventArgs) =
 
 
 let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
-
     acceptEventArg.AcceptSocket <- null
-
     let ioPending = listenSocket.AcceptAsync acceptEventArg
     if not ioPending then
         ProcessAccept acceptEventArg
-    ()
 
 
 // see C:\Users\Ian\Documents\GitHub\suave\src\Suave\Tcp.fs (49)

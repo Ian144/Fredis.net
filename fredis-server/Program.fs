@@ -127,8 +127,6 @@ let main argv =
         else
             Choice1Of2 (8 * 1024)
 
-
-
     match cBufSize with
     | Choice1Of2 bufSize -> 
         printfn "buffer size: %d"  bufSize
