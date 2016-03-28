@@ -54,29 +54,6 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
-  <ItemGroup>
-    <Compile Include="TestSetBitGetBit.fs" />
-    <Compile Include="TestRespMsgProcessor.fs" />
-    <Compile Include="TestFredisCmds.fs" />
-    <Compile Include="TestRESPParsingFSCheck.fs" />
-    <Compile Include="TestFredisCmdsFSCheck.fs" />
-    <Compile Include="TestFredisCmdToRESP.fs" />
-    <Compile Include="TestRedisVsFredis.fs" />
-    <Compile Include="TestSAEA.fs" />
-    <Content Include="paket.references" />
-    <Content Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\fredis-lib\fredis-lib.fsproj">
-      <Name>fredis-lib</Name>
-      <Project>{2b4825fd-73b1-4105-a6e7-32ecf0263400}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
@@ -404,4 +381,29 @@
   <Import Project="..\packages\MSBuild.Extension.Pack\build\$(__paket__MSBuild_Extension_Pack_targets).targets" Condition="Exists('..\packages\MSBuild.Extension.Pack\build\$(__paket__MSBuild_Extension_Pack_targets).targets')" Label="Paket" />
   <Import Project="..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_targets).targets" Condition="Exists('..\packages\xunit.runner.visualstudio\build\$(__paket__xunit_runner_visualstudio_targets).targets')" Label="Paket" />
   <Import Project="..\.paket\paket.targets" />
+  <ItemGroup>
+    <Compile Include="TestSetBitGetBit.fs" />
+    <Compile Include="TestRespMsgProcessor.fs" />
+    <Compile Include="TestFredisCmds.fs" />
+    <Compile Include="TestRESPParsingFSCheck.fs" />
+    <Compile Include="TestFredisCmdsFSCheck.fs" />
+    <Compile Include="TestFredisCmdToRESP.fs" />
+    <Compile Include="TestRedisVsFredis.fs" />
+    <Compile Include="TestSAEA.fs" />
+    <Content Include="paket.references" />
+    <Content Include="App.config" />
+    <None Include="Scripts\load-references-debug.fsx" />
+    <None Include="Scripts\load-project-debug.fsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\fredis-lib\fredis-lib.fsproj">
+      <Name>fredis-lib</Name>
+      <Project>{2b4825fd-73b1-4105-a6e7-32ecf0263400}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

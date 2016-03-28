@@ -37,7 +37,7 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 let maxNumConnections = 1
-let saeaBufSize = SocAsyncEventArgFuncs.saeaBufSize
+let saeaBufSize = 1024 * 64
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
 let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
 
@@ -50,113 +50,110 @@ for ctr = 0 to (maxNumConnections - 1) do
 
 
 
-let ClientListenerLoop (bufSize:int) (client:TcpClient) =
-    use client = client // without this Dispose would not be called on client
-    use netStrm = client.GetStream() // required to write error msg if an SAEA is not available
-
-    match saeaPool.TryPop() with
-    | true, saea    ->
-        client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
-
-        let userTok = {
-            Socket = client.Client
-            Tcs = null
-            ClientBuf = null
-            ClientBufPos = Int32.MaxValue
-            SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer to indicate there is nothing to read
-            SaeaBufEnd = saeaBufSize     // as comment above
-            }
-
-        saea.UserToken <- userTok
-
-        let buf1 = Array.zeroCreate 1
-        let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
-
-        let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
-        let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink
-
-        let mutable firstTime = false
-
-        let asyncProcessClientRequests =
-            async{
-                while (client.Connected ) do
-
-                    if firstTime then 
-                        firstTime <- false
-                        let respTypeInt = netStrm.ReadByte() 
-                        //let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
-                        //let respTypeInt = System.Convert.ToInt32(buf1.[0])
-
-                        if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                            // todo: could manually adjust the saea userToken to eat 5 chars
-                            let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
-                            do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
-                            ()
-                        else
-                            let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
-                            let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                            match choiceFredisCmd with
-                            | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                                    do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
-                                                    do! saeaSink.AsyncFlush ()
-                            | Choice2Of2 err    ->  do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
-                                                    do! saeaSink.AsyncFlush ()
-                        
-                    else
-                        let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
-                        let respTypeInt = System.Convert.ToInt32(buf1.[0])
-
-                        if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                            // todo: could manually adjust the saea userToken to eat 5 chars
-                            let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
-                            do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
-                            ()
-                        else
-                            let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
-                            let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
-                            match choiceFredisCmd with
-                            | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                                    do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
-                                                    do! saeaSink.AsyncFlush ()
-                            | Choice2Of2 err    ->  do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
-                                                    do! saeaSink.AsyncFlush ()
-
-            }
-
-        Async.StartWithContinuations(
-                asyncProcessClientRequests,
-                (fun () ->  client.Dispose()
-                            saeaPool.Push saea),
-                (fun ex ->  client.Dispose() 
-                            saeaPool.Push saea
-                            ClientError ex),
-                (fun ct ->  client.Dispose() 
-                            saeaPool.Push saea
-                            printfn "ClientListener cancelled: %A" ct)
-        )
-
-
-    | false, xx  ->  netStrm.Write(ErrorMsgs.maxNumClientsReached, 0, ErrorMsgs.maxNumClientsReached.Length)
-
-
+//let ClientListenerLoop (bufSize:int) (client:TcpClient) =
+//    use client = client // without this Dispose would not be called on client
+//    use netStrm = client.GetStream() // required to write error msg if an SAEA is not available
+//
+//    match saeaPool.TryPop() with
+//    | true, saea    ->
+//        client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
+//
+//        let userTok = {
+//            Socket = client.Client
+//            Tcs = null
+//            ClientBuf = null
+//            ClientBufPos = Int32.MaxValue
+//            SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer to indicate there is nothing to read
+//            SaeaBufEnd = saeaBufSize     // as comment above
+//            }
+//
+//        saea.UserToken <- userTok
+//
+//        let buf1 = Array.zeroCreate 1
+//        let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
+//
+//        let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
+//        let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink
+//
+//        let mutable firstTime = false
+//
+//        let asyncProcessClientRequests =
+//            async{
+//                while (client.Connected ) do
+//
+//                    if firstTime then 
+//                        firstTime <- false
+//                        let respTypeInt = netStrm.ReadByte() 
+//                        //let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
+//                        //let respTypeInt = System.Convert.ToInt32(buf1.[0])
+//
+//                        if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+//                            // todo: could manually adjust the saea userToken to eat 5 chars
+//                            let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
+//                            do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
+//                            ()
+//                        else
+//                            let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
+//                            let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+//                            match choiceFredisCmd with
+//                            | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+//                                                    do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
+//                                                    do! saeaSink.AsyncFlush ()
+//                            | Choice2Of2 err    ->  do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
+//                                                    do! saeaSink.AsyncFlush ()
+//                        
+//                    else
+//                        let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
+//                        let respTypeInt = System.Convert.ToInt32(buf1.[0])
+//
+//                        if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+//                            // todo: could manually adjust the saea userToken to eat 5 chars
+//                            let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
+//                            do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
+//                            ()
+//                        else
+//                            let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
+//                            let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+//                            match choiceFredisCmd with
+//                            | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+//                                                    do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
+//                                                    do! saeaSink.AsyncFlush ()
+//                            | Choice2Of2 err    ->  do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
+//                                                    do! saeaSink.AsyncFlush ()
+//
+//            }
+//
+//        Async.StartWithContinuations(
+//                asyncProcessClientRequests,
+//                (fun () ->  client.Dispose()
+//                            saeaPool.Push saea),
+//                (fun ex ->  client.Dispose() 
+//                            saeaPool.Push saea
+//                            ClientError ex),
+//                (fun ct ->  client.Dispose() 
+//                            saeaPool.Push saea
+//                            printfn "ClientListener cancelled: %A" ct)
+//        )
+//
+//
+//    | false, xx  ->  netStrm.Write(ErrorMsgs.maxNumClientsReached, 0, ErrorMsgs.maxNumClientsReached.Length)
 
 
-
-let ConnectionListenerLoop (bufSize:int) (listener:TcpListener) =
-    let asyncConnectionListener =
-        async {
-            while true do
-                let acceptClientTask = listener.AcceptTcpClientAsync ()
-                let! client = Async.AwaitTask acceptClientTask
-                do ClientListenerLoop bufSize client
-        }
-
-    Async.StartWithContinuations(
-        asyncConnectionListener,
-        (fun _  -> printfn "ConnectionListener completed"),
-        ConnectionListenerError,
-        (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
-    )
+//let ConnectionListenerLoop (bufSize:int) (listener:TcpListener) =
+//    let asyncConnectionListener =
+//        async {
+//            while true do
+//                let acceptClientTask = listener.AcceptTcpClientAsync ()
+//                let! client = Async.AwaitTask acceptClientTask
+//                do ClientListenerLoop bufSize client
+//        }
+//
+//    Async.StartWithContinuations(
+//        asyncConnectionListener,
+//        (fun _  -> printfn "ConnectionListener completed"),
+//        ConnectionListenerError,
+//        (fun ct -> printfn "ConnectionListener cancelled: %A" ct)
+//    )
 
 
 
@@ -181,6 +178,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
         ClientBufPos = Int32.MaxValue
         SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer to indicate there is nothing to read
         SaeaBufEnd = saeaBufSize     // as comment above
+        SaeaBufSize = saeaBufSize
         }
 
     saea.UserToken <- userTok

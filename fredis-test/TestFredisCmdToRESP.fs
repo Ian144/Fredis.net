@@ -86,12 +86,12 @@ let genByteOffset =
 
 
 
-let genByte = Gen.arrayOf Arb.generate<byte>
+let genBytes = Gen.arrayOf Arb.generate<byte>
     
 let genKeyBytePair =
     gen{
         let! key = genKey
-        let! bytes = genByte
+        let! bytes = genBytes
         return key, bytes
     }
     
