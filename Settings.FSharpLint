@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FSharpLintSettings xmlns="https://github.com/fsprojects/FSharpLint/blob/master/ConfigurationSchema.xsd">
+  <IgnoreFiles Update="Overwrite"><![CDATA[assemblyinfo.*]]></IgnoreFiles>
+  <Analysers>
+    <NameConventions>
+      <Rules>
+        <EnumCasesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </EnumCasesMustBePascalCase>
+        <ExceptionNamesMustEndWithException>
+          <Enabled>False</Enabled>
+        </ExceptionNamesMustEndWithException>
+        <IdentifiersMustNotContainUnderscores>
+          <Enabled>False</Enabled>
+        </IdentifiersMustNotContainUnderscores>
+        <InterfaceNamesMustBeginWithI>
+          <Enabled>False</Enabled>
+        </InterfaceNamesMustBeginWithI>
+        <LiteralNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </LiteralNamesMustBePascalCase>
+        <MemberNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </MemberNamesMustBePascalCase>
+        <ModuleNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </ModuleNamesMustBePascalCase>
+        <NamespaceNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </NamespaceNamesMustBePascalCase>
+        <NonPublicValuesCamelCase>
+          <Enabled>False</Enabled>
+        </NonPublicValuesCamelCase>
+        <ParameterMustBeCamelCase>
+          <Enabled>False</Enabled>
+        </ParameterMustBeCamelCase>
+        <RecordFieldNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </RecordFieldNamesMustBePascalCase>
+        <TypeNamesMustBePascalCase>
+          <Enabled>False</Enabled>
+        </TypeNamesMustBePascalCase>
+      </Rules>
+      <Enabled>False</Enabled>
+    </NameConventions>
+  </Analysers>
+</FSharpLintSettings>
