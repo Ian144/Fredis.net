@@ -18,6 +18,7 @@ type UserToken = {
     mutable ClientBufPos: int
     mutable SaeaBufStart: int   // offsets into each saea's section of the shared buffer, does not take into account the offset of the shared section
     mutable SaeaBufEnd: int
+    mutable Continuation : SocketAsyncEventArgs -> unit
     SaeaBufSize: int    // the size of that part of the  shared buffer available to each saea
     }
 
@@ -140,10 +141,12 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
 
     //let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read-in already, by a previous read operation
 
+    let endIdx = ut.SaeaBufEnd + saea.Offset
+    let startIdx = ut.SaeaBufStart + saea.Offset
+
     let crFound, crIdx = 
         let mutable found = false
-        let mutable ctr = ut.SaeaBufStart
-        let endIdx = ut.SaeaBufEnd  // endIdx will be one past the last valid cell
+        let mutable ctr = startIdx
         while (not found) && (ctr < endIdx) do
             if saea.Buffer.[ctr] = 13uy then 
                 found <- true
@@ -154,16 +157,38 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
     // todo: check that LF follows CR
 
     match crFound, crIdx  with
-    | true, crIdx when crIdx < (ut.SaeaBufEnd - 1)   ->   // CR found and there is at least one more char to read without doing another receive
-            let len = crIdx - ut.SaeaBufStart 
+    | true, crIdx when crIdx < (endIdx - 1)   ->   // CR found and there is at least one more char to read without doing another receive
+            let len = crIdx - startIdx 
             let arrOut = Array.zeroCreate len
-            Buffer.BlockCopy( saea.Buffer, ut.SaeaBufStart, arrOut,0, len)
+            Buffer.BlockCopy( saea.Buffer, startIdx, arrOut,0, len)
             ut.SaeaBufStart <- ut.SaeaBufStart + len + 2 // +2 so as to go past the CRLF
             //todo ut.SaeaBufEnd   <- ? is update required?
             async{ return arrOut }
-    
-    | _ -> failwith "AsyncReadUntilCRLF case not implemented"
-            
+
+    | _ ->  let len = ut.SaeaBufEnd - ut.SaeaBufStart
+            let buf1 = Array.zeroCreate len
+            Buffer.BlockCopy( saea.Buffer, startIdx, buf1, 0, len)
+            ut.SaeaBufStart <- ut.SaeaBufSize // the entire saea buffer has now been read into the client buffer, so set the saea buf to empty
+            ut.SaeaBufEnd <- ut.SaeaBufSize
+            let bufList = System.Collections.Generic.List<byte[]>()
+            let tcs = new TaskCompletionSource<byte[]>()
+            ut.Tcs <- tcs
+            let ioPending = ut.Socket.ReceiveAsync(saea)
+            if not ioPending then
+                ProcessReceive(saea)
+            tcs.Task |> Async.AwaitTask            
+
+
+// eatUntilCRLF continuation will 
+//    find crlf in saea array
+//    match found with
+//    | true  ->  add that portion of the new array to the list (stored in ut)
+//                concat the i list to be an array
+//                tcs.SetResult
+//    | false ->  add that portion of the new array to the list (stored in ut)
+//                let ioPending = ut.Socket.ReceiveAsync(saea)
+//                if not ioPending then
+//                    ProcessReceive(saea)
 
 
 
