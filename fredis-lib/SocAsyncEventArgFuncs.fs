@@ -51,7 +51,6 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     let bytesRequired = ut.ClientBuf.Length - ut.ClientBufPos
-
     match saea.SocketError, bytesTransferred, bytesRequired with
     | SocketError.Success, tran, req when req = tran ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
@@ -59,14 +58,12 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
             ut.SaeaBufStart <- bytesRequired    // could be read in subsequent calls
             ut.SaeaBufEnd   <- bytesTransferred
             ut.Tcs.SetResult(ut.ClientBuf)
-
     | SocketError.Success, tran, req when req < tran ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
             ut.ClientBufPos <- ut.ClientBuf.Length
             ut.SaeaBufStart <- req
             ut.SaeaBufEnd   <- tran
             ut.Tcs.SetResult(ut.ClientBuf)
-
     | SocketError.Success, tran, req when req > tran ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, bytesTransferred)
             ut.ClientBufPos <- ut.ClientBufPos + bytesTransferred
@@ -75,10 +72,8 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
             let ioPending = ut.Socket.ReceiveAsync saea
             if not ioPending then
                 ProcessReceive(saea)
-
     | SocketError.Success, 0, _ -> 
             ut.Tcs.SetCanceled()    // client has disconnected
-
     | err, _, _ ->
             let msg = sprintf "receive socket error: %O" err
             let ex = new Exception(msg)
@@ -157,9 +152,6 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
             let ex = new Exception(msg)
             ut.BufList.Clear()
             ut.Tcs.SetException(ex)
-
-    
-
 
 // called when a CR has been read as the last byte of a previous read
 // assuming the first byte is LF, todo: dont assume
@@ -240,10 +232,6 @@ let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
 let AsyncRead2 (saea:SocketAsyncEventArgs) (len:int) : Async<byte[]> =
     let dest = Array.zeroCreate len
     AsyncRead saea dest
-
-
-    
-
 
 
 // requires a buffer to be supplied, enabling pre-allocated buffers to be reused
@@ -341,32 +329,24 @@ let AsyncEatCRLF (saea:SocketAsyncEventArgs) : Async<unit> =
             }
 
 
-
-
 let rec ProcessSend (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     ut.ClientBufPos <- ut.ClientBufPos + bytesTransferred
 
-    assert (ut.ClientBufPos <= ut.ClientBuf.Length)
-
     match saea.SocketError, ut.ClientBuf.Length - ut.ClientBufPos with
     | SocketError.Success, 0 -> 
-            Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
-            ut.Tcs.SetResult(null) // todo: ut.Tcs.SetResult(null) - how is a non-generic Task signalled as being complete
-
+            ut.Tcs.SetResult([||]) // todo: ut.Tcs.SetResult([||]) - how is a non-generic Task signalled as being complete
     | SocketError.Success, lenRemaining    ->
-            Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, bytesTransferred)
-            ut.Tcs.SetResult(null) // todo: ut.Tcs.SetResult(null) - how is a non-generic Task signalled as being complete
             let lenToSend = 
                     if lenRemaining > ut.SaeaBufSize
                     then ut.SaeaBufSize
                     else lenRemaining
             saea.SetBuffer(0, lenToSend);
+            Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, 0, lenToSend)
             let ioPending = ut.Socket.SendAsync(saea)
             if not ioPending then
                 ProcessSend(saea)
-
     | err   ->
             let msg = sprintf "send socket error: %O" err
             let ex = new Exception(msg)
@@ -379,24 +359,19 @@ let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
     let ut = saea.UserToken :?> UserToken
     ut.ClientBuf <- bs
     ut.ClientBufPos <- 0
+    ut.Continuation <- ProcessSend
     let tcs = new TaskCompletionSource<byte[]>()
     ut.Tcs <- tcs
-
     match bs.Length <= ut.SaeaBufSize with
     | true  ->
             Buffer.BlockCopy(bs, 0, saea.Buffer, 0, bs.Length)
             saea.SetBuffer(0, bs.Length)
-            let ioPending = ut.Socket.ReceiveAsync(saea)
-            if not ioPending then
-                ProcessSend(saea)
-            tcs.Task :> Task |> Async.AwaitTask   //todo: converting a Task<byte[]> to a non-generic Task, fix this
     | false ->
             Buffer.BlockCopy(bs, 0, saea.Buffer, 0, ut.SaeaBufSize)
-            ut.ClientBufPos <- ut.SaeaBufSize
-            let ioPending = ut.Socket.ReceiveAsync(saea)
-            if not ioPending then
-                ProcessSend(saea)
-            tcs.Task :> Task  |> Async.AwaitTask  //todo: converting a Task<byte[]> to a non-generic Task, fix this
+            saea.SetBuffer(0, ut.SaeaBufSize)
+    let ioPending = ut.Socket.SendAsync(saea)
+    if not ioPending then ProcessSend(saea)
+    tcs.Task :> Task  |> Async.AwaitTask  //todo: converting a Task<byte[]> to a non-generic Task, fix this
 
 
 

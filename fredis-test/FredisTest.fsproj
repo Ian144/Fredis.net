@@ -389,7 +389,7 @@
     <Compile Include="TestFredisCmdsFSCheck.fs" />
     <Compile Include="TestFredisCmdToRESP.fs" />
     <Compile Include="TestRedisVsFredis.fs" />
-    <Compile Include="TestSAEA.fs" />
+    <Compile Include="TestSAEARead.fs" />
     <Content Include="paket.references" />
     <Content Include="App.config" />
     <None Include="Scripts\load-references-debug.fsx" />
