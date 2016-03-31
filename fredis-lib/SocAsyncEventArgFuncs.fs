@@ -222,9 +222,7 @@ let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessReceive(saea)
-            let ret = tcs.Task |> Async.AwaitTask
-            printfn "###################"
-            ret
+            tcs.Task |> Async.AwaitTask
 
 
 
@@ -315,7 +313,7 @@ let AsyncEatCRLF (saea:SocketAsyncEventArgs) : Async<unit> =
 
     match availableBytes with
     | _ when availableBytes > 1 ->  // hopefully the common case, where asking for 2 bytes does not require array allocation
-            let crPos = saea.Offset + ut.SaeaBufStart + 1
+            let crPos = saea.Offset + ut.SaeaBufStart
             let lfPos = crPos + 1
             if not (saea.Buffer.[crPos] = 13uy && saea.Buffer.[lfPos] = 10uy ) then failwith "AsyncEatCRLF next bytes are not CRLF"
             ut.SaeaBufStart <- ut.SaeaBufStart + 2 // mark the new begining of the unread bytes

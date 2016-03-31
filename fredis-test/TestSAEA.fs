@@ -133,6 +133,7 @@ let genNonEmptyBytes =
 
 type ArbOverridesAsyncRead() =
     static member NonEmptyByteArray() = Arb.fromGenShrink (genNonEmptyBytes, ArraySubSeqs)
+
  
 type SaeaAsyncReadPropertyAttribute() =
     inherit PropertyAttribute(
@@ -140,7 +141,6 @@ type SaeaAsyncReadPropertyAttribute() =
         MaxTest = 1000,
         Verbose = false,
         QuietOnSuccess = false)
-
 
 
 
@@ -229,7 +229,6 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
 
 
 
-
 [<SaeaAsyncReadCRLFPropertyAttribute>]
 let ``saea AsyncReadByte - correct byte received`` (firstBsToSend:byte[]) (byteIn:byte) (moreBsToSend:byte[]) =
     let maxNumClients = 4
@@ -269,21 +268,14 @@ let ``saea AsyncReadByte - correct byte received`` (firstBsToSend:byte[]) (byteI
 
 
 
-
-
-
-
 [<SaeaAsyncReadCRLFPropertyAttribute>]
 let ``saea AsyncReadUntilCRLF - CRLF received already in saea buffer from previous read`` (bs:byte[])  =
     let maxNumClients = 4
     let clientBufSize = bs.Length + 100 
-
     saeaPoolM <- CreateClientSAEAPool maxNumClients clientBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
     use listenSocket = SetupListenerSocket maxNumClients
-
-
     let firstBsToSend = "some bytes"B
     let moreBytes = "more bytes"B
     let bsToSendCRLF = seq{yield! firstBsToSend; yield! bs; yield 13uy; yield 10uy; yield! moreBytes} |> Seq.toArray 
@@ -314,7 +306,6 @@ let ``saea AsyncReadUntilCRLF - CRLF received already in saea buffer from previo
     match xx with
     |[|_; received|]    -> bs = received
     | _                 -> false
-
 
 
 
@@ -387,9 +378,6 @@ let ``saea AsyncWrite property test`` (bsToSend1:byte[]) =
     match xs with
     |[|_; bsReceived|]  ->  bsReceived = bsToSend1
     | _                 ->  false
-
-
-
 
 
 

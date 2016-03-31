@@ -51,23 +51,36 @@ let private AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:IFredisStre
 
 
 
+
+
+
 // todo: currently AsyncReadInt64 will throw if reading invalid int64, consider returning an option
 // todo: consider AsyncReadInt64 when profiling, would it be faster to perform arithmetic on bytes? if yes then use this as a reference impl
 let private AsyncReadInt64 (strm:IFredisStreamSource) = async{
     let! bytes = strm.AsyncReadUntilCRLF ()
-    let str = BitConverter.ToString bytes
-    let ii = Int64.Parse str
-    return ii
+    let len = bytes.Length
+    let mutable num = 0L
+    let mutable ctr = 0
+
+    if bytes.[0] = 45uy then //if the first byte is a '-' sign
+        ctr <- ctr + 1
+        while ctr < len do
+            num <- num * 10L + (int64 bytes.[ctr]) - 48L
+            ctr <- ctr + 1
+        return num * -1L
+    else
+        while ctr < len do
+            num <- num * 10L + (int64 bytes.[ctr]) - 48L
+            ctr <- ctr + 1
+        return num
 }
 
 
 // todo: currently AsyncReadInt32 will throw if reading invalid int64, consider returning an option
 // todo: consider AsyncReadInt32 when profiling, would it be faster to perform arithmetic on bytes? if yes then use this as a reference impl
 let private AsyncReadInt32 (strm:IFredisStreamSource) = async{
-    let! bytes = strm.AsyncReadUntilCRLF ()
-    let str = BitConverter.ToString bytes
-    let ii = Int32.Parse str
-    return ii
+    let! ii64 = AsyncReadInt64 strm
+    return int ii64
 }
 
 
