@@ -179,9 +179,9 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
         SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer to indicate there is nothing to read
         SaeaBufEnd = saeaBufSize     // as comment above
         SaeaBufSize = saeaBufSize
-        CRLFReadOp = false
         Continuation = ignore
         BufList = null
+        Expected = null
         }
 
     saea.UserToken <- userTok

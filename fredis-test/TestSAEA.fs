@@ -12,6 +12,7 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open System.Threading.Tasks
 open SocAsyncEventArgFuncs
+open System
 
 
 
@@ -80,9 +81,9 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
             SaeaBufStart = saeaBufSize
             SaeaBufEnd = saeaBufSize
             SaeaBufSize = saeaBufSize
-            CRLFReadOp = false
             Continuation = ignore
-            BufList = null
+            BufList = System.Collections.Generic.List<byte[]>()
+            Expected = null
         }
         saea.UserToken <- ut
         saeaPool.Push(saea)
@@ -156,24 +157,45 @@ type SaeaAsyncReadPropertyAttribute() =
 
 let myGenByteNoCRLF = Arb.generate<byte>  |> Gen.suchThat (fun bb -> bb <> 13uy && bb <> 10uy)
 
+let maxSize = 4096
+
+
+
+let private ShrinkInt (ii:int): int seq =
+    let ii1 = (ii * 2) / 3 
+    match ii1 with
+    |0  -> Seq.empty
+    |n  -> seq{yield n}
+
+
+let private GenPow2 =
+    gen{
+        let! pow = Gen.choose(1, 24)
+        return pown 2 pow
+    }
+
+
+
+
 let genNonEmptyBytesNoCRLF = 
     gen{
-        let! arraySize = Gen.choose (1, 8)
+        let! arraySize = GenPow2
         let! bs = Gen.arrayOfLength arraySize myGenByteNoCRLF
         return bs
     }
 
-
 type ArbOverridesAsyncReadCRLF() =
     static member NonEmptyByteArray() = Arb.fromGenShrink (genNonEmptyBytesNoCRLF, ArraySubSeqs)
+    static member Ints() = Arb.fromGenShrink ( GenPow2, ShrinkInt )
 
 
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 1000,
+        MaxTest = 10,
         Verbose = false,
         QuietOnSuccess = false)
+
 
 
 
@@ -191,11 +213,16 @@ let SetupListenerSocket (maxNumClients:int) : Socket =
 
 
 
+// the contents of bsToSend1|2 don't matter, it is the the length is whats important
+// todo: set bsToSend1|2 length (separate for both), maxNumClients and individSaeaBufSize
+
 [<SaeaAsyncReadCRLFPropertyAttribute>]
 let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`` (bsToSend1:byte[]) (bsToSend2:byte[])  =
+
     // arrange
-    let maxNumClients = 2
-    let individSaeaBufSize = 8
+    let maxNumClients = 8
+    let individSaeaBufSize = 1024 * 4
+
     saeaPoolM <- CreateClientSAEAPool maxNumClients individSaeaBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
@@ -203,18 +230,16 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
 
     let bsToSendCRLF = seq{yield! bsToSend1; yield! bsToSend2; yield 13uy; yield 10uy} |> Seq.toArray // append CRLF to the bytes being send (which won't contain CRLF due to the custom Arb instance)
 
-//    let m1 = sprintf "#### bsToSendCRLF: (%d) %A" bsToSendCRLF.Length bsToSendCRLF
-//    System.Diagnostics.Trace.WriteLine m1
-    //    let m2 = sprintf "#### bsToSend2   : %A" bsToSend2
-    //    System.Diagnostics.Trace.WriteLine m2
-
 
     // act 
     let asyncReceive = async{
         let! saea = StartAccept listenSocket acceptEventArg
-        let! _ = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length // read the first set of bytes, then throw away
-        let! bs = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
-        return bs
+        let ut = saea.UserToken :?> UserToken
+        ut.Expected <- bsToSend2
+        let! bs1 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length // read the first set of bytes, then throw away
+        assert (bs1 = bsToSend1)
+        let! bs2 = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
+        return bs2
     }
 
     let asyncSend = async{
@@ -234,10 +259,19 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
 
     if not  ok then
         let m3 = sprintf "#### received    : %A" received
-        System.Diagnostics.Trace.WriteLine (m3, "_verbose")
+        System.Diagnostics.Trace.WriteLine m3
+
+        let m4 = sprintf "#### expected    : %A" bsToSend2
+        System.Diagnostics.Trace.WriteLine m4
 
         let msg = sprintf "#### failing array len: %d" bsToSendCRLF.Length
         System.Diagnostics.Trace.WriteLine msg
+//
+//        let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
+//
+//        if xx.[0] = xx.[1] then
+//            printfn "xxxx"
+
     ok
 
 //[<SaeaPropertyAttribute>]
