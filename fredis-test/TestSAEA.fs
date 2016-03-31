@@ -124,12 +124,6 @@ let rec private ArraySubSeqs (bs:byte[]): byte array seq =
     | [||]  -> Seq.empty
     | bs2   -> seq{ yield bs2; yield! ArraySubSeqs bs2 }
 
-//let private ArrayFirstSeq (bs:byte[]): byte array seq =
-//    let bs2 = Array.tail bs
-//    match bs2 with
-//    |[||]   -> Seq.empty
-//    |_      -> seq{yield bs2}
-
 
 
 let genNonEmptyBytes = 
@@ -157,9 +151,6 @@ type SaeaAsyncReadPropertyAttribute() =
 
 let myGenByteNoCRLF = Arb.generate<byte>  |> Gen.suchThat (fun bb -> bb <> 13uy && bb <> 10uy)
 
-let maxSize = 4096
-
-
 
 let private ShrinkInt (ii:int): int seq =
     let ii1 = (ii * 2) / 3 
@@ -168,41 +159,36 @@ let private ShrinkInt (ii:int): int seq =
     |n  -> seq{yield n}
 
 
-let private GenPow2 =
-    gen{
-        let! pow = Gen.choose(1, 24)
-        return pown 2 pow
-    }
+//let private GenPow2 =
+//    gen{
+//        let! pow = Gen.choose(1, 24)
+//        return pown 2 pow
+//    }
 
 
 
 
 let genNonEmptyBytesNoCRLF = 
     gen{
-        let! arraySize = GenPow2
+        let! arraySize = Gen.choose (1, 1024 * 8)
         let! bs = Gen.arrayOfLength arraySize myGenByteNoCRLF
         return bs
     }
 
+
 type ArbOverridesAsyncReadCRLF() =
     static member NonEmptyByteArray() = Arb.fromGenShrink (genNonEmptyBytesNoCRLF, ArraySubSeqs)
-    static member Ints() = Arb.fromGenShrink ( GenPow2, ShrinkInt )
 
 
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 10,
+        MaxTest = 1000,
         Verbose = false,
-        QuietOnSuccess = false)
+        QuietOnSuccess = false )
 
 
-
-
-
-
-// |@ is the fscheck 'property labelling to the left' operator
-let (.=.) left right = left = right |@ sprintf "\n%A =\n%A" left right
+//let (.=.) left right = left = right |@ sprintf "\n%A =\n%A" left right
 
 
 let SetupListenerSocket (maxNumClients:int) : Socket = 
@@ -213,12 +199,8 @@ let SetupListenerSocket (maxNumClients:int) : Socket =
 
 
 
-// the contents of bsToSend1|2 don't matter, it is the the length is whats important
-// todo: set bsToSend1|2 length (separate for both), maxNumClients and individSaeaBufSize
-
 [<SaeaAsyncReadCRLFPropertyAttribute>]
 let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`` (bsToSend1:byte[]) (bsToSend2:byte[])  =
-
     // arrange
     let maxNumClients = 8
     let individSaeaBufSize = 1024 * 4
@@ -266,16 +248,95 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
 
         let msg = sprintf "#### failing array len: %d" bsToSendCRLF.Length
         System.Diagnostics.Trace.WriteLine msg
-//
-//        let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
-//
-//        if xx.[0] = xx.[1] then
-//            printfn "xxxx"
-
     ok
 
-//[<SaeaPropertyAttribute>]
-//let ``saea AsyncReadUntilCRLF CRLF received already in saea buffer`` (bsToSend:byte[]) =
+
+
+
+[<SaeaAsyncReadCRLFPropertyAttribute>]
+let ``saea AsyncReadByte - correct byte received`` (firstBsToSend:byte[]) (byteIn:byte) (moreBsToSend:byte[]) =
+    let maxNumClients = 4
+
+    // ensure the receive buffer is much longer than bs. 
+    // it is not guaranteed that the saea buffer will contian the CRLF due to the first read, but it is likely, and there are many test runs
+    let individSaeaBufSize = 1024 * 4
+
+    saeaPoolM <- CreateClientSAEAPool maxNumClients individSaeaBufSize
+    let acceptEventArg = new SocketAsyncEventArgs()
+    acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
+    use listenSocket = SetupListenerSocket maxNumClients
+
+    let bsToSendCRLF = seq{yield! firstBsToSend; yield byteIn; yield! moreBsToSend} |> Seq.toArray 
+
+    // act 
+    let asyncReceive = async{
+        let! saea = StartAccept listenSocket acceptEventArg
+        let! bs1Out = SocAsyncEventArgFuncs.AsyncRead2 saea firstBsToSend.Length // read the first set of bytes, then throw away
+        assert(bs1Out = firstBsToSend)
+        let! byteOut = SocAsyncEventArgFuncs.AsyncReadByte saea
+        let! bs2Out = SocAsyncEventArgFuncs.AsyncRead2 saea moreBsToSend.Length // read the first set of bytes, then throw away
+        assert (bs2Out = moreBsToSend)
+        return [|byteOut|] // wrapping in an array to make asyncReceive the same type as asyncSend
+    }
+
+    let asyncSend = async{
+        use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+        do!  clientClientSocket.MyConnectAsync(ipAddr, port)
+        let! _ = clientClientSocket.MySendAsync(bsToSendCRLF)
+        return bsToSendCRLF
+    } 
+    
+    let asyncResults = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
+
+    // assert
+    match asyncResults with
+    |[|_; [|byteOut|]|] -> byteOut = byteIn
+    | _                 -> false
+
+
+
+
+[<SaeaAsyncReadCRLFPropertyAttribute>]
+let ``saea AsyncReadUntilCRLF - CRLF received already in saea buffer from previous read`` (bs:byte[])  =
+    let maxNumClients = 4
+
+    // ensure the receive buffer is much longer than bs. 
+    // it is not guaranteed that the saea buffer will contian the CRLF due to the first read, but it is likely, and there are many test runs
+    let individSaeaBufSize = bs.Length + 100 
+
+    saeaPoolM <- CreateClientSAEAPool maxNumClients individSaeaBufSize
+    let acceptEventArg = new SocketAsyncEventArgs()
+    acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
+    use listenSocket = SetupListenerSocket maxNumClients
+
+
+    let firstBsToSend = "some bytes"B
+    let bsToSendCRLF = seq{yield! firstBsToSend; yield! bs; yield 13uy; yield 10uy; yield! "more bytes"B} |> Seq.toArray 
+
+    // act 
+    let asyncReceive = async{
+        let! saea = StartAccept listenSocket acceptEventArg
+        let ut = saea.UserToken :?> UserToken
+        ut.Expected <- bs
+        let! bsOut = SocAsyncEventArgFuncs.AsyncRead2 saea firstBsToSend.Length // read the first set of bytes, then throw away
+        assert (bsOut = firstBsToSend)
+        let! bsOut = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
+        return bsOut
+    }
+
+    let asyncSend = async{
+        use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+        do!  clientClientSocket.MyConnectAsync(ipAddr, port)
+        let! _ = clientClientSocket.MySendAsync(bsToSendCRLF)
+        return bsToSendCRLF
+    } 
+    
+    let xx = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously
+
+    // assert
+    match xx with
+    |[|_; received|]    -> bs = received
+    | _                 -> false
 
 
 
