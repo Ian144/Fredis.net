@@ -15,8 +15,8 @@
 // Arrays:           "*"
 
 
-// redis cant store 'strings' larger than 512mb, hence this restricted BytoOffset
-let private maxByteOffset = (pown 2 29) - 1 // zero based, hence the -1
+// redis cant store 'strings' larger than 512mb, hence this restricted ByteOffset
+let private maxByteOffset = (pown 2 29) - 1 // zero based signed type, hence the -1
 let private minByteOffset = (pown 2 29) * -1 
 
 // constrained single case discriminated union

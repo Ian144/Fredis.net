@@ -186,7 +186,6 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
 
     saea.UserToken <- userTok
 
-    let buf1 = Array.zeroCreate 1
     let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
     let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
@@ -195,9 +194,8 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
     let asyncProcessClientRequests = 
         async{ 
             while (client.Connected ) do
-                let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf1  // todo: does " let! _ = AsyncRead" handle client disconnections, where the Task inside the Async has been cancelled
-                let respTypeInt = System.Convert.ToInt32(buf1.[0])
-
+                let! bb = SocAsyncEventArgFuncs.AsyncReadByte saea
+                let respTypeInt = System.Convert.ToInt32 bb
                 if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                     // todo: could manually adjust the saea userToken to eat 5 chars
                     let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix

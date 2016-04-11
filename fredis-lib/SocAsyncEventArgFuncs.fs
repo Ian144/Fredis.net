@@ -334,6 +334,8 @@ let rec ProcessSend (saea:SocketAsyncEventArgs) =
 
     match saea.SocketError, ut.ClientBuf.Length - ut.ClientBufPos with
     | SocketError.Success, 0 -> 
+            ut.SaeaBufStart <- ut.SaeaBufSize
+            ut.SaeaBufEnd <- ut.SaeaBufSize
             ut.Tcs.SetResult([||]) // todo: ut.Tcs.SetResult([||]) - how is a non-generic Task signalled as being complete
     | SocketError.Success, lenRemaining    ->
             let lenToSend = 
@@ -381,7 +383,7 @@ let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
     assert (numToSend > 0)
     match numToSend with
     | 0 ->  async{ return() }        
-    | _ ->  saea.SetBuffer(ut.SaeaBufStart, ut.SaeaBufStart)
+    | _ ->  saea.SetBuffer(ut.SaeaBufStart, numToSend)
             let tcs = new TaskCompletionSource<byte[]>()
             ut.Tcs <- tcs
             let ioPending = ut.Socket.SendAsync(saea)
@@ -394,7 +396,11 @@ let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
 
 let AsyncWriteBuf (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
     let ut = saea.UserToken :?> UserToken
-    let availableSpaceInSaeaBuf = ut.SaeaBufSize - ut.SaeaBufEnd
+    
+    let availableSpaceInSaeaBuf = 
+        if ut.SaeaBufStart = ut.SaeaBufEnd // if equal then none of the buffer is being used
+        then ut.SaeaBufSize
+        else ut.SaeaBufSize - ut.SaeaBufEnd  
 
     match availableSpaceInSaeaBuf >= bs.Length with
     | true  ->
