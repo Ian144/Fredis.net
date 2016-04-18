@@ -166,9 +166,9 @@ let WaitForExitCmd () =
 //-------------------------------------------
 
 
-let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
+let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
-//    use client = client // without this Dispose would not be called on client
+//    use client = client // without this Dispose would not be called on client, todo: did this cause an issue - the socket was disposed to early
     client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
 
     let userTok = {
@@ -176,7 +176,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
         Tcs = null
         ClientBuf = null
         ClientBufPos = Int32.MaxValue
-        SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer to indicate there is nothing to read
+        SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer indicates there is nothing to read
         SaeaBufEnd = saeaBufSize     // as comment above
         SaeaBufSize = saeaBufSize
         Continuation = ignore
@@ -228,7 +228,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit=
 let ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
     match saeaPool.TryPop() with
     | true, saea    ->  ClientListenerLoop2(saeaAccept.AcceptSocket, saea)
-    | false, _      ->  ()//todo: send connection failure msg to client
+    | false, _      ->  () //todo: send connection failure msg to client
 
 
 let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
@@ -254,17 +254,9 @@ let main argv =
     | Choice1Of2 bufSize ->
         printfn "buffer size: %d"  bufSize
 
-//        let addressList = Dns.GetHostEntry(Environment.MachineName).AddressList
-//        let ipAddr = addressList.[addressList.Length - 1]
         let ipAddr = IPAddress.Parse(host)
         let localEndPoint = IPEndPoint (ipAddr, port)
         use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-
-//        if localEndPoint.AddressFamily = AddressFamily.InterNetworkV6 then 
-//            listenSocket.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false) 
-//            listenSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, localEndPoint.Port));            
-//        else
-//            listenSocket.Bind(localEndPoint)
 
         listenSocket.Bind(localEndPoint)
 
@@ -279,18 +271,6 @@ let main argv =
         printfn "stopped"
         0
 
-
-//        let ipAddr = IPAddress.Parse(host)
-//        let listener = TcpListener(ipAddr, port)
-//        listener.Start ()
-//        ConnectionListenerLoop bufSize listener
-//        printfn "fredis startup complete\nawaiting incoming connection requests\npress 'X' to exit"
-//        WaitForExitCmd ()
-//        do Async.CancelDefaultToken()
-//        printfn "cancelling asyncs"
-//        listener.Stop()
-//        printfn "stopped"
-//        0 // return an integer exit code
     | Choice2Of2 msg -> printf "%s" msg
                         1 // non-zero exit code
 

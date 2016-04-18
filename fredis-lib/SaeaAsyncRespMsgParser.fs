@@ -127,14 +127,15 @@ and private LoadRESPMsgInner (strm:IFredisStreamSource) :Async<Resp> = async{
     }
 
 and LoadRESPMsg (respType:int) (strm:IFredisStreamSource) : Async<Resp> =
-    match respType with
-    | SimpleStringL -> AsyncReadDelimitedResp Resp.SimpleString strm
-    | ErrorL        -> AsyncReadDelimitedResp Resp.Error strm
-    | IntegerL      -> AsyncReadRESPInteger strm
-    | BulkStringL   -> AsyncReadBulkString strm
-    | ArrayL        -> LoadRESPMsgArray strm
-    | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion, hence throwing an exception
-
+    let ret = 
+        match respType with
+        | SimpleStringL -> AsyncReadDelimitedResp Resp.SimpleString strm
+        | ErrorL        -> AsyncReadDelimitedResp Resp.Error strm
+        | IntegerL      -> AsyncReadRESPInteger strm
+        | BulkStringL   -> AsyncReadBulkString strm
+        | ArrayL        -> LoadRESPMsgArray strm
+        | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion, hence throwing an exception
+    ret
 
 
 

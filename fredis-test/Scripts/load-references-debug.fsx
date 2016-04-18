@@ -10,7 +10,7 @@
 #r "../../packages/FSharpx.Collections/lib/net40/FSharpx.Collections.dll"
 #r "../../packages/FSharpx.Extras/lib/40/FSharpx.Extras.dll"
 #r "../../packages/Unquote/lib/net45/Unquote.dll"
-#r "../../packages/xunit.runner.visualstudio/build/_common/xunit.abstractions.dll"
 #r "../../packages/xunit.assert/lib/portable-net45+win8+wp8+wpa81/xunit.assert.dll"
 #r "../../packages/xunit.extensibility.core/lib/portable-net45+win8+wp8+wpa81/xunit.core.dll"
 #r "../../packages/xunit.extensibility.execution/lib/net45/xunit.execution.desktop.dll"
+#r "../../packages/xunit.abstractions/lib/net35/xunit.abstractions.dll"
