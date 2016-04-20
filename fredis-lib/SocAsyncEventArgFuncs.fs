@@ -191,7 +191,6 @@ let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
     ut.ClientBuf <- dest
     ut.ClientBufPos <- 0   // AsyncRead will always read into the client Buffer starting at index zero
     ut.Continuation <- ProcessReceive
-    //saea.add_Completed (fun (_,socAEA) -> ProcessReceive socAEA)
 
     let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read-in already, by a previous read operation
 
@@ -393,6 +392,13 @@ let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
 
 
 
+// sends any unsent bytes in the saea buffer
+let Reset (saea:SocketAsyncEventArgs)=
+    let ut = saea.UserToken :?> UserToken    
+    ut.SaeaBufEnd <- 0
+    ut.SaeaBufStart <- 0
+    Array.Clear( saea.Buffer, 0, saea.Buffer.Length)
+    ut.BufList.Clear()
 
 let AsyncWriteBuf (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
     let ut = saea.UserToken :?> UserToken
