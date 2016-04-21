@@ -82,7 +82,7 @@ type BitIdxBufSzPair =
 
 
 
-[< Property(Arbitrary = [| typeof<BitIdxBufSzPair> |], MaxTest = 9999) >]
+[< Property(Arbitrary = [| typeof<BitIdxBufSzPair> |]) >]
 let ``SetBit BitPos true roundtrip`` (bitIdxbufSz:BitIdxBufSz) =
     let bitIdx = bitIdxbufSz.BitIdx
     let bufSz = bitIdxbufSz.BufSz
@@ -94,7 +94,7 @@ let ``SetBit BitPos true roundtrip`` (bitIdxbufSz:BitIdxBufSz) =
 
 
 
-[< Property(Arbitrary = [| typeof<BitIdxBufSzPair> |], MaxTest = 9999) >]
+[< Property(Arbitrary = [| typeof<BitIdxBufSzPair> |]) >]
 let ``SetBit BitPos false roundtrip`` (bitIdxbufSz:BitIdxBufSz) =
     let bitIdx = bitIdxbufSz.BitIdx
     let bufSz = bitIdxbufSz.BufSz

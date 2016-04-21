@@ -138,7 +138,7 @@ type ArbOverridesAsyncRead() =
 type SaeaAsyncReadPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncRead> |],
-        MaxTest = 1000,
+        MaxTest = 100,
         Verbose = false,
         QuietOnSuccess = false)
 
@@ -160,7 +160,7 @@ type ArbOverridesAsyncReadCRLF() =
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 1000,
+        MaxTest = 100,
         Verbose = false,
         QuietOnSuccess = false )
 

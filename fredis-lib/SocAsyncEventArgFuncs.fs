@@ -46,11 +46,11 @@ type IFredisStreamSink =
 
 
 
-
 let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     let bytesRequired = ut.ClientBuf.Length - ut.ClientBufPos
+
     match saea.SocketError, bytesTransferred, bytesRequired with
     | SocketError.Success, tran, req when req = tran ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
@@ -78,6 +78,8 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
             let msg = sprintf "receive socket error: %O" err
             let ex = new Exception(msg)
             ut.Tcs.SetException(ex)
+
+
              
 // find CR idx between startIdx and before endIdx
 let private FindCR (buf:byte[]) startIdx endIdx = 
@@ -374,14 +376,12 @@ let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
 
 
 
-
 // sends any unsent bytes in the saea buffer
 let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
     let ut = saea.UserToken :?> UserToken    
     let numToSend = ut.SaeaBufEnd - ut.SaeaBufStart
-    assert (numToSend > 0)
     match numToSend with
-    | 0 ->  async{ return() }        
+    | 0 ->  async{ return() }
     | _ ->  saea.SetBuffer(ut.SaeaBufStart, numToSend)
             let tcs = new TaskCompletionSource<byte[]>()
             ut.Tcs <- tcs

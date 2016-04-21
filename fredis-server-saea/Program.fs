@@ -97,6 +97,8 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     // todo: could manually adjust the saea userToken to eat 5 chars
                     let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
                     do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
+//                    do! saeaSink.AsyncFlush ()
+                    SocAsyncEventArgFuncs.Reset saea
                     ()
                 else
                     let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
@@ -104,6 +106,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     match choiceFredisCmd with
                     | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
                                             SocAsyncEventArgFuncs.Reset saea
+                                            printfn "about to reply: %A" resp
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
                                             do! saeaSink.AsyncFlush ()
                                             SocAsyncEventArgFuncs.Reset saea
@@ -124,13 +127,12 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
 
 
-let ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
+let rec ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
     match saeaPool.TryPop() with
     | true, saea    ->  ClientListenerLoop2(saeaAccept.AcceptSocket, saea)
     | false, _      ->  () //todo: send connection failure msg to client
-
-
-let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
+    StartAccept saeaAccept.AcceptSocket saeaAccept
+and StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
     acceptEventArg.AcceptSocket <- null
     let ioPending = listenSocket.AcceptAsync acceptEventArg
     if not ioPending then
@@ -152,14 +154,11 @@ let main argv =
     match cBufSize with
     |   Choice1Of2 bufSize ->
             printfn "buffer size: %d"  bufSize
-
             let ipAddr = IPAddress.Parse(host)
             let localEndPoint = IPEndPoint (ipAddr, port)
             use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-
             listenSocket.Bind(localEndPoint)
             listenSocket.Listen 1
-
             let acceptEventArg = new SocketAsyncEventArgs();
             acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
             StartAccept listenSocket acceptEventArg

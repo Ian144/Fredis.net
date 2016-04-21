@@ -232,36 +232,20 @@ let propFredisVsRedis (cmds:FredisTypes.FredisCmd list) =
 let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
 
     ctr <- ctr + 1
-    if (ctr % 250) = 0 then
-        printfn "test num: %d - cmds len: %d" ctr cmds.Length
+//    if (ctr % 250) = 0 then
+    printfn "test num: %d - cmds len: %d" ctr cmds.Length
 
     use redisClientNew     = new TcpClient(host, redisPort)
     use fredisClientNew    = new TcpClient(host, fredisPort)
 
     // not restarting fredis and redis, so the first command is always a flush
     let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
-    let fredisReplies = respCmds |> List.map (sendReceive fredisClientNew)
     let redisReplies  = respCmds |> List.map (sendReceive redisClientNew) 
+    let fredisReplies = respCmds |> List.map (sendReceive fredisClientNew)
     redisReplies .=. fredisReplies
 
 
 
-
-
-
-let propFredisVsRedisNewConnectionShrinkGif (cmds:FredisTypes.FredisCmd list) =
-    // not restarting fredis and redis, so the first command is always a flush
-    let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
-    let fredisReplies = respCmds |> List.map (sendReceive fredisClient) |> List.map (fun optVal -> optVal.Value)
-    let redisReplies  = respCmds |> List.map (sendReceive redisClient)  |> List.map (fun optVal -> optVal.Value)
-//    redisReplies .=. fredisReplies
-    let ok = redisReplies = fredisReplies
-    if not ok then
-        System.Console.Clear()
-        printfn "cmds:   %A\nfredis: %A\nredis:  %A\n\n" cmds fredisReplies redisReplies
-//        printfn "cmds: %A" cmds
-        System.Threading.Thread.Sleep(250)
-    ok
 
 
 
@@ -276,7 +260,7 @@ let propFredisVsRedisWithPreCond  (cmds:FredisTypes.FredisCmd list) =
 
 let config = {  Config.Default with 
 //                    EveryShrink = (sprintf "%A" )
-                    Replay = Some (Random.StdGen (310046944,296129814))
+//                    Replay = Some (Random.StdGen (310046944,296129814))
 //                    StartSize = 32
                     MaxFail = 1000000
                     MaxTest = 100000 }
@@ -284,7 +268,7 @@ let config = {  Config.Default with
 
 //Check.Verbose propFredisVsRedis
 
-Check.One (config, propFredisVsRedisNewConnectionShrinkGif)
+Check.One (config, propFredisVsRedisNewConnection)
 //
 //printfn "tests complete"
 //
