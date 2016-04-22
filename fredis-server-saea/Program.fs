@@ -104,13 +104,18 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
                     let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                     match choiceFredisCmd with
-                    | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                    | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                            let ut = saea.UserToken :?> UserToken
+                                            printfn "1 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             SocAsyncEventArgFuncs.Reset saea
-                                            printfn "about to reply: %A" resp
-                                            do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink resp
+                                            printfn "2 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
+                                            do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink reply
+                                            printfn "3 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             do! saeaSink.AsyncFlush ()
+                                            printfn "4 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             SocAsyncEventArgFuncs.Reset saea
-                    | Choice2Of2 err    ->  do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
+                    | Choice2Of2 err    ->  SocAsyncEventArgFuncs.Reset saea
+                                            do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
                                             do! saeaSink.AsyncFlush ()
                                             SocAsyncEventArgFuncs.Reset saea
             }
@@ -128,10 +133,15 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
 
 let rec ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
+    let listenSocket = saeaAccept.UserToken :?> Socket
     match saeaPool.TryPop() with
     | true, saea    ->  ClientListenerLoop2(saeaAccept.AcceptSocket, saea)
-    | false, _      ->  () //todo: send connection failure msg to client
-    StartAccept saeaAccept.AcceptSocket saeaAccept
+    | false, _      ->  use clientSocket = saeaAccept.AcceptSocket
+                        clientSocket.Send ErrorMsgs.maxNumClientsReached |> ignore
+                        clientSocket.Disconnect false
+                        clientSocket.Close()
+                        
+    StartAccept listenSocket saeaAccept
 and StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
     acceptEventArg.AcceptSocket <- null
     let ioPending = listenSocket.AcceptAsync acceptEventArg
@@ -160,9 +170,9 @@ let main argv =
             listenSocket.Bind(localEndPoint)
             listenSocket.Listen 1
             let acceptEventArg = new SocketAsyncEventArgs();
+            acceptEventArg.UserToken <- listenSocket
             acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
             StartAccept listenSocket acceptEventArg
-
             WaitForExitCmd ()
             printfn "stopped"
             0
