@@ -82,6 +82,7 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
             SaeaBufStart = saeaBufSize
             SaeaBufEnd = saeaBufSize
             SaeaBufSize = saeaBufSize
+            SaeaBufOffset = offset
             Continuation = ignore
             BufList = System.Collections.Generic.List<byte[]>()
             Expected = null

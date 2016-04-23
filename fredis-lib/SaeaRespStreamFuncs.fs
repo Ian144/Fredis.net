@@ -54,46 +54,35 @@ let private AsyncSendBulkString (strm:IFredisStreamSink) (contents:BulkStrConten
     match contents with
     | BulkStrContents.Contents bs   ->  let prefix = (sprintf "$%d\r\n" bs.Length) |> Utils.StrToBytes
                                         async{
-                                            do! strm.AsyncWriteBuf prefix
-                                            do! strm.AsyncWriteBuf bs
-                                            do! strm.AsyncWriteBuf crlf
+                                            do! strm.AsyncWrite prefix
+                                            do! strm.AsyncWrite bs
+                                            do! strm.AsyncWrite crlf
                                         }
-    | BulkStrContents.Nil         ->    async{ do! strm.AsyncWriteBuf nilBulkStrBytes }
+    | BulkStrContents.Nil         ->    async{ do! strm.AsyncWrite nilBulkStrBytes }
 
 
 
 
-//let private AsyncSendSimpleString2 (strm:IFredisStreamSink) (contents:byte array) =
-//    async{
-//        do! strm.AsyncWriteBuf simpStrType
-//        do! strm.AsyncWriteBuf contents
-//        do! strm.AsyncWriteBuf crlf
-//    }
 
 let private AsyncSendSimpleString (strm:IFredisStreamSink) (contents:byte array) =
-    let len = 3 + contents.Length
-    let arr = Array.zeroCreate<byte> len
-    arr.[0] <- 43uy
-    contents.CopyTo (arr,1)
-    arr.[len-2] <- 13uy
-    arr.[len-1] <- 10uy
-    strm.AsyncWriteBuf arr
-
-
-
+    async{
+        do! strm.AsyncWrite simpStrType
+        do! strm.AsyncWrite contents
+        do! strm.AsyncWrite crlf 
+    }
 
 
 let AsyncSendError (strm:IFredisStreamSink) (contents:byte array) =
     async{
-        do! strm.AsyncWriteBuf errStrType
-        do! strm.AsyncWriteBuf contents
-        do! strm.AsyncWriteBuf crlf 
+        do! strm.AsyncWrite errStrType
+        do! strm.AsyncWrite contents
+        do! strm.AsyncWrite crlf 
     }
 
 
 let private AsyncSendInteger (strm:IFredisStreamSink) (ii:int64) =
     let bs = sprintf ":%d\r\n" ii |> Utils.StrToBytes
-    strm.AsyncWriteBuf bs
+    strm.AsyncWrite bs
     
 
 let rec AsyncSendResp (strm:IFredisStreamSink) (msg:Resp) =
@@ -108,7 +97,7 @@ and private AsyncSendArray (strm:IFredisStreamSink) (arr:Resp []) =
     let lenBytes = sprintf "*%d\r\n" arr.Length |> Utils.StrToBytes
     let ctr = ref 0
     async{
-        do! strm.AsyncWriteBuf( lenBytes)
+        do! strm.AsyncWrite( lenBytes)
         while !ctr < arr.Length do
             do! AsyncSendResp strm arr.[!ctr]
             ctr := !ctr + 1

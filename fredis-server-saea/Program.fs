@@ -28,7 +28,7 @@ let HandleSocketError (name:string) (ex:System.Exception) =
     let msg = handleExInner ex
 
     // Microsoft redis-benchmark does not close its socket connections down cleanly
-    if not (msg.Contains("forcibly closed")) then
+    if not (msg.Contains("forcibly closed") || msg.Contains("ConnectionReset")) then
         printfn "%s --> %s" name msg
 
 let ClientError ex =  HandleSocketError "client error" ex
@@ -36,8 +36,8 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 
-let maxNumConnections = 1
-let saeaBufSize = 1024 * 64
+let maxNumConnections = 128
+let saeaBufSize = 1024 // * 64
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
 let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
 
@@ -67,7 +67,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
 //    use client = client // without this Dispose would not be called on client, todo: did this cause an issue - the socket was disposed to early
     client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
 
-    let userTok = {
+    let userTok:UserToken = {
         Socket = client
         Tcs = null
         ClientBuf = null
@@ -75,6 +75,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
         SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer indicates there is nothing to read
         SaeaBufEnd = saeaBufSize     // as comment above
         SaeaBufSize = saeaBufSize
+        SaeaBufOffset = saea.Offset
         Continuation = ignore
         BufList = Collections.Generic.List<byte[]>() //todo, can this be null
         Expected = null
@@ -96,23 +97,20 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
                 if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                     // todo: could manually adjust the saea userToken to eat 5 chars
                     let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
+                    SocAsyncEventArgFuncs.Reset saea
                     do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
-//                    do! saeaSink.AsyncFlush ()
+                    do! saeaSink.AsyncFlush ()
                     SocAsyncEventArgFuncs.Reset saea
                     ()
                 else
                     let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
+                    SocAsyncEventArgFuncs.Reset saea
                     let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                     match choiceFredisCmd with
                     | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                            let ut = saea.UserToken :?> UserToken
-                                            printfn "1 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             SocAsyncEventArgFuncs.Reset saea
-                                            printfn "2 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink reply
-                                            printfn "3 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             do! saeaSink.AsyncFlush ()
-                                            printfn "4 %A %O " respMsg (Utils.BytesToStr ut.ClientBuf)
                                             SocAsyncEventArgFuncs.Reset saea
                     | Choice2Of2 err    ->  SocAsyncEventArgFuncs.Reset saea
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err

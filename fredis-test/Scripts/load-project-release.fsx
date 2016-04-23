@@ -8,3 +8,4 @@
       "../TestFredisCmdsFSCheck.fs"
       "../TestFredisCmdToRESP.fs"
       "../TestRedisVsFredis.fs"
+      "../TestSAEA.fs"
