@@ -191,18 +191,4 @@ type Resp =
                                 | BulkStrContents.Nil           -> "nil"
         | Array        xs   ->  let subStrs = xs |> Array.map (fun x -> x.FormatDisplay )
                                 let subStr = System.String.Join(", ", subStrs)
-                                sprintf "[|{%s}|]" subStr
-
-//    member this.FormatDisplay =
-//        match this with
-//        | SimpleString bs   ->  sprintf "SimpleString: %s" (BytesToStr bs)
-//        | Error        bs   ->  sprintf "Error: %s" (BytesToStr bs)
-//        | Integer      ii   ->  sprintf "Integer: %d" ii
-//        | BulkString   cn   ->  match cn with
-//                                | BulkStrContents.Contents bs   -> sprintf "%s" (BytesToStr bs)
-//                                | BulkStrContents.Nil           -> "nil"
-//        | Array        xs   ->  let subStrs = xs |> Array.map (fun x -> x.FormatDisplay )
-//                                let subStr = System.String.Join(", ", subStrs)
-//                                sprintf "[|{%s}|]" subStr
-                                
-
+                                sprintf "[|%s|]" subStr
