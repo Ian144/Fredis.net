@@ -24,12 +24,10 @@ let HandleSocketError (name:string) (ex:System.Exception) =
         | None  ->          msg
         | Some innerEx ->   let innerMsg = handleExInner innerEx
                             sprintf "%s | %s" msg innerMsg
-
     let msg = handleExInner ex
-
-    // Microsoft redis-benchmark does not close its socket connections down cleanly
     if not (msg.Contains("forcibly closed") || msg.Contains("ConnectionReset")) then
         printfn "%s --> %s" name msg
+
 
 let ClientError ex =  HandleSocketError "client error" ex
 let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
@@ -62,7 +60,7 @@ let WaitForExitCmd () =
 
 
 
-let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
+let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
 //    use client = client // without this Dispose would not be called on client, todo: did this cause an issue - the socket was disposed to early
     client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
@@ -133,7 +131,7 @@ let ClientListenerLoop2 (client:Socket, saea:SocketAsyncEventArgs) : unit =
 let rec ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
     let listenSocket = saeaAccept.UserToken :?> Socket
     match saeaPool.TryPop() with
-    | true, saea    ->  ClientListenerLoop2(saeaAccept.AcceptSocket, saea)
+    | true, saea    ->  ClientListenerLoop(saeaAccept.AcceptSocket, saea)
     | false, _      ->  use clientSocket = saeaAccept.AcceptSocket
                         clientSocket.Send ErrorMsgs.maxNumClientsReached |> ignore
                         clientSocket.Disconnect false
@@ -175,6 +173,7 @@ let main argv =
             printfn "stopped"
             0
 
-    | Choice2Of2 msg -> printf "%s" msg
-                        1 // non-zero exit code
+    | Choice2Of2 msg -> 
+            printf "%s" msg
+            1 // non-zero exit code
 

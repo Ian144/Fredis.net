@@ -160,10 +160,14 @@ and LoadRESPMsgInner (rcvBuffSz:int) (strm:Stream)  =
 
 and LoadRESPMsg (rcvBufSz:int) (respType:int) (strm:Stream) = 
     match respType with
-    | SimpleStringL -> ReadDelimitedResp Resp.SimpleString strm
-    | ErrorL        -> ReadDelimitedResp Resp.Error strm
-    | IntegerL      -> ReadRESPInteger strm
-    | BulkStringL   -> ReadBulkString rcvBufSz strm
-    | ArrayL        -> LoadRESPMsgArray rcvBufSz strm
-    | _             -> failwith "invalid RESP" // need to escape from an arbitrary depth of recursion, hence throwing an exception
+    | SimpleStringL ->  ReadDelimitedResp Resp.SimpleString strm
+    | ErrorL        ->  ReadDelimitedResp Resp.Error strm
+    | IntegerL      ->  ReadRESPInteger strm
+    | BulkStringL   ->  ReadBulkString rcvBufSz strm
+    | ArrayL        ->  LoadRESPMsgArray rcvBufSz strm
+    | _             ->  let bs = Array.zeroCreate<byte> 16
+                        strm.Read(bs, 0, 16) |> ignore
+                        let str = bs |> Utils.BytesToStr  
+                        let msg = sprintf "invalid RESP: %d - %s" respType str
+                        failwith msg
 

@@ -42,7 +42,7 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
-    client.NoDelay <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
+    client.NoDelay <- true // disable Nagle, don't want small messages to be held back for buffering
     client.ReceiveBufferSize    <- bufSize
     client.SendBufferSize       <- bufSize
     
@@ -57,7 +57,7 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
             // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
-            // The F# async workflow sequences async reads and writes so none are simultaneous.i
+            // The F# async workflow sequences async reads and writes so none are simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
             while (client.Connected && loopAgain) do
                 // reading from the socket is synchronous after this point, until current redis msg is processed

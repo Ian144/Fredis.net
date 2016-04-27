@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{8CB7BC0D-2E8F-4758-9100-358F04DC6784}"
 	ProjectSection(SolutionItems) = preProject
@@ -33,6 +33,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark test scripts", "b
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-server-saea", "fredis-server-saea\fredis-server-saea.fsproj", "{E0DD1653-87D1-4D4E-8720-18D76938C33C}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-saea-resp-protocol-tester", "fredis-saea-resp-protocol-tester\fredis-saea-resp-protocol-tester.fsproj", "{CA887FD9-697D-411C-8807-22FC63179A50}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{E0DD1653-87D1-4D4E-8720-18D76938C33C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E0DD1653-87D1-4D4E-8720-18D76938C33C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E0DD1653-87D1-4D4E-8720-18D76938C33C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA887FD9-697D-411C-8807-22FC63179A50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA887FD9-697D-411C-8807-22FC63179A50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA887FD9-697D-411C-8807-22FC63179A50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA887FD9-697D-411C-8807-22FC63179A50}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
