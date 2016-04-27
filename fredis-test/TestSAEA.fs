@@ -85,7 +85,6 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
             SaeaBufOffset = offset
             Continuation = ignore
             BufList = System.Collections.Generic.List<byte[]>()
-            Expected = null
         }
         saea.UserToken <- ut
         saeaPool.Push(saea)
@@ -195,7 +194,6 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
     let asyncReceive = async{
         let! saea = StartAccept listenSocket acceptEventArg
         let ut = saea.UserToken :?> UserToken
-        ut.Expected <- bsToSend2
         let! bs1 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length // read the first set of bytes, then throw away
         assert (bs1 = bsToSend1)
         let! bs2 = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
@@ -285,7 +283,6 @@ let ``saea AsyncReadUntilCRLF - CRLF received already in saea buffer from previo
     let asyncReceive = async{
         let! saea = StartAccept listenSocket acceptEventArg
         let ut = saea.UserToken :?> UserToken
-        ut.Expected <- bs
         let! bsOut = SocAsyncEventArgFuncs.AsyncRead2 saea firstBsToSend.Length // read the first set of bytes, then throw away
         assert (bsOut = firstBsToSend)
         let! bsOut2 = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea

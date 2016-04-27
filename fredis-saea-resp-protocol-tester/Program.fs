@@ -46,7 +46,6 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
         SaeaBufOffset = saea.Offset
         Continuation = ignore
         BufList = Collections.Generic.List<byte[]>() //todo, can this be null
-        Expected = null
         }
 
     saea.UserToken <- userTok
