@@ -34,8 +34,8 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 
-let maxNumConnections = 128
-let saeaBufSize = 1024 // * 64
+let maxNumConnections = 1024
+let saeaBufSize = 1024 * 32
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
 let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
 

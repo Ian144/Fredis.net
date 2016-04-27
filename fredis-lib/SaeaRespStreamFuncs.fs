@@ -8,37 +8,7 @@ open FredisTypes
 open SocAsyncEventArgFuncs
 
 
-let EatCRLF (ns:Stream) = 
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
 
-
-let Eat1 (ns:Stream) = 
-    ns.ReadByte() |> ignore
-
-
-
-let Eat5NoAlloc (ns:Stream) = 
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
-    ns.ReadByte() |> ignore
-
-
-// extension methods on Stream
-type Stream with
-
-    // read a single byte, return Option.None if client disconnected
-    member this.AsyncReadByte buf = async{
-        let tsk = this.ReadAsync(buf, 0, 1)
-        let! numBytesRead = Async.AwaitTask tsk
-        let ret = 
-                match numBytesRead with
-                | 0 -> None
-                | _ -> Some buf.[0]
-        return ret
-        }
 
 
 

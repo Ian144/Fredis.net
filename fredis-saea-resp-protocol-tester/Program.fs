@@ -18,19 +18,6 @@ let PingL = 80  // P - redis-benchmark PING_INLINE just sends PING\r\n, not enco
 
 let pongBytes  = "+PONG\r\n"B
 
-let HandleSocketError (name:string) (ex:System.Exception) =
-    let rec handleExInner (ex:System.Exception) =
-        let msg = ex.Message
-        let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException
-        match optInnerEx with
-        | None  ->          msg
-        | Some innerEx ->   sprintf "%s | %s" msg (handleExInner innerEx)
-    let msg = handleExInner ex
-    if not (msg.Contains("forcibly closed") || msg.Contains("ConnectionReset")) then
-        printfn "%s --> %s" name msg
-
-let ClientError ex =  HandleSocketError "client error" ex
-let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
 
 
 
@@ -84,22 +71,15 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     ()
                 else
                     let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
-//                    printfn "resp received: %A" respMsg
                     SocAsyncEventArgFuncs.Reset saea
                     let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                     match choiceFredisCmd with
-                    | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-//                                            match reply with
-//                                            |   Resp.Error err  -> printfn "sending error: %s" (Utils.BytesToStr err)
-//                                            |   _               -> ()
-//                                            let reply2 = Resp.Error ErrorMsgs.valueNotIntegerOrOutOfRange;
-//                                            printfn " fredis sends: %A" reply
+                    | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd 
                                             SocAsyncEventArgFuncs.Reset saea
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink reply
                                             do! saeaSink.AsyncFlush ()
                                             SocAsyncEventArgFuncs.Reset saea
                     | Choice2Of2 err    ->  SocAsyncEventArgFuncs.Reset saea
-//                                            printfn "fredis sends error: %A" err
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
                                             do! saeaSink.AsyncFlush ()
                                             SocAsyncEventArgFuncs.Reset saea
@@ -109,7 +89,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
             asyncProcessClientRequests,
             (fun () -> saeaPool.Push saea),
             (fun ex -> saeaPool.Push saea
-                       ClientError ex),
+                       printfn "%A" ex),
             (fun ct -> saeaPool.Push saea
                        printfn "ClientListener cancelled: %A" ct)
         ) // end Async

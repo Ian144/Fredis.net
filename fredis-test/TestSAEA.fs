@@ -79,8 +79,8 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
             Tcs = null
             ClientBuf = null
             ClientBufPos = -1
-            SaeaBufStart = saeaBufSize
-            SaeaBufEnd = saeaBufSize
+            SaeaBufStart = 0
+            SaeaBufEnd = 0
             SaeaBufSize = saeaBufSize
             SaeaBufOffset = offset
             Continuation = ignore
@@ -126,7 +126,7 @@ let rec private ArraySubSeqs (bs:byte[]): byte array seq =
 
 let genNonEmptyBytes = 
     gen{
-        let! arraySize = Gen.choose (1, 1024)
+        let! arraySize = Gen.choose (1, 32)
         let! bs = Gen.arrayOfLength arraySize Arb.generate<byte>
         return bs
     }    
@@ -344,7 +344,7 @@ let ``saea AsyncRead single send-receive property test`` (bsToSend:byte[]) =
 
 // test that reading for bsToSend1 followed by a read for bsToSend2.Length gives bsToSend2 for the second read
 [<SaeaAsyncReadPropertyAttribute>]
-let ``saea AsyncWrite property test`` (bsToSend1:byte[]) =
+let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
     // arrange
     let maxNumClients = 16
     let clientBufSize = 256

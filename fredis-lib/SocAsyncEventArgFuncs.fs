@@ -25,7 +25,7 @@ type UserToken = {
     SaeaBufOffset:int
     mutable Continuation: SocketAsyncEventArgs -> unit
     BufList: System.Collections.Generic.List<byte[]> // used when loading an unknown number of bytes, such as when reading up to a delimiter
-    mutable Expected: byte[]
+//    mutable Expected: byte[]
     }
 
 
@@ -122,7 +122,6 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
             Buffer.BlockCopy(saea.Buffer, saea.Offset, buf, 0, len)
             ut.BufList.Add buf 
             let bufAll = flattenListBuf ut.BufList
-            let ok = ut.Expected = bufAll // todo: remove UserToken.Expected, currently used for debugging failed tests
             ut.BufList.Clear()
             ut.Tcs.SetResult(bufAll)
     | SocketError.Success, true, crIdx, _  when crIdx = (endIdx - 1) ->
@@ -162,12 +161,10 @@ and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
     let bytesTransferred = saea.BytesTransferred
     ut.SaeaBufStart <- 0
     ut.SaeaBufEnd <- bytesTransferred
-
     match saea.SocketError, bytesTransferred with
     | SocketError.Success, 0 -> 
             ut.BufList.Clear()
             ut.Tcs.SetCanceled()    // client has disconnected
-
     | SocketError.Success, bytesTransferred   ->
             // eat the first char and collate the result
             ut.SaeaBufStart <- 1   
@@ -176,9 +173,7 @@ and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
             let buf = [| for b in bufArr do
                          yield! b |]
             ut.BufList.Clear()
-            let ok = ut.Expected = buf
             ut.Tcs.SetResult(buf)
-
     | err, _ ->
             ut.BufList.Clear()
             let msg = sprintf "receive socket error: %O" err
