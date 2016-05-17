@@ -40,12 +40,12 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
         Tcs = null
         ClientBuf = null
         ClientBufPos = Int32.MaxValue
-        SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer indicates there is nothing to read
-        SaeaBufEnd = saeaBufSize     // as comment above
+        SaeaBufStart = 0
+        SaeaBufEnd = 0
         SaeaBufSize = saeaBufSize
         SaeaBufOffset = saea.Offset
         Continuation = ignore
-        BufList = Collections.Generic.List<byte[]>() //todo, can this be null
+        BufList = Collections.Generic.List<byte[]>()
         }
 
     saea.UserToken <- userTok

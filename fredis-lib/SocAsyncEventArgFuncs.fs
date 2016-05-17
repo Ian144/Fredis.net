@@ -41,7 +41,6 @@ type IFredisStreamSource =
 type IFredisStreamSink =
     abstract AsyncWrite : byte[] -> Async<unit>
     abstract AsyncWriteWithCRLF : byte[] -> Async<unit>
-//    abstract AsyncWriteBuf : byte[] -> Async<unit>
     abstract AsyncFlush : unit -> Async<unit>
 
 
@@ -51,7 +50,6 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     let bytesRequired = ut.ClientBuf.Length - ut.ClientBufPos
-
     match saea.SocketError, bytesTransferred, bytesRequired with
     | SocketError.Success, tran, req when req = tran ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, req)
@@ -94,9 +92,8 @@ let private FindCR (buf:byte[]) startIdx endIdx =
     found, ctr
 
 
-let private flattenListBuf listBufs = 
     // todo: this may be slow, possibly involving multiple allocations
-    [| for b in listBufs do yield! b |]
+let private flattenListBuf listBufs = [| for b in listBufs do yield! b |]
     
 
 let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
@@ -364,6 +361,7 @@ and ProcessSend (saea:SocketAsyncEventArgs) =
             let ex = new Exception(msg)
             ut.Tcs.SetException(ex)
 
+
 let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
     let ut = saea.UserToken :?> UserToken
     let saeaBufSpaceAvailable = ut.SaeaBufSize - ut.SaeaBufEnd
@@ -416,13 +414,9 @@ let Reset (saea:SocketAsyncEventArgs)=
     ut.BufList.Clear()
 
 
-
-
-
 let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     ut.Continuation saea
-
 
 
 type SaeaStreamSource (saea:SocketAsyncEventArgs) =
@@ -431,7 +425,6 @@ type SaeaStreamSource (saea:SocketAsyncEventArgs) =
         override this.AsyncReadUntilCRLF () = AsyncReadUntilCRLF saea
         override this.AsyncReadByte () = AsyncReadByte saea
         override this.AsyncEatCRLF () =  AsyncEatCRLF saea
-
 
 
 [<NoEquality;NoComparison>]
