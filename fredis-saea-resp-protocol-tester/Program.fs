@@ -37,7 +37,6 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
     let userTok:UserToken = {
         Socket = client
-        Tcs = null
         ClientBuf = null
         ClientBufPos = Int32.MaxValue
         SaeaBufStart = 0
@@ -46,6 +45,11 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
         SaeaBufOffset = saea.Offset
         Continuation = ignore
         BufList = Collections.Generic.List<byte[]>()
+        okContSingleByte = ignore
+        okContBytes = ignore
+        okContUnit = ignore
+        exnCont = ignore
+        cancCont = ignore
         }
 
     saea.UserToken <- userTok

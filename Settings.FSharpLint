@@ -43,5 +43,13 @@
       </Rules>
       <Enabled>False</Enabled>
     </NameConventions>
+    <SourceLength>
+      <Rules>
+        <MaxLinesInLambdaFunction>
+          <Enabled>False</Enabled>
+          <Lines>7</Lines>
+        </MaxLinesInLambdaFunction>
+      </Rules>
+    </SourceLength>
   </Analysers>
 </FSharpLintSettings>

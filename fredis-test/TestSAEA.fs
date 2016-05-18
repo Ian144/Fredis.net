@@ -76,7 +76,6 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
         saea.add_Completed (fun _ b -> SocAsyncEventArgFuncs.OnClientIOCompleted b)
         let ut = {
             Socket = null
-            Tcs = null
             ClientBuf = null
             ClientBufPos = -1
             SaeaBufStart = 0
@@ -85,6 +84,11 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
             SaeaBufOffset = offset
             Continuation = ignore
             BufList = System.Collections.Generic.List<byte[]>()
+            okContSingleByte = ignore
+            okContBytes = ignore
+            okContUnit = ignore
+            exnCont = ignore
+            cancCont = ignore
         }
         saea.UserToken <- ut
         saeaPool.Push(saea)
