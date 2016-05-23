@@ -63,44 +63,87 @@ let AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:Stream) : Async<Res
 
 
 
-// an attempt at a functional int64 reader
-let AsyncReadInt64 (strm:Stream) = async{
-    let foldInt = (fun cur nxt -> cur * 10L + nxt)
-    let asciiToDigit (asciiCode:byte) = (int64 asciiCode) - 48L
+// todo: currently AsyncReadInt64 will throw if reading invalid int64, consider returning an option
+// todo: consider AsyncReadInt64 when profiling, would it be faster to perform arithmetic on bytes? if yes then use this as a reference impl
+let private AsyncReadInt64 (strm:Stream) = async{
     let! bytes = AsyncReadUntilCRLF strm
+    let len = bytes.Length
+    let mutable num = 0L
+    let mutable ctr = 0
 
-    let ret = 
-        if bytes.IsEmpty then
-            0L
-        else
-            let sign, asciiCodes2 = 
-                match bytes.Head with
-                | 45uy  -> -1L, bytes.Tail
-                | _     ->  1L, bytes
-            let ii = asciiCodes2 |> List.map asciiToDigit |> List.fold foldInt 0L
-            ii * sign
-    return ret
+    if bytes.[0] = 45uy then //if the first byte is a '-' sign
+        ctr <- ctr + 1
+        while ctr < len do
+            num <- num * 10L + (int64 bytes.[ctr]) - 48L
+            ctr <- ctr + 1
+        return num * -1L
+    else
+        while ctr < len do
+            num <- num * 10L + (int64 bytes.[ctr]) - 48L
+            ctr <- ctr + 1
+        return num
 }
 
 
-// an attempt at a functional int32 reader
-let AsyncReadInt32 (strm:Stream) = async{
-    let foldInt = (fun cur nxt -> cur * 10 + nxt)
-    let asciiToDigit (asciiCode:byte) = (int asciiCode) - 48
+let private AsyncReadInt32 (strm:Stream) = async{
     let! bytes = AsyncReadUntilCRLF strm
+    let len = bytes.Length
+    let mutable num = 0
+    let mutable ctr = 0
 
-    let ret = 
-        if bytes.IsEmpty then
-            0
-        else
-            let sign, asciiCodes2 = 
-                match bytes.Head with
-                | 45uy  -> -1, bytes.Tail
-                | _     ->  1, bytes
-            let ii = asciiCodes2 |> List.map asciiToDigit |> List.fold foldInt 0
-            ii * sign
-    return ret
+    if bytes.[0] = 45uy then //if the first byte is a '-' sign
+        ctr <- ctr + 1
+        while ctr < len do
+            num <- num * 10 + (int bytes.[ctr]) - 48
+            ctr <- ctr + 1
+        return num * -1
+    else
+        while ctr < len do
+            num <- num * 10 + (int bytes.[ctr]) - 48
+            ctr <- ctr + 1
+        return num
 }
+
+
+
+//// an attempt at a functional int64 reader
+//let AsyncReadInt64 (strm:Stream) = async{
+//    let foldInt = (fun cur nxt -> cur * 10L + nxt)
+//    let asciiToDigit (asciiCode:byte) = (int64 asciiCode) - 48L
+//    let! bytes = AsyncReadUntilCRLF strm
+//
+//    let ret = 
+//        if bytes.IsEmpty then
+//            0L
+//        else
+//            let sign, asciiCodes2 = 
+//                match bytes.Head with
+//                | 45uy  -> -1L, bytes.Tail
+//                | _     ->  1L, bytes
+//            let ii = asciiCodes2 |> List.map asciiToDigit |> List.fold foldInt 0L
+//            ii * sign
+//    return ret
+//}
+//
+//
+//// an attempt at a functional int32 reader
+//let AsyncReadInt32 (strm:Stream) = async{
+//    let foldInt = (fun cur nxt -> cur * 10 + nxt)
+//    let asciiToDigit (asciiCode:byte) = (int asciiCode) - 48
+//    let! bytes = AsyncReadUntilCRLF strm
+//
+//    let ret = 
+//        if bytes.IsEmpty then
+//            0
+//        else
+//            let sign, asciiCodes2 = 
+//                match bytes.Head with
+//                | 45uy  -> -1, bytes.Tail
+//                | _     ->  1, bytes
+//            let ii = asciiCodes2 |> List.map asciiToDigit |> List.fold foldInt 0
+//            ii * sign
+//    return ret
+//}
 
 
 

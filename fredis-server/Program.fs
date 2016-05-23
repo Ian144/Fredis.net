@@ -59,6 +59,7 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
             // The F# async workflow sequences async reads and writes so none are simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
+//            let strm = netStrm
             while (client.Connected && loopAgain) do
                 // reading from the socket is synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte buf 
@@ -76,6 +77,7 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+//                                                let resp = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents pongBytes)
                                                 do! RespStreamFuncs.AsyncSendResp strm resp
                                                 do! strm.FlushAsync() |> Async.AwaitTask
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err

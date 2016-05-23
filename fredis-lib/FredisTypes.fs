@@ -5,6 +5,23 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // http://redis.io/topics/protocol
 // http://www.redisgreen.net/blog/reading-and-writing-redis-protocol/
 
@@ -13,6 +30,8 @@
 // Bulk Strings:     "$"
 // Simple String:    "+"
 // Arrays:           "*"
+
+
 
 
 // redis cant store 'strings' larger than 512mb, hence this restricted ByteOffset

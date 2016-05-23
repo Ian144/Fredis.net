@@ -2,6 +2,7 @@
 #I __SOURCE_DIRECTORY__
 #load "load-references-debug.fsx"
 #load "../AssemblyInfo.fs"
+      "../StructTuple.fs"
       "../FredisTypes.fs"
       "../Utils.fs"
       "../RespStreamFuncs.fs"

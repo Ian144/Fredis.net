@@ -11,12 +11,11 @@ open FredisTypes
 
 let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
 let StrToBytes (str:string) = System.Text.Encoding.UTF8.GetBytes(str)
-let BytesToInt64 bs = System.BitConverter.ToInt64(bs, 0)
 let BytesToKey = BytesToStr >> Key
 
-
-
-
+// short aliases for use in debugger watch window
+let bToS = BytesToStr
+let sToB = StrToBytes
 
 
 // in redis offset 0 is MSB and offset 7 is LSB
@@ -38,7 +37,6 @@ let GetBit (bs:byte []) (bitIndexIn:int) : bool =
     (bs.[byteIndex] &&& mask) <> 0uy
 
 
-
 let OptionToChoice (optFunc:'a -> 'b option) (xx:'a) choice2Of2Val  = 
     match optFunc xx with
     | Some yy   -> Choice1Of2 yy
@@ -50,7 +48,6 @@ let OptionToChoice (optFunc:'a -> 'b option) (xx:'a) choice2Of2Val  =
 let ChoiceParseInt failureMsg str : Choice<int,'t> = OptionToChoice FSharpx.FSharpOption.ParseInt str failureMsg
 
 
-
 let ChoiceParsePosOrZeroInt failureMsg str : Choice<int,byte[]> = 
     choose{
         let! ii1 = ChoiceParseInt failureMsg str
@@ -58,11 +55,13 @@ let ChoiceParsePosOrZeroInt failureMsg str : Choice<int,byte[]> =
         return ii2
     }
 
+
 let ChoiceParseBoolFromInt (errorMsg:byte[]) (ii:int) = 
     match ii with
     | 1 -> Choice1Of2 true
     | 0 -> Choice1Of2 false
     | _ -> Choice2Of2 errorMsg
+
 
 
 let ChoiceParseBool (errorMsg) (ss) = 

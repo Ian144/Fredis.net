@@ -56,3 +56,5 @@ obj
 Release/*
 packages/*
 
+*.vspx
+*.psess

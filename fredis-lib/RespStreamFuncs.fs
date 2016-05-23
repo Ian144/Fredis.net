@@ -3,7 +3,7 @@
 
 open System.IO
 open FredisTypes
-
+open StructTuple
 
 
 let EatCRLF (strm:Stream) = 
@@ -25,6 +25,9 @@ let Eat5NoAlloc (strm:Stream) =
 
 
 
+  
+
+
 
 // extension methods on Stream
 type Stream with
@@ -38,8 +41,6 @@ type Stream with
                 | _ -> Some buf.[0]
         return ret
         }
-
-
 
 
 
@@ -76,7 +77,8 @@ let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
     let len = 3 + contents.Length
     let arr = Array.zeroCreate<byte> len
     arr.[0] <- 43uy
-    contents.CopyTo (arr,1)
+//    contents.CopyTo (arr,1)
+    System.Buffer.BlockCopy(contents, 0, arr, 1, contents.Length )
     arr.[len-2] <- 13uy
     arr.[len-1] <- 10uy
     strm.AsyncWrite (arr, 0, len)

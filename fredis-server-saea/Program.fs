@@ -72,7 +72,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
         SaeaBufStart = saeaBufSize   // setting start and end indexes to 1 past the end of the buffer indicates there is nothing to read
         SaeaBufEnd = saeaBufSize     // as comment above
         SaeaBufSize = saeaBufSize
-        Continuation = ignore
+        Continuation = -1
         BufList = Collections.Generic.List<byte[]>() //todo, can this be null
         okContBytes = ignore
         okContUnit = ignore
@@ -87,6 +87,8 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
     // consider F# anonymous classes
     let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
     let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink
+
+    let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
 
     let asyncProcessClientRequests = 
         async{ 
@@ -106,7 +108,8 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     SocAsyncEventArgFuncs.Reset saea
                     let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                     match choiceFredisCmd with
-                    | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                    | Choice1Of2 cmd    ->  //let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                            let reply = bsOk
                                             SocAsyncEventArgFuncs.Reset saea
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink reply
                                             do! saeaSink.AsyncFlush ()
@@ -150,6 +153,14 @@ and StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
 
 [<EntryPoint>]
 let main argv =
+
+//    let mutable workerThreads:int = 0
+//    let mutable completionPortThreads:int = 0
+//    let res = System.Threading.ThreadPool.SetMaxThreads(8, 8)
+//    System.Threading.ThreadPool.GetMaxThreads (ref workerThreads, ref completionPortThreads)
+//    printfn "  max - wt: %d, cpt: %d" workerThreads completionPortThreads
+//    System.Threading.ThreadPool.GetAvailableThreads (ref workerThreads, ref completionPortThreads)
+//    printfn "avail - wt: %d, cpt: %d" workerThreads completionPortThreads
 
     let cBufSize =
         if argv.Length = 1 then

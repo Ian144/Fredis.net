@@ -8,10 +8,6 @@ open System.Threading.Tasks
 
 
 
-
-
-
-
 // TODO use OkContinuation in UserToken, maybe 
 //type OkContinuation = 
 //    | BytesCont         of byte array -> Unit
@@ -27,17 +23,29 @@ open System.Threading.Tasks
 type UserToken = {
     mutable Socket: Socket
     mutable ClientBuf: byte[]   // consider a struct holding both ClientBuf and ClientBufPos
-    mutable ClientBufPos: int   // required when multiple reads are required to fully populate a client buffer
+    mutable ClientBufPos: int   // used when multiple reads are required to fully populate a client buffer
     mutable SaeaBufStart: int   // begining of the unread, by the client, part of the saea buffer (inclusive). Reads often pull in more the the current op requires, but its needed by the next op
-    mutable SaeaBufEnd: int     // end of the unread, by the client, part of the saea buffer (exclusive)
+    mutable SaeaBufEnd: int     // end of the unread (by the client) part of the saea buffer (exclusive)
     SaeaBufSize: int            // the size of that part of the shared saea buffer available to each saea
-    mutable Continuation: SocketAsyncEventArgs -> unit  // the continuation fired when socketAsyncEventArgs complete
+    //mutable Continuation: SocketAsyncEventArgs -> unit  // the continuation fired when socketAsyncEventArgs complete
+    mutable Continuation: int  // the continuation fired when socketAsyncEventArgs complete
     BufList: System.Collections.Generic.List<byte[]>    // used when loading an unknown number of bytes, such as when reading until CRLF
     mutable okContBytes:byte array->Unit                // as received from Async.fromContinuations for read operations
     mutable okContUnit:Unit->Unit                       // as received from Async.fromContinuations for send operations
     mutable exnCont:exn->Unit                           // as received from Async.fromContinuations
     mutable cancCont:OperationCanceledException->Unit   // as received from Async.fromContinuations
     }
+
+
+let cProcessSend = 0
+let cProcessReceive = 1
+let cProcessReceiveUntilCRLF = 2
+let cProcessReceiveUntilCRLFEatFirstByte = 3
+
+//let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
+//    let ut = saea.UserToken :?> UserToken
+//    ut.Continuation saea
+
 
 
 
@@ -55,21 +63,19 @@ type IFredisStreamSink =
     abstract AsyncFlush : unit -> Async<unit>
 
 
+
 type OpStatus = OpComplete|AnotherOpRequired
 
 
-//let SubBufToStr buf startIdx len = 
-//    let tmp = Array.zeroCreate<byte> len
-//    Buffer.BlockCopy( buf, startIdx, tmp, 0, len )
-//    let str = Utils.BytesToStr tmp
-//    str.Replace("\r\n", "..")
+
 
 let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     let bytesRequired = ut.ClientBuf.Length - ut.ClientBufPos
 
-//    let str = (SubBufToStr saea.Buffer saea.Offset  bytesTransferred )
+
+ //    let str = (SubBufToStr saea.Buffer saea.Offset  bytesTransferred )
    
     let opStatus = 
             if bytesTransferred >= bytesRequired
@@ -84,11 +90,13 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     
     | SocketError.Success, _, OpComplete ->
             Buffer.BlockCopy(saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, bytesRequired)
+            let clientBuf = ut.ClientBuf
+            let okContBytes = ut.okContBytes
             ut.ClientBufPos <- ut.ClientBuf.Length
             // may have read in data required for the next client op, i.e. more than required for the current op, so mark the range
             ut.SaeaBufStart <- bytesRequired    
             ut.SaeaBufEnd   <- bytesTransferred
-            ut.okContBytes ut.ClientBuf
+            okContBytes clientBuf
     
     | SocketError.Success, _, AnotherOpRequired ->
             Buffer.BlockCopy (saea.Buffer, saea.Offset, ut.ClientBuf, ut.ClientBufPos, bytesTransferred)
@@ -106,9 +114,22 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
 
 
 
-type Found = Found of int | NotFound
-             
-// find CR idx between startIdx and before endIdx
+//type Found = Found of int | NotFound
+//             
+//// find CR idx between startIdx and before endIdx
+//let private FindCR (buf:byte[]) startIdx endIdx = 
+//    let mutable found = false
+//    let mutable ctr = startIdx
+//    while (not found) && (ctr < endIdx) do
+//        if buf.[ctr] = 13uy then 
+//            found <- true
+//        else
+//            ctr <- ctr + 1
+//    if found 
+//        then Found ctr
+//        else NotFound
+
+
 let private FindCR (buf:byte[]) startIdx endIdx = 
     let mutable found = false
     let mutable ctr = startIdx
@@ -117,9 +138,8 @@ let private FindCR (buf:byte[]) startIdx endIdx =
             found <- true
         else
             ctr <- ctr + 1
-    if found 
-        then Found ctr
-        else NotFound
+    found, ctr
+
 
 
 
@@ -134,10 +154,10 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
     let endIdx = bytesTransferred + startIdx
     ut.SaeaBufStart <- saea.Offset
     ut.SaeaBufEnd <- bytesTransferred + saea.Offset
-    let crFound = FindCR saea.Buffer startIdx endIdx
+    let crFound, idx = FindCR saea.Buffer startIdx endIdx
 
-    match saea.SocketError, crFound, bytesTransferred with
-    | SocketError.Success, _, 0 -> 
+    match saea.SocketError, crFound, idx, bytesTransferred with
+    | SocketError.Success, _, _, 0 -> 
             // client has disconnected
             ut.BufList.Clear()
             // TODO confirm zero bytes received with the client has disconnected
@@ -146,13 +166,13 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
             let cancEx = OperationCanceledException ()
             ut.cancCont cancEx
 
-    | SocketError.Success, Found crIdx, _ ->
+    | SocketError.Success, true, crIdx, _ ->
             // CRLF found
             let crInLastByte = (crIdx = (endIdx - 1))
 
             if crInLastByte then
                 // the LF in CRLF has not been read in yet, so doing another read and eating the first char
-                ut.Continuation <- ProcessReceiveUntilCRLFEatFirstByte
+                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByte
                 let len = crIdx - ut.SaeaBufStart
                 let tmpBuf = Array.zeroCreate<byte> len
                 Buffer.BlockCopy( saea.Buffer, startIdx, tmpBuf, 0, len)
@@ -175,7 +195,7 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
                 ut.BufList.Clear ()
                 ut.okContBytes bufAll
     
-    | SocketError.Success, NotFound, _ ->
+    | SocketError.Success, false, _, _ ->
             // CRLF not found, continue reading until it is
             let len = ut.SaeaBufEnd - ut.SaeaBufStart
             let buf = Array.zeroCreate<byte> len
@@ -186,7 +206,7 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
                 ProcessReceiveUntilCRLF(saea)
-    | err, _, _  ->
+    | err, _, _, _  ->
             ut.BufList.Clear()
             let msg = sprintf "receive socket error: %O" err
             let ex = Exception msg
@@ -203,7 +223,7 @@ and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
     ut.SaeaBufEnd <- bytesTransferred
 
     let fb = saea.Buffer.[saea.Offset] 
-    assert ( fb = 10uy || fb = 42uy)
+    //assert ( fb = 10uy || fb = 42uy)
     match saea.SocketError, bytesTransferred with
     | SocketError.Success, 0 -> 
             ut.BufList.Clear()
@@ -233,20 +253,21 @@ and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
             ut.exnCont ex
 
 
+
 // requires a buffer to be supplied, enabling pre-allocated buffers to be reused
 let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
-    Async.FromContinuations <| fun (okCont, exnCont, cancCont) ->
+
+    let AsyncReadReadInner (okCont, exnCont, cancCont) =
         let ut = saea.UserToken :?> UserToken
         ut.okContBytes <- okCont
         ut.exnCont <- exnCont
+        ut.Continuation <- cProcessReceive
         ut.cancCont <- cancCont
         ut.ClientBuf <- dest
         ut.ClientBufPos <- 0   // AsyncRead will always read into the client Buffer starting at index zero
-        ut.Continuation <- ProcessReceive
+
         let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read-in already, by a previous read operation
-
-        assert (saea.Count = ut.SaeaBufSize)
-
+        //assert (saea.Count = ut.SaeaBufSize)
         let opStatus = 
                 if availableBytes >= dest.Length
                 then OpComplete        
@@ -274,8 +295,49 @@ let AsyncRead (saea:SocketAsyncEventArgs) (dest:byte []) : Async<byte[]> =
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
                     ProcessReceive(saea)
-            
 
+    AsyncReadReadInner |> Async.FromContinuations
+
+//    Async.FromContinuations <| fun (okCont, exnCont, cancCont) ->
+//        let ut = saea.UserToken :?> UserToken
+//        ut.okContBytes <- okCont
+//        ut.exnCont <- exnCont
+//        ut.cancCont <- cancCont
+//        ut.ClientBuf <- dest
+//        ut.ClientBufPos <- 0   // AsyncRead will always read into the client Buffer starting at index zero
+//        ut.Continuation <- ProcessReceive
+//        let availableBytes = ut.SaeaBufEnd - ut.SaeaBufStart // some bytes may have been read-in already, by a previous read operation
+//
+//        //assert (saea.Count = ut.SaeaBufSize)
+//
+//        let opStatus = 
+//                if availableBytes >= dest.Length
+//                then OpComplete        
+//                else AnotherOpRequired
+//
+//        match availableBytes, opStatus with
+//        | 0, _ ->  // there are no bytes available, 
+//                ut.SaeaBufStart <- ut.SaeaBufSize
+//                ut.SaeaBufEnd   <- ut.SaeaBufSize
+//                let ioPending = ut.Socket.ReceiveAsync(saea)
+//                if not ioPending then
+//                    ProcessReceive(saea)
+//        
+//        | availBs, OpComplete ->
+//                // able to satisfy the entire read request from bytes already available
+//                Buffer.BlockCopy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, dest.Length) 
+//                ut.SaeaBufStart <- ut.SaeaBufStart + dest.Length // mark the new begining of the unread bytes
+//                ut.okContBytes dest
+//        
+//        | availBs, AnotherOpRequired  ->
+//                Buffer.BlockCopy(saea.Buffer, saea.Offset + ut.SaeaBufStart, dest, 0, availableBytes)
+//                ut.ClientBufPos <- availableBytes // availableBytes have been written into the client array (aka 'dest'), so the first unread index is 'availableBytes' because dest is zero based
+//                ut.SaeaBufStart <- ut.SaeaBufSize
+//                ut.SaeaBufEnd   <- ut.SaeaBufSize
+//                let ioPending = ut.Socket.ReceiveAsync(saea)
+//                if not ioPending then
+//                    ProcessReceive(saea)
+          
 
 
 // does not require a buffer to be supplied
@@ -292,14 +354,13 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
         ut.exnCont <- exnCont
         ut.cancCont <- cancCont
         let ut = saea.UserToken :?> UserToken
-        ut.Continuation <- ProcessReceiveUntilCRLF
+        ut.Continuation <- cProcessReceiveUntilCRLF
         let endIdx = ut.SaeaBufEnd + saea.Offset
         let startIdx = ut.SaeaBufStart + saea.Offset
-        let crFound = FindCR saea.Buffer startIdx endIdx
-        // todo: check that LF follows CR
+        let crFound, idx = FindCR saea.Buffer startIdx endIdx
 
-        match crFound with
-        | Found crIdx when crIdx < (endIdx - 1)   ->   
+        match crFound, idx with
+        | true, crIdx when crIdx < (endIdx - 1)   ->   
                 // CR found and there is at least one more char to read without doing another receive
                 // hopefully this is the common case, as others are potentially slow
                 let len = (crIdx - startIdx) // -1 as the CR is being ignored
@@ -308,11 +369,11 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
                 ut.SaeaBufStart <- ut.SaeaBufStart + len + 2 // +2 so as to go past the CRLF
                 //no change to ut.SaeaBufEnd should be made, it still marks the end of valid bytes in the saea buffer
                 ut.okContBytes arrOut
-        | Found crIdx ->  
+        | true, crIdx ->  
                 // the CR is the last char in the saea buffer, so read again, and throw away the first byte which should be LF
-                ut.Continuation <- ProcessReceiveUntilCRLFEatFirstByte
+                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByte
                 let len = (ut.SaeaBufEnd - ut.SaeaBufStart) - 1 // -1 to ignore the CR at the end
-                assert (len > 0)
+                //assert (len > 0)
                 let buf1 = Array.zeroCreate<byte> len
                 Buffer.BlockCopy( saea.Buffer, startIdx, buf1, 0, len)
                 ut.BufList.Add buf1
@@ -321,7 +382,7 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
                     ProcessReceiveUntilCRLFEatFirstByte(saea)
-        | NotFound ->  
+        | false, _ ->  
                 // CRLF not found, continue reading until it is
                 let len = ut.SaeaBufEnd - ut.SaeaBufStart
                 if len > 0 then
@@ -333,6 +394,7 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
                     ProcessReceiveUntilCRLF(saea)
+
 
 
 let AsyncReadByte (saea:SocketAsyncEventArgs) : Async<byte> =
@@ -368,12 +430,7 @@ let AsyncEatCRLF (saea:SocketAsyncEventArgs) : Async<unit> =
 
 
 
-
 let rec private SetupSend (saea:SocketAsyncEventArgs) ut =
-    let arr  = Array.zeroCreate<byte> (ut.SaeaBufEnd - ut.SaeaBufStart) 
-    Buffer.BlockCopy(saea.Buffer, saea.Offset + ut.SaeaBufStart, arr, 0, ut.SaeaBufEnd - ut.SaeaBufStart )
-    let str = arr |> Utils.BytesToStr
-    let str2 = str.Replace("\r\n", "\\r\\n")
     saea.SetBuffer(saea.Offset + ut.SaeaBufStart, ut.SaeaBufEnd - ut.SaeaBufStart)
     let ioPending = ut.Socket.SendAsync(saea)
     if not ioPending then
@@ -397,7 +454,7 @@ and ProcessSend (saea:SocketAsyncEventArgs) =
             ut.SaeaBufStart <- 0
             ut.SaeaBufEnd <- clientBufLenRemaining
             ut.ClientBufPos <- ut.ClientBufPos + clientBufLenRemaining
-            assert (ut.ClientBufPos = ut.ClientBuf.Length)
+            //assert (ut.ClientBufPos = ut.ClientBuf.Length)
             SetupSend saea ut
         | true,  false  ->  // NOT enough space in the saeaBuffer to send all of the unsent clientBuf
             Buffer.BlockCopy(ut.ClientBuf, ut.ClientBufPos, saea.Buffer, saea.Offset, ut.SaeaBufSize)                        
@@ -436,12 +493,13 @@ let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
         | false ->
                 // there is not enough space in the saea buf to accomodate bs
                 ut.ClientBuf <- bs
-                ut.Continuation <- ProcessSend
+                ut.Continuation <- cProcessSend
                 ut.okContUnit <- okCont
                 Buffer.BlockCopy(bs, 0, saea.Buffer, saea.Offset + ut.SaeaBufEnd, saeaBufSpaceAvailable)
                 ut.SaeaBufEnd <- ut.SaeaBufSize // 
                 ut.ClientBufPos <- saeaBufSpaceAvailable  // no part of bs will have been sent before this call to AsyncWrite
                 SetupSend saea ut
+
 
 
 let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
@@ -451,10 +509,11 @@ let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
         ut.exnCont <- exnCont
         ut.cancCont <- cancCont
         let numToSend = ut.SaeaBufEnd - ut.SaeaBufStart
+//        printfn "sending: %d bytes" numToSend
         if numToSend = 0 then
             ut.okContUnit ()
         else
-            ut.Continuation <- ProcessSend
+            ut.Continuation <- cProcessSend
             SetupSend saea ut
 
 
@@ -465,17 +524,23 @@ let Reset (saea:SocketAsyncEventArgs)=
     ut.SaeaBufStart <- 0
     ut.ClientBuf <- [||]
     ut.ClientBufPos <- 0
-    ut.okContBytes <- ignore
-    ut.okContUnit <- ignore
-    ut.exnCont <- ignore 
-    ut.cancCont <- ignore 
-    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
+//    ut.okContBytes <- ignore
+//    ut.okContUnit <- ignore
+//    ut.exnCont <- ignore 
+//    ut.cancCont <- ignore 
+//    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
     ut.BufList.Clear()
 
 
 let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
-    ut.Continuation saea
+    match ut.Continuation with
+    | 0 -> ProcessSend saea
+    | 1 -> ProcessReceive saea
+    | 2 -> ProcessReceiveUntilCRLF saea
+    | 3 -> ProcessReceiveUntilCRLFEatFirstByte saea
+    | _ -> failwith "invalid ut.Continuation"
+
 
 
 type SaeaStreamSource (saea:SocketAsyncEventArgs) =
