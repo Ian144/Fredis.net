@@ -14,6 +14,7 @@ let port = 6379
 [<Literal>]
 let PingL = 80  // P - redis-benchmark PING_INLINE just sends PING\r\n, not encoded as RESP
 
+
 let pongBytes  = "+PONG\r\n"B
 
 
@@ -26,19 +27,16 @@ let HandleSocketError (name:string) (ex:System.Exception) =
         | None  ->          msg
         | Some innerEx ->   let innerMsg = handleExInner innerEx
                             sprintf "%s | %s" msg innerMsg
-    
     let msg = handleExInner ex
-
     // Microsoft redis-benchmark does not close its socket connections down cleanly
     if not (msg.Contains("forcibly closed")) then
         printfn "%s --> %s" name msg
 
+
 let ClientError ex =  HandleSocketError "client error" ex
 let ConnectionListenerError ex = HandleSocketError "connection listener error" ex
 
-
-
-
+let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
 
 let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
@@ -59,26 +57,22 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
             // The F# async workflow sequences async reads and writes so none are simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
-//            let strm = netStrm
             while (client.Connected && loopAgain) do
-                // reading from the socket is synchronous after this point, until current redis msg is processed
                 let! optRespTypeByte = strm.AsyncReadByte buf 
                 match optRespTypeByte with
                 | None              ->  loopAgain <- false  // client disconnected
                 | Some respTypeByte -> 
-                    let respTypeInt = System.Convert.ToInt32(respTypeByte)
+                    let respTypeInt = int respTypeByte
                     if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         Eat5NoAlloc strm  
                         do! strm.AsyncWrite pongBytes
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
                         let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-//                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
-                        | Choice1Of2 cmd    ->  let! resp = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-//                                                let resp = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents pongBytes)
-                                                do! RespStreamFuncs.AsyncSendResp strm resp
+                        | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                                do! RespStreamFuncs.AsyncSendResp strm reply
                                                 do! strm.FlushAsync() |> Async.AwaitTask
                         | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
                                                 do! strm.FlushAsync() |> Async.AwaitTask
@@ -122,6 +116,7 @@ let WaitForExitCmd () =
 
 [<EntryPoint>]
 let main argv =
+    printfn "done nothing yet - except for "
 
     let cBufSize =
         if argv.Length = 1 then

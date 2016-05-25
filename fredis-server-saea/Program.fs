@@ -82,18 +82,21 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
     saea.UserToken <- userTok
 
+    // pre-created arrays to avoid  allocation for each cmd
+    let buf1 = Array.zeroCreate 1   // used to when waiting on a new msg
     let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
     // consider F# anonymous classes
     let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
     let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink
 
-    let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
+//    let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
+//    let reply = bsOk
 
     let asyncProcessClientRequests = 
         async{ 
             while (client.Connected ) do
-                let! bb = SocAsyncEventArgFuncs.AsyncReadByte saea
+                let! bb = SocAsyncEventArgFuncs.AsyncReadByte2 saea buf1
                 let respTypeInt = System.Convert.ToInt32 bb
                 if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                     // todo: could manually adjust the saea userToken to eat 5 chars
@@ -108,8 +111,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     SocAsyncEventArgFuncs.Reset saea
                     let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                     match choiceFredisCmd with
-                    | Choice1Of2 cmd    ->  //let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                            let reply = bsOk
+                    | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd  // to process the cmd on a single thread
                                             SocAsyncEventArgFuncs.Reset saea
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendResp saeaSink reply
                                             do! saeaSink.AsyncFlush ()
@@ -126,7 +128,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
             (fun ex -> saeaPool.Push saea
                        ClientError ex),
             (fun ct -> saeaPool.Push saea
-                       printfn "ClientListener cancelled: %A" ct)
+                       () )
         ) // end Async
 
 

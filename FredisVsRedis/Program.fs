@@ -57,33 +57,12 @@ let genAlphaByteArray = Gen.arrayOfLength 80 genAlphaByte
 
 
 
-let FredisCmdFilterNoNumOps cmd = 
-    match cmd with
-////    | Incr _                        -> false
-////    | IncrByFloat                   _ -> false
-////    | IncrBy _                      -> false
-////    | Decr _  | DecrBy _            -> false
-//    | SetRange _                    -> false
-    | _                             -> true
-
-
-//let FredisCmdFilterNoNumOps cmd = 
-//    match cmd with
-////    | Incr _                        -> false
-////    | IncrByFloat                   _ -> false
-////    | IncrBy _                      -> false
-////    | Decr _  | DecrBy _            -> false
-//    | SetBit _                      -> true
-//    | Get _                         -> true
-//    | Incr _                        -> true
-//    | Set _                         -> true
-//    | _                             -> false
  
-
-let FredisCmdFilterBitOps cmd = 
+let FredisCmdFilter cmd =
     match cmd with
-    | SetBit _ | BitOp _  | Bitpos _  | Set _   -> true
-    | _                                         -> false
+    | Incr _ | IncrByFloat _  | IncrBy _  | Decr _  | DecrBy _  -> false
+    | _                                                         -> true
+
 
 
 
@@ -91,12 +70,11 @@ let genFredisCmd = Arb.generate<FredisCmd>
 
 
 
-
-let crapShrink (bs:Bytes) = 
-    let len = bs.Length * 2 / 3
-    let bs2 = Array.zeroCreate<byte>( len )
-    Array.blit bs 0 bs2 0 len
-    seq{ yield bs2 }
+//let crapShrink (bs:Bytes) = 
+//    let len = bs.Length * 2 / 3
+//    let bs2 = Array.zeroCreate<byte>( len )
+//    Array.blit bs 0 bs2 0 len
+//    seq{ yield bs2 }
 
 
 let shrinkFredisCmd (cmd:FredisCmd) = 
@@ -163,10 +141,10 @@ type ArbOverrides() =
 
     static member Key() = Arb.fromGen genKey
     static member ByteOffsets() = Arb.fromGenShrink (genByteOffset, shrinkByteOffset )
-//    static member Bytes() = Arb.fromGen genAlphaByteArray
-    static member Bytes() = Arb.fromGenShrink (genAlphaByteArray, crapShrink)
+    static member Bytes() = Arb.fromGen genAlphaByteArray
+//    static member Bytes() = Arb.fromGenShrink (genAlphaByteArray, crapShrink)
     static member FredisCmd() = Arb.fromGenShrink (genFredisCmd,  shrinkFredisCmd) 
-                                |> Arb.filter FredisCmdFilterNoNumOps
+                                |> Arb.filter FredisCmdFilter
 
 
 
@@ -213,12 +191,12 @@ let mutable ctr = 0
 let redisClient     = new TcpClient(host, redisPort)
 let fredisClient    = new TcpClient(host, fredisPort)
 
+
 let propFredisVsRedis (cmds:FredisTypes.FredisCmd list) =
-
     ctr <- ctr + 1
-    if (ctr % 1000) = 0 then
-        printfn "test num: %d" ctr
-
+    if (ctr % 10) = 0 then
+        //printfn "test num: %d" ctr
+        printf "."
     // not restarting fredis and redis, so the first command is always a flush
     let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
     let fredisReplies = respCmds |> List.map (sendReceive fredisClient)
@@ -230,14 +208,11 @@ let propFredisVsRedis (cmds:FredisTypes.FredisCmd list) =
 
 
 let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
-
+    if (ctr % 10) = 0 then
+        printfn "test num: %d - cmds len: %d" ctr cmds.Length
     ctr <- ctr + 1
-//    if (ctr % 250) = 0 then
-    printfn "test num: %d - cmds len: %d" ctr cmds.Length
-
     use redisClientNew     = new TcpClient(host, redisPort)
     use fredisClientNew    = new TcpClient(host, fredisPort)
-
     // not restarting fredis and redis, so the first command is always a flush
     let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
     let redisReplies  = respCmds |> List.map (sendReceive redisClientNew) 
@@ -263,15 +238,15 @@ let config = {  Config.Default with
 //                    Replay = Some (Random.StdGen (310046944,296129814))
 //                    StartSize = 32
                     MaxFail = 1000000
-                    MaxTest = 100000 }
+                    MaxTest = 1000 }
 
 
 //Check.Verbose propFredisVsRedis
 
-Check.One (config, propFredisVsRedisNewConnection)
-//
-//printfn "tests complete"
-//
+Check.One (config, propFredisVsRedis)
+
+printfn "\ntests complete"
+
 //printfn "press 'X' to exit"
 //
 //let rec WaitForExitCmd () = 

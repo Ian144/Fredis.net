@@ -32,14 +32,23 @@ let Eat5NoAlloc (strm:Stream) =
 // extension methods on Stream
 type Stream with
     // read a single byte, return Option.None if client disconnected
+    // passing in buf to allow it to be preallocated
     member this.AsyncReadByte buf = async{
         let tsk = this.ReadAsync(buf, 0, 1)
         let! numBytesRead = Async.AwaitTask tsk
-        let ret = 
+        return
+            match numBytesRead with
+            | 0 -> None
+            | _ -> Some buf.[0]
+        }
+
+    member this.AsyncReadByte2 buf = async{
+            let tsk = this.ReadAsync(buf, 0, 1)
+            let! numBytesRead = Async.AwaitTask tsk
+            return
                 match numBytesRead with
-                | 0 -> None
-                | _ -> Some buf.[0]
-        return ret
+                | 0 -> StructTuple.Pair (false, 0uy )
+                | _ -> StructTuple.Pair (true, buf.[0])
         }
 
 
@@ -77,7 +86,6 @@ let private AsyncSendSimpleString (strm:Stream) (contents:byte array) =
     let len = 3 + contents.Length
     let arr = Array.zeroCreate<byte> len
     arr.[0] <- 43uy
-//    contents.CopyTo (arr,1)
     System.Buffer.BlockCopy(contents, 0, arr, 1, contents.Length )
     arr.[len-2] <- 13uy
     arr.[len-1] <- 10uy
