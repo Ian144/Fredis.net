@@ -59,3 +59,7 @@ packages/*
 *.vspx
 *.psess
 *.vsp
+/benchmark-test-scripts/x/gcServTrue_gcConcTrue.txt
+/benchmark-test-scripts/x/gcServFalse_gcConcFalse.txt
+/benchmark-test-scripts/gcServTrue_gcConcTrue.txt
+/benchmark-test-scripts/gcServFalse_gcConcFalse.txt

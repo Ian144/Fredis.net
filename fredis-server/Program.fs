@@ -3,10 +3,8 @@ open System.Net.Sockets
 
 open RespStreamFuncs
 
-open System.IO
 
 
-//let host = """127.0.0.1"""
 let host = """0.0.0.0"""
 let port = 6379
 
