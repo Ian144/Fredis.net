@@ -74,18 +74,18 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
         saea.SetBuffer(saeaSharedBuffer, offset, saeaBufSize)
         saea.add_Completed (fun _ b -> SocAsyncEventArgFuncs.OnClientIOCompleted b)
         let ut = {
-            Socket = null
-            ClientBuf = null
+            Socket       = null
+            ClientBuf    = null
             ClientBufPos = -1
             SaeaBufStart = 0
-            SaeaBufEnd = 0
-            SaeaBufSize = saeaBufSize
+            SaeaBufEnd   = 0
+            SaeaBufSize  = saeaBufSize
             Continuation = -1
-            BufList = System.Collections.Generic.List<byte[]>()
-            okContBytes = ignore
-            okContUnit = ignore
-            exnCont = ignore
-            cancCont = ignore
+            BufList      = System.Collections.Generic.List<byte[]>()
+            okContBytes  = ignore
+            okContUnit   = ignore
+            exnCont      = ignore
+            cancCont     = ignore
         }
         saea.UserToken <- ut
         saeaPool.Push(saea)
@@ -113,7 +113,7 @@ let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
     if not ioPending then
         ProcessAccept acceptEventArg
     tcs.Task |> Async.AwaitTask
-
+        
 
 
 let rec private ArraySubSeqs (bs:byte[]): byte array seq = 
@@ -171,7 +171,7 @@ type SaeaAsyncReadCRLFPropertyAttribute() =
 //let (.=.) left right = left = right |@ sprintf "\n%A =\n%A" left right
 
 
-let SetupListenerSocket (maxNumClients:int) : Socket = 
+let SetupServerAcceptSocket (maxNumClients:int) : Socket = 
     let listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
     listenSocket.Bind(localEndPoint)
     listenSocket.Listen maxNumClients
@@ -188,10 +188,9 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
     saeaPoolM <- CreateClientSAEAPool maxNumClients clientBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use listenSocket = SetupServerAcceptSocket maxNumClients
 
-    let bsToSendCRLF = seq{yield! bsToSend1; yield! bsToSend2; yield 13uy; yield 10uy} |> Seq.toArray // append CRLF to the bytes being send (which won't contain CRLF due to the custom Arb instance)
-
+    let bsToSendCRLF = [| yield! bsToSend1; yield! bsToSend2; yield 13uy; yield 10uy |]
 
     // act 
     let asyncReceive = async{
@@ -236,7 +235,7 @@ let ``saea AsyncReadByte - correct byte received`` (firstBsToSend:byte[]) (byteI
     saeaPoolM <- CreateClientSAEAPool maxNumClients clientBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use listenSocket = SetupServerAcceptSocket maxNumClients
 
     let bsToSendCRLF = seq{yield! firstBsToSend; yield byteIn; yield! moreBsToSend} |> Seq.toArray 
 
@@ -274,7 +273,7 @@ let ``saea AsyncReadUntilCRLF - CRLF received already in saea buffer from previo
     saeaPoolM <- CreateClientSAEAPool maxNumClients clientBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use listenSocket = SetupServerAcceptSocket maxNumClients
     let firstBsToSend = "some bytes"B
     let moreBytes = "more bytes"B
     let bsToSendCRLF = seq{yield! firstBsToSend; yield! bs; yield 13uy; yield 10uy; yield! moreBytes} |> Seq.toArray 
@@ -315,7 +314,7 @@ let ``saea AsyncRead single send-receive property test`` (bsToSend:byte[]) =
     saeaPoolM <- CreateClientSAEAPool maxNumClients clientBufSize
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use listenSocket = SetupServerAcceptSocket maxNumClients
 
     // act 
     let asyncReceive = async{
@@ -339,7 +338,8 @@ let ``saea AsyncRead single send-receive property test`` (bsToSend:byte[]) =
 
 
 
-// THIS TEST HANGS
+
+// #### THIS TEST HANGS
 
 // test that reading for bsToSend1 followed by a read for bsToSend2.Length gives bsToSend2 for the second read
 [<SaeaAsyncReadPropertyAttribute>]
@@ -350,30 +350,36 @@ let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
     saeaPoolM <- (CreateClientSAEAPool maxNumClients clientBufSize)
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use serverAcceptSocket = SetupServerAcceptSocket maxNumClients
+
+    // client connects to server USING NON-SAEA MyConnectAsync
+    // server is sends to client
+    // server send completes
+    // client ProcessReceive not called HAS THE CALLBACK BEEN SETUP
 
     // act
     let asyncSend = async{
-        let! saea = StartAccept listenSocket acceptEventArg
+        let! saea = StartAccept serverAcceptSocket acceptEventArg
         do! SocAsyncEventArgFuncs.AsyncWrite saea bsToSend1
+        do! SocAsyncEventArgFuncs.AsyncFlush saea // without this the send will not have happened
         return [||]
     }
 
     let asyncReceive = async{
-        use clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+        use clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp) // the client socket in the client app, as opposed to the client socket in the server
         do! clientClientSocket.MyConnectAsync(ipAddr, port)
         match saeaPoolM.TryPop() with
-        | true, clientSaea  -> 
+        | true, clientSaea -> 
             let ut = clientSaea.UserToken :?> UserToken
             ut.Socket <- clientClientSocket
-            let! bsReceived = (SocAsyncEventArgFuncs.AsyncRead2 clientSaea bsToSend1.Length)
+            let! bsReceived = SocAsyncEventArgFuncs.AsyncRead2 clientSaea bsToSend1.Length
             return bsReceived // asyncSend needs to be of the same type as asyncReceive to run in parallel
-        | false, _  ->
+        | false, _ ->
             failwith "failed to allocate saea in \"saea AsyncWrite property test\""
             return [||]
-    } 
+    }
 
-    // assert    
+    // assert
     let xs = 
         [ asyncSend; asyncReceive ]
         |> Async.Parallel
@@ -389,47 +395,54 @@ let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
 
 // test that reading for bsToSend1 followed by a read for bsToSend2.Length gives bsToSend2 for the second read
 [<SaeaAsyncReadPropertyAttribute>]
-let ``saea AsyncRead x1 send x3 receive property test`` (bsToSend1:byte[]) (bsToSend2:byte[]) (bsToSend3:byte[]) =
-
+let ``saea AsyncRead x1 send x3 receive property test`` (bsToSend1 : byte []) (bsToSend2 : byte []) 
+    (bsToSend3 : byte []) = 
     // arrange
     let maxNumClients = 16
     let clientBufSize = 16
     saeaPoolM <- (CreateClientSAEAPool maxNumClients clientBufSize)
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
-
-    // act
-    let bsToSendAll = seq{ yield! bsToSend1; yield! bsToSend2; yield! bsToSend3 } |> Seq.toArray 
-
-    let asyncReceive = async{
-        let! saea = StartAccept listenSocket acceptEventArg
-        let! b1 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length
-        let! b2 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend2.Length
-        let! b3 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend3.Length
-        return [|b1;b2;b3|]; 
-    }
-
-    let asyncSend = async{
-        use  clientClientSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-        do!  clientClientSocket.MyConnectAsync(ipAddr, port)
-        let! _ = clientClientSocket.MySendAsync(bsToSendAll)
-        return [|bsToSendAll|] // asyncSend needs to be of the same type as asyncReceive to run in parallel
-    } 
+    use listenSocket = SetupServerAcceptSocket maxNumClients
     
-    let xss = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously 
-
+    // act
+    let bsToSendAll = 
+        seq { 
+            yield! bsToSend1
+            yield! bsToSend2
+            yield! bsToSend3
+        }
+        |> Seq.toArray
+    
+    let asyncReceive = async { let! saea = StartAccept listenSocket acceptEventArg
+                               let! b1 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length
+                               let! b2 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend2.Length
+                               let! b3 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend3.Length
+                               return [| b1; b2; b3 |] }
+    
+    let asyncSend = 
+        async { 
+            use clientClientSocket = new Socket(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            do! clientClientSocket.MyConnectAsync(ipAddr, port)
+            let! _ = clientClientSocket.MySendAsync(bsToSendAll)
+            return [| bsToSendAll |] // asyncSend needs to be of the same type as asyncReceive to run in parallel
+        }
+    
+    let xss = 
+        [ asyncSend; asyncReceive ]
+        |> Async.Parallel
+        |> Async.RunSynchronously
+    
     // assert
     // flatten the returned array of arrays by one level
-    let xs = [| for xs in xss do
-                for x in xs do               
-                yield x |]
-
+    let xs = 
+        [| for xs in xss do
+               for x in xs do
+                   yield x |]
+    
     match xs with
-    |[|_; b1; b2; b3|]  ->  bsToSend1 = b1 &&
-                            bsToSend2 = b2 && 
-                            bsToSend3 = b3
-    | _                 ->   false
+    | [| _; b1; b2; b3 |] -> bsToSend1 = b1 && bsToSend2 = b2 && bsToSend3 = b3
+    | _ -> false
 
 
 
@@ -443,7 +456,7 @@ let ``saea AsyncRead x3 send x1 receive property test``  (bsToSend1:byte[]) (bsT
     saeaPoolM <- (CreateClientSAEAPool maxNumClients clientBufSize)
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
-    use listenSocket = SetupListenerSocket maxNumClients
+    use listenSocket = SetupServerAcceptSocket maxNumClients
     let bsToSendAll = seq{ yield! bsToSend1; yield! bsToSend2; yield! bsToSend3 } |> Seq.toArray 
 
     // act

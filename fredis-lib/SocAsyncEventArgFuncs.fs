@@ -496,21 +496,21 @@ let AsyncWrite (saea:SocketAsyncEventArgs) (bs:byte[]) : Async<unit> =
         let saeaBufSpaceAvailable = ut.SaeaBufSize - ut.SaeaBufEnd
         match bs.Length <= saeaBufSpaceAvailable with
         | true  ->
-                // there is enough space available in the saea buf to store the contents of the client buf, which will be sent later
-                Buffer.BlockCopy(bs, 0, saea.Buffer, saea.Offset + ut.SaeaBufEnd, bs.Length)
-                ut.SaeaBufEnd <- ut.SaeaBufEnd + bs.Length
-                ut.ClientBuf <- bs
-                ut.ClientBufPos <- bs.Length // all bytes in bs have been copied to the saea buffwer
-                okCont ()
+            // there is enough space available in the saea buf to store the contents of the client buf, which will be sent later
+            Buffer.BlockCopy(bs, 0, saea.Buffer, saea.Offset + ut.SaeaBufEnd, bs.Length)
+            ut.SaeaBufEnd <- ut.SaeaBufEnd + bs.Length
+            ut.ClientBuf <- bs
+            ut.ClientBufPos <- bs.Length // all bytes in bs have been copied to the saea buffwer
+            okCont ()
         | false ->
-                // there is not enough space in the saea buf to accomodate bs
-                ut.ClientBuf <- bs
-                ut.Continuation <- cProcessSend
-                ut.okContUnit <- okCont
-                Buffer.BlockCopy(bs, 0, saea.Buffer, saea.Offset + ut.SaeaBufEnd, saeaBufSpaceAvailable)
-                ut.SaeaBufEnd <- ut.SaeaBufSize // 
-                ut.ClientBufPos <- saeaBufSpaceAvailable  // no part of bs will have been sent before this call to AsyncWrite
-                SetupSend saea ut
+            // there is not enough space in the saea buf to accomodate bs
+            ut.ClientBuf <- bs
+            ut.Continuation <- cProcessSend
+            ut.okContUnit <- okCont
+            Buffer.BlockCopy(bs, 0, saea.Buffer, saea.Offset + ut.SaeaBufEnd, saeaBufSpaceAvailable)
+            ut.SaeaBufEnd <- ut.SaeaBufSize // 
+            ut.ClientBufPos <- saeaBufSpaceAvailable  // no part of bs will have been sent before this call to AsyncWrite
+            SetupSend saea ut
 
 
 
