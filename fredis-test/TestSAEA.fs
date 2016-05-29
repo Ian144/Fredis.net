@@ -94,25 +94,23 @@ let CreateClientSAEAPool maxNumClients saeaBufSize =
 
 
 let ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
+    let okCont = saeaAccept.UserToken :?> (SocketAsyncEventArgs->Unit)
     let clientSocket = saeaAccept.AcceptSocket
     match saeaPoolM.TryPop() with
     | true, clientSaea  -> 
-            let clientUserToken = clientSaea.UserToken :?> UserToken
-            clientUserToken.Socket <- clientSocket
-            let tcs = saeaAccept.UserToken :?> TaskCompletionSource<SocketAsyncEventArgs>
-            tcs.SetResult(clientSaea)
+        let clientUserToken = clientSaea.UserToken :?> UserToken
+        clientUserToken.Socket <- clientSocket
+        okCont clientSaea
     | false, _  -> 
-            failwith "failed to allocate saea"
+        failwith "failed to allocate saea"
 
 
-
-let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
-    let tcs = TaskCompletionSource<SocketAsyncEventArgs>()
-    acceptEventArg.UserToken <- tcs
-    let ioPending = listenSocket.AcceptAsync acceptEventArg
-    if not ioPending then
-        ProcessAccept acceptEventArg
-    tcs.Task |> Async.AwaitTask
+let StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) : Async<SocketAsyncEventArgs> =
+    Async.FromContinuations <| fun (okCont, _,  _) ->
+        acceptEventArg.UserToken <- okCont
+        let ioPending = listenSocket.AcceptAsync acceptEventArg
+        if not ioPending then
+            ProcessAccept acceptEventArg
         
 
 
@@ -139,7 +137,7 @@ type ArbOverridesAsyncRead() =
 type SaeaAsyncReadPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncRead> |],
-        MaxTest = 1000,
+        MaxTest = 100,
         Verbose = false,
         QuietOnSuccess = false)
 
@@ -163,7 +161,7 @@ type ArbOverridesAsyncReadCRLF() =
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 1000,
+        MaxTest = 100,
         Verbose = false,
         QuietOnSuccess = false )
 
@@ -352,11 +350,6 @@ let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
     use serverAcceptSocket = SetupServerAcceptSocket maxNumClients
 
-    // client connects to server USING NON-SAEA MyConnectAsync
-    // server is sends to client
-    // server send completes
-    // client ProcessReceive not called HAS THE CALLBACK BEEN SETUP
-
     // act
     let asyncSend = async{
         let! saea = StartAccept serverAcceptSocket acceptEventArg
@@ -437,8 +430,8 @@ let ``saea AsyncRead x1 send x3 receive property test`` (bsToSend1 : byte []) (b
     // flatten the returned array of arrays by one level
     let xs = 
         [| for xs in xss do
-               for x in xs do
-                   yield x |]
+           for x in xs do
+            yield x |]
     
     match xs with
     | [| _; b1; b2; b3 |] -> bsToSend1 = b1 && bsToSend2 = b2 && bsToSend3 = b3
