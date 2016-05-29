@@ -24,8 +24,14 @@ let pongBytes  = "+PONG\r\n"B
 let maxNumConnections = 1024
 let saeaBufSize = 8 // * 64
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
-let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
 
+let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
+for ctr = 0 to (maxNumConnections - 1) do
+    let saea   = new SocketAsyncEventArgs()
+    let offset = ctr*saeaBufSize
+    saea.SetBuffer(saeaSharedBuffer, offset, saeaBufSize)
+    saea.add_Completed (fun _ b -> SocAsyncEventArgFuncs.OnClientIOCompleted b)
+    saeaPool.Push(saea)
 
 
 
@@ -245,22 +251,14 @@ Arb.register<ArbOverrides>() |> ignore
 
 
 let mutable ctr = 0
+let ipAddr = IPAddress.Parse(host)
+let localEndPoint = IPEndPoint (ipAddr, port)
+
 
 let propRespReceivedIsValid (cmds:FredisTypes.FredisCmd list) =
 
-    saeaPool.Clear()
-    for ctr = 0 to (maxNumConnections - 1) do
-        let saea   = new SocketAsyncEventArgs()
-        let offset = ctr*saeaBufSize
-        saea.SetBuffer(saeaSharedBuffer, offset, saeaBufSize)
-        saea.add_Completed (fun _ b -> SocAsyncEventArgFuncs.OnClientIOCompleted b)
-        saeaPool.Push(saea)
-
-
     try
         // start fredis server, calls will be serviced on .net threadpool threads
-        let ipAddr = IPAddress.Parse(host)
-        let localEndPoint = IPEndPoint (ipAddr, port)
         use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
         listenSocket.Bind(localEndPoint)
         listenSocket.Listen 16
@@ -268,22 +266,14 @@ let propRespReceivedIsValid (cmds:FredisTypes.FredisCmd list) =
         acceptEventArg.UserToken <- listenSocket
         acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
         StartAccept listenSocket acceptEventArg
-
-        let tcpClient = new TcpClient(host, port)
+        use tcpClient = new TcpClient(host, port)
         let respCmds = (FlushDB :: cmds) |> List.map (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
-        let fredisReply = respCmds |> List.map (sendReceive tcpClient)
-
-//        listenSocket.Disconnect false
-
-//        acceptEventArg.add_Completed (fun _ saea -> ())
-        listenSocket.Shutdown SocketShutdown.Both
-        printfn "after listenSocket.Close"
+        let fredisReplies = respCmds |> List.map (sendReceive tcpClient)
+        fredisReplies |> List.forall (fun reply -> false)
 
     with
-    | :? System.ObjectDisposedException -> ()
-    | :? System.Net.Sockets.SocketException -> ()
-
-    true
+    | :? System.ObjectDisposedException -> false
+    | :? System.Net.Sockets.SocketException -> false
 
 
 

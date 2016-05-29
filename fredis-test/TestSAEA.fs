@@ -62,7 +62,6 @@ type private Socket with
 
 
 
-
 let mutable (saeaPoolM:ConcurrentStack<SocketAsyncEventArgs>) = null
 
 // calling CreateClientSAEAPool from inside test functions allows different values of numClient and saea buffer sizes
@@ -140,7 +139,7 @@ type ArbOverridesAsyncRead() =
 type SaeaAsyncReadPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncRead> |],
-        MaxTest = 100,
+        MaxTest = 1000,
         Verbose = false,
         QuietOnSuccess = false)
 
@@ -159,10 +158,12 @@ type ArbOverridesAsyncReadCRLF() =
     static member NonEmptyByteArray() = Arb.fromGenShrink (genNonEmptyBytesNoCRLF, ArraySubSeqs)
 
 
+
+
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 100,
+        MaxTest = 1000,
         Verbose = false,
         QuietOnSuccess = false )
 
@@ -195,11 +196,8 @@ let ``saea AsyncReadUntilCRLF CRLF, previous read has populated the saea buffer`
     // act 
     let asyncReceive = async{
         let! saea = StartAccept listenSocket acceptEventArg
-        let ut = saea.UserToken :?> UserToken
-        let! bs1 = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length // read the first set of bytes, then throw away
-        assert (bs1 = bsToSend1)
-        let! bs2 = SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
-        return bs2
+        let! _ = SocAsyncEventArgFuncs.AsyncRead2 saea bsToSend1.Length // read the first set of bytes, then throw away
+        return! SocAsyncEventArgFuncs.AsyncReadUntilCRLF saea
     }
 
     let asyncSend = async{
@@ -341,6 +339,8 @@ let ``saea AsyncRead single send-receive property test`` (bsToSend:byte[]) =
 
 
 
+// THIS TEST HANGS
+
 // test that reading for bsToSend1 followed by a read for bsToSend2.Length gives bsToSend2 for the second read
 [<SaeaAsyncReadPropertyAttribute>]
 let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
@@ -374,10 +374,15 @@ let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
     } 
 
     // assert    
-    let xs = [asyncSend;asyncReceive] |> Async.Parallel |> Async.RunSynchronously 
+    let xs = 
+        [ asyncSend; asyncReceive ]
+        |> Async.Parallel
+        |> Async.RunSynchronously
+    
     match xs with
-    |[|_; bsReceived|]  ->  bsReceived = bsToSend1
-    | _                 ->  false
+    | [| _; bsReceived |] -> bsReceived = bsToSend1
+    | _ -> false
+
 
 
 
@@ -424,7 +429,7 @@ let ``saea AsyncRead x1 send x3 receive property test`` (bsToSend1:byte[]) (bsTo
     |[|_; b1; b2; b3|]  ->  bsToSend1 = b1 &&
                             bsToSend2 = b2 && 
                             bsToSend3 = b3
-    | _                 ->  false
+    | _                 ->   false
 
 
 
@@ -468,7 +473,3 @@ let ``saea AsyncRead x3 send x1 receive property test``  (bsToSend1:byte[]) (bsT
     match xs with
     |[|_; _; _; bsReceived|]    ->  bsToSendAll = bsReceived
     | _                         ->  false
-
-
-
-
