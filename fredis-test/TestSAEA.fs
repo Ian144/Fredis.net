@@ -132,12 +132,12 @@ let genNonEmptyBytes =
 
 type ArbOverridesAsyncRead() =
     static member NonEmptyByteArray() = Arb.fromGenShrink (genNonEmptyBytes, ArraySubSeqs)
-
+    static member Ints() = Arb.fromGen (Gen.choose(1, 128*1024))
  
 type SaeaAsyncReadPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncRead> |],
-        MaxTest = 100,
+        MaxTest = 1000,
         Verbose = false,
         QuietOnSuccess = false)
 
@@ -161,7 +161,7 @@ type ArbOverridesAsyncReadCRLF() =
 type SaeaAsyncReadCRLFPropertyAttribute() =
     inherit PropertyAttribute(
         Arbitrary = [| typeof<ArbOverridesAsyncReadCRLF> |],
-        MaxTest = 100,
+        MaxTest = 1000,
         Verbose = false,
         QuietOnSuccess = false )
 
@@ -336,15 +336,12 @@ let ``saea AsyncRead single send-receive property test`` (bsToSend:byte[]) =
 
 
 
-
-// #### THIS TEST HANGS
-
 // test that reading for bsToSend1 followed by a read for bsToSend2.Length gives bsToSend2 for the second read
 [<SaeaAsyncReadPropertyAttribute>]
-let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) =
+let ``saea AsyncWrite bytes sent are received`` (bsToSend1:byte[]) (bufSize:int) =
     // arrange
     let maxNumClients = 16
-    let clientBufSize = 256
+    let clientBufSize = 4096
     saeaPoolM <- (CreateClientSAEAPool maxNumClients clientBufSize)
     let acceptEventArg = new SocketAsyncEventArgs()
     acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
