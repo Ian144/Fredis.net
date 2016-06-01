@@ -1,4 +1,4 @@
-﻿namespace fredis_saea_resp_protocol_tester.AssemblyInfo
+﻿namespace fredis_test_lib.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices
@@ -7,11 +7,11 @@ open System.Runtime.InteropServices
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[<assembly: AssemblyTitle("fredis-saea-resp-protocol-tester")>]
+[<assembly: AssemblyTitle("fredis-test-lib")>]
 [<assembly: AssemblyDescription("")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
-[<assembly: AssemblyProduct("fredis-saea-resp-protocol-tester")>]
+[<assembly: AssemblyProduct("fredis-test-lib")>]
 [<assembly: AssemblyCopyright("Copyright ©  2016")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]
@@ -22,7 +22,7 @@ open System.Runtime.InteropServices
 [<assembly: ComVisible(false)>]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[<assembly: Guid("ca887fd9-697d-411c-8807-22fc63179a50")>]
+[<assembly: Guid("577e9de9-e09c-4c02-a5bd-13ef9a1f52bb")>]
 
 // Version information for an assembly consists of the following four values:
 // 

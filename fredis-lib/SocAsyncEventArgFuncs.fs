@@ -75,9 +75,6 @@ let rec ProcessReceive (saea:SocketAsyncEventArgs) =
     let bytesTransferred = saea.BytesTransferred
     let bytesRequired = ut.ClientBuf.Length - ut.ClientBufPos
 
-
- //    let str = (SubBufToStr saea.Buffer saea.Offset  bytesTransferred )
-   
     let opStatus = 
             if bytesTransferred >= bytesRequired
             then OpComplete        
@@ -521,7 +518,6 @@ let AsyncFlush (saea:SocketAsyncEventArgs) : Async<unit> =
         ut.exnCont <- exnCont
         ut.cancCont <- cancCont
         let numToSend = ut.SaeaBufEnd - ut.SaeaBufStart
-//        printfn "sending: %d bytes" numToSend
         if numToSend = 0 then
             ut.okContUnit ()
         else
@@ -540,7 +536,7 @@ let Reset (saea:SocketAsyncEventArgs)=
 //    ut.okContUnit <- ignore
 //    ut.exnCont <- ignore 
 //    ut.cancCont <- ignore 
-//    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
+    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
     assert (saea.Count = ut.SaeaBufSize)
     ut.BufList.Clear()
 

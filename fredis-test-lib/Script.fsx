@@ -2,7 +2,7 @@
 // for more guidance on F# programming.
 
 #load "Library1.fs"
-open SAEATest
+open fredis_test_lib
 
 // Define your library scripting code here
 

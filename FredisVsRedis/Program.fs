@@ -207,6 +207,8 @@ let propFredisVsRedis (cmds:FredisTypes.FredisCmd list) =
 
 
 
+
+
 let propFredisVsRedisNewConnection (cmds:FredisTypes.FredisCmd list) =
     if (ctr % 10) = 0 then
         printfn "test num: %d - cmds len: %d" ctr cmds.Length
