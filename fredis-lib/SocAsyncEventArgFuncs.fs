@@ -40,8 +40,9 @@ type UserToken = {
 let cProcessSend = 0
 let cProcessReceive = 1
 let cProcessReceiveUntilCRLF = 2
-let cProcessReceiveUntilCRLFEatFirstByte = 3
-let cProcessReceiveEatCRLF = 4
+let cProcessReceiveUntilCRLFEatFirstByteAsyncByte = 3
+let cProcessEatCRLF = 4
+let cProcessReceiveEatFirstByteAsyncUnit = 5
 
 //let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
 //    let ut = saea.UserToken :?> UserToken
@@ -158,7 +159,6 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
     | SocketError.Success, _, _, 0 -> 
             // client has disconnected
             ut.BufList.Clear()
-            // TODO confirm zero bytes received with the client has disconnected
             // TODO where can the existing cancellation token be found
             failwith "where can the existing cancellation token be found?"
             let cancEx = OperationCanceledException ()
@@ -170,16 +170,17 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
 
             if crInLastByte then
                 // the LF in CRLF has not been read in yet, so doing another read and eating the first char
-                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByte
                 let len = crIdx - ut.SaeaBufStart
                 let tmpBuf = Array.zeroCreate<byte> len
                 Buffer.BlockCopy( saea.Buffer, startIdx, tmpBuf, 0, len)
                 ut.BufList.Add tmpBuf
                 ut.SaeaBufStart <- ut.SaeaBufSize 
                 ut.SaeaBufEnd <- ut.SaeaBufSize
+
+                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByteAsyncByte
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
-                    ProcessReceiveUntilCRLFEatFirstByte(saea)
+                    ProcessReceiveUntilCRLFEatFirstByteAsyncByte(saea)
             else
                 ut.ClientBufPos <- ut.ClientBuf.Length
                 // there may be data read-in that will be reqired by the next client op
@@ -212,7 +213,7 @@ let rec ProcessReceiveUntilCRLF (saea:SocketAsyncEventArgs) =
 
 // called when a CR has been read as the last byte of a previous read
 // assuming the first byte is LF, todo: dont assume
-and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
+and ProcessReceiveUntilCRLFEatFirstByteAsyncByte (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
     ut.SaeaBufStart <- 0
@@ -249,6 +250,36 @@ and ProcessReceiveUntilCRLFEatFirstByte (saea:SocketAsyncEventArgs) =
             ut.exnCont ex
 
 
+
+let ProcessReceiveEatFirstByteAsyncUnit (saea:SocketAsyncEventArgs) =
+    let ut = saea.UserToken :?> UserToken
+    let bytesTransferred = saea.BytesTransferred
+    ut.SaeaBufStart <- 0
+    ut.SaeaBufEnd <- bytesTransferred
+
+    let fb = saea.Buffer.[saea.Offset] 
+    //assert ( fb = 10uy || fb = 42uy)
+    match saea.SocketError, bytesTransferred with
+    | SocketError.Success, 0 -> 
+            ut.BufList.Clear()
+            // TODO confirm zero bytes received with the client has disconnected
+            // TODO where can the existing cancellation token be found
+            failwith "where can the existing cancellation token be found"
+            let cancEx = OperationCanceledException ()
+            ut.cancCont cancEx
+    | SocketError.Success, _   ->
+            // eat the first char, this function is called when eating the next LF is all there is to do
+            ut.SaeaBufStart <- 1   
+            ut.okContUnit ()
+    | err, _ ->
+            ut.BufList.Clear()
+            let msg = sprintf "receive socket error: %O" err
+            let ex = Exception msg
+            ut.exnCont ex
+
+
+
+// todo, if this is called then CRLF should be the next two bytes to be read
 let ProcessReceiveEatCRLF (saea:SocketAsyncEventArgs) =
     let ut = saea.UserToken :?> UserToken
     let bytesTransferred = saea.BytesTransferred
@@ -264,14 +295,15 @@ let ProcessReceiveEatCRLF (saea:SocketAsyncEventArgs) =
             let cancEx = OperationCanceledException ()
             ut.cancCont cancEx
     | SocketError.Success, 1   ->
-            // the hopefully rare case where only one byte was read, which should be CR, kick off another read for the LF
+            // the hopefully rare case where only one byte was available to be eaten, which should be CR, kick off another read for the LF
             let fb = saea.Buffer.[saea.Offset] 
-            assert ( fb = 10uy )
+            assert ( fb = 13uy )
             ut.SaeaBufStart <- ut.SaeaBufSize
             ut.SaeaBufEnd   <- ut.SaeaBufSize
+            ut.Continuation <- cProcessReceiveEatFirstByteAsyncUnit
             let ioPending = ut.Socket.ReceiveAsync(saea)
             if not ioPending then
-                ProcessReceiveUntilCRLFEatFirstByte(saea)
+                ProcessReceiveEatFirstByteAsyncUnit(saea)
     | SocketError.Success, _   ->
             let fb = saea.Buffer.[saea.Offset] 
             let sb = saea.Buffer.[saea.Offset + 1] 
@@ -361,7 +393,6 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
                 ut.okContBytes arrOut
         | true, crIdx ->  
                 // the CR is the last char in the saea buffer, so read again, and throw away the first byte which should be LF
-                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByte
                 let len = (ut.SaeaBufEnd - ut.SaeaBufStart) - 1 // -1 to ignore the CR at the end
                 //assert (len > 0)
                 let buf1 = Array.zeroCreate<byte> len
@@ -369,9 +400,11 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
                 ut.BufList.Add buf1
                 ut.SaeaBufStart <- ut.SaeaBufSize // the entire saea buffer has now been read into the client buffer, so set the saea buf to empty
                 ut.SaeaBufEnd <- ut.SaeaBufSize
+
+                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByteAsyncByte
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
-                    ProcessReceiveUntilCRLFEatFirstByte(saea)
+                    ProcessReceiveUntilCRLFEatFirstByteAsyncByte(saea)
         | false, _ ->  
                 // CRLF not found, continue reading until it is
                 let len = ut.SaeaBufEnd - ut.SaeaBufStart
@@ -422,15 +455,16 @@ let AsyncEatCRLF (saea:SocketAsyncEventArgs) : Async<unit> =
             // the hopefully rare case where asking for 2 bytes requires another socket read
             if availableBytes = 1 then
                 // the CR is the last char in the saea buffer, throw it away and read again, then throw away the first byte which should be LF
-                ut.Continuation <- cProcessReceiveUntilCRLFEatFirstByte
+                
                 ut.SaeaBufStart <- ut.SaeaBufSize // the entire saea buffer has now been read into the client buffer, so set the saea buf to empty
                 ut.SaeaBufEnd <- ut.SaeaBufSize
+                ut.Continuation <- cProcessReceiveEatFirstByteAsyncUnit             
                 let ioPending = ut.Socket.ReceiveAsync(saea)
                 if not ioPending then
-                    ProcessReceiveUntilCRLFEatFirstByte(saea)
+                    ProcessReceiveEatFirstByteAsyncUnit(saea)
             else
-                // CRLF is not in the buffer, should be the next two chars to be read
-                ut.Continuation <- cProcessReceiveEatCRLF
+                // CRLF is not in the buffer, read again
+                ut.Continuation <- cProcessEatCRLF
                 ut.SaeaBufStart <- ut.SaeaBufSize // the entire saea buffer has now been read into the client buffer, so set the saea buf to empty
                 ut.SaeaBufEnd <- ut.SaeaBufSize
                 let ioPending = ut.Socket.ReceiveAsync(saea)
@@ -547,8 +581,9 @@ let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
     | 0 -> ProcessSend saea
     | 1 -> ProcessReceive saea
     | 2 -> ProcessReceiveUntilCRLF saea
-    | 3 -> ProcessReceiveUntilCRLFEatFirstByte saea
+    | 3 -> ProcessReceiveUntilCRLFEatFirstByteAsyncByte saea
     | 4 -> ProcessReceiveEatCRLF saea
+    | 5 -> ProcessReceiveEatFirstByteAsyncUnit saea
     | _ -> failwith "invalid ut.Continuation"
 
 
