@@ -12,14 +12,14 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-server", "fredis-ser
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-lib", "fredis-lib\fredis-lib.fsproj", "{2B4825FD-73B1-4105-A6E7-32ECF0263400}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisTest", "fredis-test\FredisTest.fsproj", "{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-test", "fredis-test\fredis-test.fsproj", "{92218ACA-DB5F-4CC7-8C1F-B78DAFBDE230}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{24841886-0A35-451E-9FD7-0E66336A8493}"
 	ProjectSection(SolutionItems) = preProject
 		snippets.fs = snippets.fs
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FredisVsRedis", "FredisVsRedis\FredisVsRedis.fsproj", "{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-vs-redis", "FredisVsRedis\fredis-vs-redis.fsproj", "{71F73B3B-6A91-456C-BA4C-EF4B67FCF677}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark test scripts", "benchmark test scripts", "{E309643F-8703-4436-A38C-48212B969916}"
 	ProjectSection(SolutionItems) = preProject

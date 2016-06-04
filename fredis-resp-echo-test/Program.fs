@@ -185,7 +185,6 @@ let propRespSentToEchoServerReturnsSame (cmd:FredisTypes.FredisCmd) =
     respIn = respOut
 
 
-
 //let config = {  Config.Default with 
 ////                    EveryShrink = (sprintf "%A" )
 ////                    Replay = Some (Random.StdGen (310046944,296129814))

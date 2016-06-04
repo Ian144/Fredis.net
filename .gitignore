@@ -63,3 +63,6 @@ packages/*
 /benchmark-test-scripts/x/gcServFalse_gcConcFalse.txt
 /benchmark-test-scripts/gcServTrue_gcConcTrue.txt
 /benchmark-test-scripts/gcServFalse_gcConcFalse.txt
+/benchmark-test-scripts/socAsyncEventArgs.txt.1
+/benchmark-test-scripts/semiAsync.txt
+/benchmark-test-scripts/async.txt

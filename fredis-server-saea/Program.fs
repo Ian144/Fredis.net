@@ -19,7 +19,6 @@ let HandleSocketError (name:string) (ex:System.Exception) =
     let rec handleExInner (ex:System.Exception) =
         let msg = ex.Message
         let optInnerEx = FSharpx.FSharpOption.ToFSharpOption ex.InnerException
-
         match optInnerEx with
         | None  ->          msg
         | Some innerEx ->   let innerMsg = handleExInner innerEx
@@ -34,7 +33,7 @@ let ConnectionListenerError ex = HandleSocketError "connection listener error" e
 
 
 
-let maxNumConnections = 2048
+let maxNumConnections = 1024
 let saeaBufSize = 1024 * 32
 let saeaSharedBuffer = Array.zeroCreate<byte> (maxNumConnections * saeaBufSize)
 let saeaPool = new ConcurrentStack<SocketAsyncEventArgs>()
@@ -62,7 +61,6 @@ let WaitForExitCmd () =
 
 let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
-//    use client = client // without this Dispose would not be called on client, todo: did this cause an issue - the socket was disposed to early
     client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
 
     let userTok:UserToken = {
@@ -95,6 +93,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
     let asyncProcessClientRequests = 
         async{ 
+            use client = client //so the client is closed when this async action exitss
             while (client.Connected ) do
                 let! bb = SocAsyncEventArgFuncs.AsyncReadByte2 saea buf1
                 let respTypeInt = System.Convert.ToInt32 bb
@@ -120,37 +119,50 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                                             do! SaeaAsyncRespStreamFuncs.AsyncSendError saeaSink err
                                             do! saeaSink.AsyncFlush ()
                                             SocAsyncEventArgFuncs.Reset saea
-            }
+            client.Shutdown SocketShutdown.Both
+        }
 
     Async.StartWithContinuations(
             asyncProcessClientRequests,
-            (fun () -> saeaPool.Push saea),
-            (fun ex -> saeaPool.Push saea
-                       ClientError ex),
-            (fun _  -> saeaPool.Push saea
-                       () )
+            (fun () ->  saeaPool.Push saea),
+            (fun ex ->  saeaPool.Push saea
+                        ClientError ex),
+            (fun _  ->  saeaPool.Push saea)
         ) // end Async
+
+
+// redis-benchmark -I -c 1024
+
 
 
 
 
 let rec ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
+
     let listenSocket = saeaAccept.UserToken :?> Socket
     match saeaPool.TryPop() with
     | true, saea    ->  ClientListenerLoop(saeaAccept.AcceptSocket, saea)
     | false, _      ->  use clientSocket = saeaAccept.AcceptSocket
+                        clientSocket.Shutdown SocketShutdown.Both
                         clientSocket.Send ErrorMsgs.maxNumClientsReached |> ignore
-                        clientSocket.Disconnect false
-                        clientSocket.Close()
-    StartAccept listenSocket saeaAccept
+    StartAccept listenSocket saeaAccept // current clients might disconnect, and so free socketAsyncEventArg objects enabling future connections
+
+
 and StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
     acceptEventArg.AcceptSocket <- null
     let ioPending = listenSocket.AcceptAsync acceptEventArg
     if not ioPending then
         ProcessAccept acceptEventArg
-
-
 // see C:\Users\Ian\Documents\GitHub\suave\src\Suave\Tcp.fs (49)
+
+
+
+
+
+let OnAcceptCompleted _ (saea:SocketAsyncEventArgs) = 
+    ProcessAccept saea
+
+let eventHandler = EventHandler<SocketAsyncEventArgs>( OnAcceptCompleted )
 
 
 [<EntryPoint>]
@@ -168,19 +180,23 @@ let main argv =
         if argv.Length = 1 then
             Utils.ChoiceParseInt (sprintf "invalid integer %s" argv.[0]) argv.[0]
         else
-            Choice1Of2 (8 * 1024)
+            Choice1Of2 (65 * 1024)
 
     match cBufSize with
     |   Choice1Of2 bufSize ->
+
             printfn "buffer size: %d"  bufSize
             let ipAddr = IPAddress.Parse(host)
             let localEndPoint = IPEndPoint (ipAddr, port)
             use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-            listenSocket.Bind(localEndPoint)
-            listenSocket.Listen 1
+            listenSocket.Bind localEndPoint
+            listenSocket.Listen maxNumConnections
+
             let acceptEventArg = new SocketAsyncEventArgs();
             acceptEventArg.UserToken <- listenSocket
-            acceptEventArg.add_Completed (fun _ saea -> ProcessAccept saea)
+            
+            acceptEventArg.add_Completed eventHandler
+
             StartAccept listenSocket acceptEventArg
             WaitForExitCmd ()
             printfn "stopped"
