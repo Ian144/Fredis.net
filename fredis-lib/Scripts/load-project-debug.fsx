@@ -5,7 +5,7 @@
       "../StructTuple.fs"
       "../FredisTypes.fs"
       "../Utils.fs"
-      "../RespStreamFuncs.fs"
+      "../AsyncRespStreamFuncs.fs"
       "../RedisErrorMsgs.fs"
       "../RespUtils.fs"
       "../CmdCommon.fs"

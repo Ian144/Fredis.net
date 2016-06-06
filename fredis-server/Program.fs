@@ -38,11 +38,12 @@ let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
 
 let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
-    client.NoDelay <- true // disable Nagle, don't want small messages to be held back for buffering
+    client.NoDelay <- false
     client.ReceiveBufferSize    <- bufSize
     client.SendBufferSize       <- bufSize
     
-    let buf = Array.zeroCreate 1 
+    let buf1 = Array.zeroCreate 1  // pre-allocate a buffer for reading a single byte, that will only be used for this client
+    let buf5 = Array.zeroCreate 1  // pre-allocate a buffer for reading a single byte, that will only be used for this client
 
     let asyncProcessClientRequests =
         let mutable loopAgain = true
@@ -53,19 +54,21 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
             // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
-            // The F# async workflow sequences async reads and writes so none are simultaneous.
+            // The F# async workflow sequences async reads and writes so they are not simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
             while (client.Connected && loopAgain) do
-                let! optRespTypeByte = strm.AsyncReadByte buf 
+                let! optRespTypeByte = strm.AsyncReadByte buf1 
                 match optRespTypeByte with
                 | None              ->  loopAgain <- false  // client disconnected
                 | Some respTypeByte -> 
                     let respTypeInt = int respTypeByte
                     if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
                         Eat5NoAlloc strm  
+//                        let! _ =  strm.AsyncRead (buf5, 0, 5)
                         do! strm.AsyncWrite pongBytes
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
+//                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
@@ -106,7 +109,7 @@ let ConnectionListenerLoop (bufSize:int) (listener:TcpListener) =
 
 #nowarn "52"
 let WaitForExitCmd () = 
-    while System.Console.ReadKey().KeyChar <> 'X' do
+    while stdin.Read() <> 88 do // 88 is 'X'
         ()
 
 
@@ -114,7 +117,6 @@ let WaitForExitCmd () =
 
 [<EntryPoint>]
 let main argv =
-    printfn "done nothing yet - except for "
 
     let cBufSize =
         if argv.Length = 1 then
@@ -125,7 +127,6 @@ let main argv =
     match cBufSize with
     | Choice1Of2 bufSize -> 
         printfn "buffer size: %d"  bufSize
-
         let ipAddr = IPAddress.Parse(host)
         let listener = TcpListener(ipAddr, port) 
         listener.Start ()

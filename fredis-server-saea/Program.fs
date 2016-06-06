@@ -52,16 +52,10 @@ for ctr = 0 to (maxNumConnections - 1) do
 
 
 
-let WaitForExitCmd () =
-    while System.Console.ReadKey().KeyChar <> 'X' do
-        ()
-
 
 
 
 let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
-
-    client.NoDelay  <- true // disable Nagles algorithm, don't want small messages to be held back for buffering
 
     let userTok:UserToken = {
         Socket = client
@@ -85,8 +79,8 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
     let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
     // consider F# anonymous classes
-    let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
-    let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink
+    let saeaSrc     = SaeaStreamSource saea :> ISaeaStreamSource  
+    let saeaSink    = SaeaStreamSink saea   :> ISaeaStreamSink
 
 //    let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
 //    let reply = bsOk
@@ -98,8 +92,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                 let! bb = SocAsyncEventArgFuncs.AsyncReadByte2 saea buf1
                 let respTypeInt = System.Convert.ToInt32 bb
                 if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                    // todo: could manually adjust the saea userToken to eat 5 chars
-                    let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5        // todo: let! _ is ugly, fix
+                    let! _ = SocAsyncEventArgFuncs.AsyncRead saea buf5                     // todo: could manually adjust the saea userToken to eat 5 chars
                     SocAsyncEventArgFuncs.Reset saea
                     do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
                     do! saeaSink.AsyncFlush ()
@@ -165,16 +158,15 @@ let OnAcceptCompleted _ (saea:SocketAsyncEventArgs) =
 let eventHandler = EventHandler<SocketAsyncEventArgs>( OnAcceptCompleted )
 
 
+
+let WaitForExitCmd () = 
+    while stdin.Read() <> 88 do // 88 is 'X'
+        ()
+
+
 [<EntryPoint>]
 let main argv =
 
-//    let mutable workerThreads:int = 0
-//    let mutable completionPortThreads:int = 0
-//    let res = System.Threading.ThreadPool.SetMaxThreads(8, 8)
-//    System.Threading.ThreadPool.GetMaxThreads (ref workerThreads, ref completionPortThreads)
-//    printfn "  max - wt: %d, cpt: %d" workerThreads completionPortThreads
-//    System.Threading.ThreadPool.GetAvailableThreads (ref workerThreads, ref completionPortThreads)
-//    printfn "avail - wt: %d, cpt: %d" workerThreads completionPortThreads
 
     let cBufSize =
         if argv.Length = 1 then
@@ -184,17 +176,15 @@ let main argv =
 
     match cBufSize with
     |   Choice1Of2 bufSize ->
-
-            printfn "buffer size: %d"  bufSize
+            printfn "buffer size: %d" bufSize
             let ipAddr = IPAddress.Parse(host)
             let localEndPoint = IPEndPoint (ipAddr, port)
             use listenSocket = new Socket (localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             listenSocket.Bind localEndPoint
             listenSocket.Listen maxNumConnections
 
-            let acceptEventArg = new SocketAsyncEventArgs();
+            let acceptEventArg = new SocketAsyncEventArgs()
             acceptEventArg.UserToken <- listenSocket
-            
             acceptEventArg.add_Completed eventHandler
 
             StartAccept listenSocket acceptEventArg

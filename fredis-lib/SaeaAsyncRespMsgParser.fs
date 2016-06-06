@@ -40,7 +40,7 @@ let CRb = 13uy
 
 
 
-let private AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:IFredisStreamSource) : Async<Resp> = 
+let private AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:ISaeaStreamSource) : Async<Resp> = 
     async{
         let! bs = strm.AsyncReadUntilCRLF ()
         let resp = bs |> makeRESPMsg
@@ -54,7 +54,7 @@ let private AsyncReadDelimitedResp (makeRESPMsg:Bytes -> Resp) (strm:IFredisStre
 
 // todo: currently AsyncReadInt64 will throw if reading invalid int64, consider returning an option
 // todo: consider AsyncReadInt64 when profiling, would it be faster to perform arithmetic on bytes? if yes then use this as a reference impl
-let private AsyncReadInt64 (strm:IFredisStreamSource) = async{
+let private AsyncReadInt64 (strm:ISaeaStreamSource) = async{
     let! bytes = strm.AsyncReadUntilCRLF ()
     let len = bytes.Length
     let mutable num = 0L
@@ -76,7 +76,7 @@ let private AsyncReadInt64 (strm:IFredisStreamSource) = async{
 
 // todo: currently AsyncReadInt32 will throw if reading invalid int64, consider returning an option
 // todo: consider AsyncReadInt32 when profiling, would it be faster to perform arithmetic on bytes? if yes then use this as a reference impl
-let private AsyncReadInt32 (strm:IFredisStreamSource) = async{
+let private AsyncReadInt32 (strm:ISaeaStreamSource) = async{
     let! ii64 = AsyncReadInt64 strm
     return int ii64
 }
@@ -84,7 +84,7 @@ let private AsyncReadInt32 (strm:IFredisStreamSource) = async{
 
 
 // copies from the stream directly into the array that will be used as a key or value
-let private AsyncReadBulkString (strm:IFredisStreamSource) = 
+let private AsyncReadBulkString (strm:ISaeaStreamSource) = 
     async{
         let! len = AsyncReadInt32 strm
         match len with
@@ -104,7 +104,7 @@ let private AsyncReadRESPInteger strm = async{
 
 // LoadRESPMsgArray, LoadRESPMsgArray and LoadRESPMsgOuter are mutually recursive
 // LoadRESPMsg is the parsing 'entry point' and is called after strm.AsyncReadByte fires (indicating there is a new RESP msg to parse)
-let rec private LoadRESPMsgArray (strm:IFredisStreamSource) : Async<Resp> = 
+let rec private LoadRESPMsgArray (strm:ISaeaStreamSource) : Async<Resp> = 
     let asyncSeqResp =
         asyncSeq{
             let! numArrayElements = AsyncReadInt64 strm 
@@ -118,13 +118,13 @@ let rec private LoadRESPMsgArray (strm:IFredisStreamSource) : Async<Resp> =
         return Resp.Array msgs
     }
 
-and private LoadRESPMsgInner (strm:IFredisStreamSource) :Async<Resp> = async{
+and private LoadRESPMsgInner (strm:ISaeaStreamSource) :Async<Resp> = async{
         let! bb = strm.AsyncReadByte ()
         let respTypeByte = bb |> int
         return! (LoadRESPMsg respTypeByte strm)
     }
 
-and LoadRESPMsg (respType:int) (strm:IFredisStreamSource) : Async<Resp> =
+and LoadRESPMsg (respType:int) (strm:ISaeaStreamSource) : Async<Resp> =
     let ret = 
         match respType with
         | SimpleStringL -> AsyncReadDelimitedResp Resp.SimpleString strm

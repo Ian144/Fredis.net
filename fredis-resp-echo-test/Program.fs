@@ -100,8 +100,8 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
     saea.UserToken <- userTok
 
     // todo: consider F# anonymous classes for implenting IFredisStreamSource and IFredisStreamSink
-    let saeaSrc     = SaeaStreamSource saea :> IFredisStreamSource  
-    let saeaSink    = SaeaStreamSink saea   :> IFredisStreamSink 
+    let saeaSrc     = SaeaStreamSource saea :> ISaeaStreamSource  
+    let saeaSink    = SaeaStreamSink saea   :> ISaeaStreamSink 
 
     // parses bytes received to give Resp, i.e the Resp DU, then converts the Resp DU back into bytes and returns.
     let asyncProcessClientRequests = 

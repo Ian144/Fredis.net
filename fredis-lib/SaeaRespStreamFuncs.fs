@@ -19,7 +19,7 @@ let nilBulkStrBytes     = "$-1\r\n"B
 
 
 
-let private AsyncSendBulkString (strm:IFredisStreamSink) (contents:BulkStrContents) =
+let private AsyncSendBulkString (strm:ISaeaStreamSink) (contents:BulkStrContents) =
 
     match contents with
     | BulkStrContents.Contents bs   ->  let prefix = (sprintf "$%d\r\n" bs.Length) |> Utils.StrToBytes
@@ -34,7 +34,7 @@ let private AsyncSendBulkString (strm:IFredisStreamSink) (contents:BulkStrConten
 
 
 
-let private AsyncSendSimpleString (strm:IFredisStreamSink) (contents:byte array) =
+let private AsyncSendSimpleString (strm:ISaeaStreamSink) (contents:byte array) =
     async{
         do! strm.AsyncWrite simpStrType
         do! strm.AsyncWrite contents
@@ -42,7 +42,7 @@ let private AsyncSendSimpleString (strm:IFredisStreamSink) (contents:byte array)
     }
 
 
-let AsyncSendError (strm:IFredisStreamSink) (contents:byte array) =
+let AsyncSendError (strm:ISaeaStreamSink) (contents:byte array) =
     async{
         do! strm.AsyncWrite errStrType
         do! strm.AsyncWrite contents
@@ -50,12 +50,12 @@ let AsyncSendError (strm:IFredisStreamSink) (contents:byte array) =
     }
 
 
-let private AsyncSendInteger (strm:IFredisStreamSink) (ii:int64) =
+let private AsyncSendInteger (strm:ISaeaStreamSink) (ii:int64) =
     let bs = sprintf ":%d\r\n" ii |> Utils.StrToBytes
     strm.AsyncWrite bs
     
 
-let rec AsyncSendResp (strm:IFredisStreamSink) (msg:Resp) =
+let rec AsyncSendResp (strm:ISaeaStreamSink) (msg:Resp) =
     match msg with
     | Resp.Array arr            -> AsyncSendArray strm arr
     | Resp.BulkString contents  -> AsyncSendBulkString strm contents
@@ -63,7 +63,7 @@ let rec AsyncSendResp (strm:IFredisStreamSink) (msg:Resp) =
     | Resp.Error err            -> AsyncSendError strm err
     | Resp.Integer ii           -> AsyncSendInteger strm ii
 
-and private AsyncSendArray (strm:IFredisStreamSink) (arr:Resp []) =
+and private AsyncSendArray (strm:ISaeaStreamSink) (arr:Resp []) =
     let lenBytes = sprintf "*%d\r\n" arr.Length |> Utils.StrToBytes
     let ctr = ref 0
     async{

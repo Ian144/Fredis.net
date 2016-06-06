@@ -66,3 +66,6 @@ packages/*
 /benchmark-test-scripts/socAsyncEventArgs.txt.1
 /benchmark-test-scripts/semiAsync.txt
 /benchmark-test-scripts/async.txt
+/benchmark-test-scripts/socAsyncEventArgsCallback.txt
+/benchmark-test-scripts/csTestApp.txt.x
+/benchmark-test-scripts/async.txt.y

@@ -62,7 +62,7 @@
     <Compile Include="StructTuple.fs" />
     <Compile Include="FredisTypes.fs" />
     <Compile Include="Utils.fs" />
-    <Compile Include="RespStreamFuncs.fs" />
+    <Compile Include="AsyncRespStreamFuncs.fs" />
     <Compile Include="RedisErrorMsgs.fs" />
     <Compile Include="RespUtils.fs" />
     <Compile Include="CmdCommon.fs" />

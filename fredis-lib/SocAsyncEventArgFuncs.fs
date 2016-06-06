@@ -52,7 +52,7 @@ let cProcessReceiveEatFirstByteAsyncUnit = 5
 
 
 [<NoEquality;NoComparison>]
-type IFredisStreamSource =
+type ISaeaStreamSource =
     abstract AsyncReadUntilCRLF : unit -> Async<byte[]>
     abstract AsyncReadNBytes : int -> Async<byte[]>
     abstract AsyncReadByte : unit -> Async<byte>
@@ -60,7 +60,7 @@ type IFredisStreamSource =
 
 
 [<NoEquality;NoComparison>]
-type IFredisStreamSink =
+type ISaeaStreamSink =
     abstract AsyncWrite : byte[] -> Async<unit>
     abstract AsyncFlush : unit -> Async<unit>
 
@@ -383,8 +383,8 @@ let AsyncReadUntilCRLF (saea:SocketAsyncEventArgs) : Async<byte[]> =
 
         match crFound, idx with
         | true, crIdx when crIdx < (endIdx - 1)   ->   
-                // CR found and there is at least one more char to read without doing another receive
-                // hopefully this is the common case, as others are potentially slow
+                // CR found and there is at least one more char to read (which should contain LF) without doing another receive
+                // hopefully this is the common case, others are potentially slow
                 let len = (crIdx - startIdx) // -1 as the CR is being ignored
                 let arrOut = Array.zeroCreate len
                 Buffer.BlockCopy( saea.Buffer, startIdx, arrOut,0, len)
@@ -564,15 +564,15 @@ let Reset (saea:SocketAsyncEventArgs)=
     let ut = saea.UserToken :?> UserToken    
     ut.SaeaBufEnd <- 0
     ut.SaeaBufStart <- 0
-    ut.ClientBuf <- [||]
-    ut.ClientBufPos <- 0
+//    ut.ClientBuf <- [||]
+//    ut.ClientBufPos <- 0
 //    ut.okContBytes <- ignore
 //    ut.okContUnit <- ignore
 //    ut.exnCont <- ignore 
 //    ut.cancCont <- ignore 
-    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
-    assert (saea.Count = ut.SaeaBufSize)
-    ut.BufList.Clear()
+//    Array.Clear( saea.Buffer, saea.Offset, ut.SaeaBufSize )
+//    assert (saea.Count = ut.SaeaBufSize)
+//    ut.BufList.Clear()
 
 
 let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
@@ -589,7 +589,7 @@ let OnClientIOCompleted (saea:SocketAsyncEventArgs) =
 
 
 type SaeaStreamSource (saea:SocketAsyncEventArgs) =
-    interface IFredisStreamSource with
+    interface ISaeaStreamSource with
         override this.AsyncReadNBytes len = AsyncRead2 saea len
         override this.AsyncReadUntilCRLF () = AsyncReadUntilCRLF saea
         override this.AsyncReadByte () = AsyncReadByte saea
@@ -598,7 +598,7 @@ type SaeaStreamSource (saea:SocketAsyncEventArgs) =
 
 [<NoEquality;NoComparison>]
 type SaeaStreamSink (saea:SocketAsyncEventArgs) =
-    interface IFredisStreamSink with
+    interface ISaeaStreamSink with
         member this.AsyncWrite bs = AsyncWrite saea bs
         member this.AsyncFlush () = AsyncFlush saea
 
