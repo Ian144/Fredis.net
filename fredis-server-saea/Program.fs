@@ -74,7 +74,7 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
     saea.UserToken <- userTok
 
-    // pre-created arrays to avoid  allocation for each cmd
+    // pre-created arrays to avoid allocation for each cmd, each client connection has its own instances
     let buf1 = Array.zeroCreate 1   // used to when waiting on a new msg
     let buf5 = Array.zeroCreate 5   // used to eat PONG msgs
 
@@ -82,13 +82,11 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
     let saeaSrc     = SaeaStreamSource saea :> ISaeaStreamSource  
     let saeaSink    = SaeaStreamSink saea   :> ISaeaStreamSink
 
-//    let bsOk = FredisTypes.BulkString (FredisTypes.BulkStrContents.Contents "OK"B)
-//    let reply = bsOk
 
     let asyncProcessClientRequests = 
         async{ 
             use client = client //so the client is closed when this async action exitss
-            while (client.Connected ) do
+            while client.Connected do
                 let! bb = SocAsyncEventArgFuncs.AsyncReadByte2 saea buf1
                 let respTypeInt = System.Convert.ToInt32 bb
                 if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
@@ -97,7 +95,6 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
                     do! SocAsyncEventArgFuncs.AsyncWrite saea pongBytes
                     do! saeaSink.AsyncFlush ()
                     SocAsyncEventArgFuncs.Reset saea
-                    ()
                 else
                     let! respMsg = SaeaAsyncRespMsgParser.LoadRESPMsg respTypeInt saeaSrc
                     SocAsyncEventArgFuncs.Reset saea
@@ -120,36 +117,23 @@ let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
             (fun () ->  saeaPool.Push saea),
             (fun ex ->  saeaPool.Push saea
                         ClientError ex),
-            (fun _  ->  saeaPool.Push saea)
-        ) // end Async
-
-
-// redis-benchmark -I -c 1024
-
-
+            (fun _  ->  saeaPool.Push saea) )
 
 
 
 let rec ProcessAccept (saeaAccept:SocketAsyncEventArgs) = 
-
     let listenSocket = saeaAccept.UserToken :?> Socket
     match saeaPool.TryPop() with
     | true, saea    ->  ClientListenerLoop(saeaAccept.AcceptSocket, saea)
     | false, _      ->  use clientSocket = saeaAccept.AcceptSocket
                         clientSocket.Shutdown SocketShutdown.Both
                         clientSocket.Send ErrorMsgs.maxNumClientsReached |> ignore
-    StartAccept listenSocket saeaAccept // current clients might disconnect, and so free socketAsyncEventArg objects enabling future connections
-
-
+    StartAccept listenSocket saeaAccept
 and StartAccept (listenSocket:Socket) (acceptEventArg:SocketAsyncEventArgs) =
     acceptEventArg.AcceptSocket <- null
     let ioPending = listenSocket.AcceptAsync acceptEventArg
     if not ioPending then
         ProcessAccept acceptEventArg
-// see C:\Users\Ian\Documents\GitHub\suave\src\Suave\Tcp.fs (49)
-
-
-
 
 
 let OnAcceptCompleted _ (saea:SocketAsyncEventArgs) = 

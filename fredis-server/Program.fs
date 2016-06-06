@@ -43,7 +43,7 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
     client.SendBufferSize       <- bufSize
     
     let buf1 = Array.zeroCreate 1  // pre-allocate a buffer for reading a single byte, that will only be used for this client
-    let buf5 = Array.zeroCreate 5  // pre-allocate a buffer for reading a single byte, that will only be used for this client
+    let buf5 = Array.zeroCreate 5  // pre-allocate a buffer for reading a PING byteS, that will only be used for this client
 
     let asyncProcessClientRequestsFull =
         let mutable loopAgain = true
@@ -51,8 +51,8 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             use client = client // without this Dispose would not be called on client
             use netStrm = client.GetStream()
 
-            // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
-            // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
+            // msdn re BufferedStreams: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
+            // Fredis.net does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
             // The F# async workflow sequences async reads and writes so they are not simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
@@ -68,7 +68,6 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
                         let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
-//                        let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
@@ -84,8 +83,8 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
             use client = client // without this Dispose would not be called on client
             use netStrm = client.GetStream()
 
-            // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
-            // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
+            // msdn re BufferedStreams: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
+            // Fredis.net does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
             // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
             // The F# async workflow sequences async reads and writes so they are not simultaneous.
             use strm = new System.IO.BufferedStream( netStrm, bufSize )
@@ -115,7 +114,6 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
     Async.StartWithContinuations(
          asyncProcessClientRequestsSemi,
-//         (fun _     -> printfn "ClientListener completed" ),
          ignore,
          ClientError,
          (fun ct    -> printfn "ClientListener cancelled: %A" ct)
