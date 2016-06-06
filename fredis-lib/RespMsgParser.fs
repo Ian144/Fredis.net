@@ -117,8 +117,6 @@ let ReadRESPInteger = ReadInt64 >> Resp.Integer
 
 
 
-// LoadRESPMsgArray, LoadRESPMsgArray and LoadRESPMsgOuter are mutually recursive
-// LoadRESPMsgOuter is the parsing 'entry point' and is called after ns.AsyncReadByte fires (indicating there is a new RESP msg to parse)
 //let rec LoadRESPMsgArray (rcvBuffSz:int) (ns:Stream) = 
 //    let numArrayElements = ReadInt64 ns 
 //    let msgs = 

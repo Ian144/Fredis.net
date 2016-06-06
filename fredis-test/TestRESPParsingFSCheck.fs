@@ -88,7 +88,7 @@ type ArbOverrides =
 [<Property( Arbitrary=[|typeof<ArbOverrides>|] )>]
 let ``Async Write-Read Resp stream roundtrip`` (bufSize:int)  (respIn:FredisTypes.Resp) =
     use strm = new System.IO.MemoryStream()
-    RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
+    AsyncRespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
     let respOut = AsyncRespMsgParser.LoadRESPMsgInner bufSize strm |> Async.RunSynchronously
     let isEof = strm.Position = strm.Length
@@ -100,7 +100,7 @@ let ``Async Write-Read Resp stream roundtrip`` (bufSize:int)  (respIn:FredisType
 [<Property( Arbitrary=[|typeof<ArbOverrides>|] )>]
 let ``Write-Read Resp stream roundtrip`` (bufSize:int) (respIn:Resp) =
     use strm = new MemoryStream()
-    RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
+    AsyncRespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     strm.Seek(0L, System.IO.SeekOrigin.Begin) |> ignore
     let respTypeByte = strm.ReadByte() 
     let respOut = RespMsgParser.LoadRESPMsg bufSize respTypeByte strm

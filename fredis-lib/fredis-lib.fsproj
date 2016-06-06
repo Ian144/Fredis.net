@@ -62,7 +62,7 @@
     <Compile Include="StructTuple.fs" />
     <Compile Include="FredisTypes.fs" />
     <Compile Include="Utils.fs" />
-    <Compile Include="AsyncRespStreamFuncs.fs" />
+    <Compile Include="RespStreamFuncs.fs" />
     <Compile Include="RedisErrorMsgs.fs" />
     <Compile Include="RespUtils.fs" />
     <Compile Include="CmdCommon.fs" />
@@ -83,6 +83,7 @@
     <None Include="Scripts\load-project-debug.fsx" />
     <None Include="Scripts\load-references-release.fsx" />
     <None Include="Scripts\load-project-release.fsx" />
+    <Compile Include="AsyncRespStreamFuncs.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

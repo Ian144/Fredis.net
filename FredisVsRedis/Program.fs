@@ -2,7 +2,7 @@
 open System.Net.Sockets
 open FsCheck
 open FredisTypes
-open RespStreamFuncs
+open AsyncRespStreamFuncs
 
 
 
@@ -161,7 +161,7 @@ let fredisPort = 6379
 
 let private sendReceive (client:TcpClient) (msg:Resp) =
     let strm = client.GetStream()
-    RespStreamFuncs.AsyncSendResp strm msg |> Async.RunSynchronously
+    AsyncRespStreamFuncs.AsyncSendResp strm msg |> Async.RunSynchronously
     let aa = 
         async{
             let buf = Array.zeroCreate 1

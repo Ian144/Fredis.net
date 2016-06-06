@@ -1,7 +1,7 @@
 ﻿open System.Net
 open System.Net.Sockets
 
-open RespStreamFuncs
+open AsyncRespStreamFuncs
 
 
 
@@ -43,9 +43,9 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
     client.SendBufferSize       <- bufSize
     
     let buf1 = Array.zeroCreate 1  // pre-allocate a buffer for reading a single byte, that will only be used for this client
-    let buf5 = Array.zeroCreate 1  // pre-allocate a buffer for reading a single byte, that will only be used for this client
+    let buf5 = Array.zeroCreate 5  // pre-allocate a buffer for reading a single byte, that will only be used for this client
 
-    let asyncProcessClientRequests =
+    let asyncProcessClientRequestsFull =
         let mutable loopAgain = true
         async{
             use client = client // without this Dispose would not be called on client
@@ -63,19 +63,50 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
                 | Some respTypeByte -> 
                     let respTypeInt = int respTypeByte
                     if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
-                        Eat5NoAlloc strm  
-//                        let! _ =  strm.AsyncRead (buf5, 0, 5)
+                        let! _ =  strm.AsyncRead (buf5, 0, 5) //todo, pass cancellation token
                         do! strm.AsyncWrite pongBytes
                         do! strm.FlushAsync() |> Async.AwaitTask
                     else
-//                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let! respMsg = AsyncRespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+//                        let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
+                        let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
+                        match choiceFredisCmd with 
+                        | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
+                                                do! AsyncRespStreamFuncs.AsyncSendResp strm reply
+                                                do! strm.FlushAsync() |> Async.AwaitTask
+                        | Choice2Of2 err    ->  do! AsyncRespStreamFuncs.AsyncSendError strm err
+                                                do! strm.FlushAsync() |> Async.AwaitTask
+        }
+
+    let asyncProcessClientRequestsSemi =
+        let mutable loopAgain = true
+        async{
+            use client = client // without this Dispose would not be called on client
+            use netStrm = client.GetStream()
+
+            // msdn: "It is assumed that you will almost always be doing a series of reads or writes, but rarely alternate between the two of them"
+            // Fredis does alternate between reads and writes, but tests have shown that BufferedStream still gives a perf boost without errors
+            // BufferedStream will deadlock if there are simultaneous async reads and writes in progress, due to an internal semaphore. But works if this is not the case.
+            // The F# async workflow sequences async reads and writes so they are not simultaneous.
+            use strm = new System.IO.BufferedStream( netStrm, bufSize )
+            while (client.Connected && loopAgain) do
+                let! optRespTypeByte = strm.AsyncReadByte buf1 
+                match optRespTypeByte with
+                | None              ->  loopAgain <- false  // client disconnected
+                | Some respTypeByte -> 
+                    let respTypeInt = int respTypeByte
+                    if respTypeInt = PingL then // PING_INLINE cmds are sent as PING\r\n - i.e. a raw string not RESP (PING_BULK is RESP)
+                        RespStreamFuncs.Eat5NoAlloc strm  
+                        strm.Write (pongBytes, 0, pongBytes.Length)
+                        do! strm.FlushAsync() |> Async.AwaitTask
+                    else
                         let respMsg = RespMsgParser.LoadRESPMsg client.ReceiveBufferSize respTypeInt strm
                         let choiceFredisCmd = FredisCmdParser.RespMsgToRedisCmds respMsg
                         match choiceFredisCmd with 
                         | Choice1Of2 cmd    ->  let! reply = CmdProcChannel.MailBoxChannel cmd // to process the cmd on a single thread
-                                                do! RespStreamFuncs.AsyncSendResp strm reply
+                                                RespStreamFuncs.SendResp strm reply
                                                 do! strm.FlushAsync() |> Async.AwaitTask
-                        | Choice2Of2 err    ->  do! RespStreamFuncs.AsyncSendError strm err
+                        | Choice2Of2 err    ->  do! AsyncRespStreamFuncs.AsyncSendError strm err
                                                 do! strm.FlushAsync() |> Async.AwaitTask
         }
 
@@ -83,7 +114,7 @@ let ClientListenerLoop (bufSize:int) (client:TcpClient) =
 
 
     Async.StartWithContinuations(
-         asyncProcessClientRequests,
+         asyncProcessClientRequestsSemi,
 //         (fun _     -> printfn "ClientListener completed" ),
          ignore,
          ClientError,

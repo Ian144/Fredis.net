@@ -179,7 +179,7 @@ let propRespSentToEchoServerReturnsSame (cmd:FredisTypes.FredisCmd) =
     let respIn = cmd |> (FredisCmdToResp.FredisCmdToRESP >> FredisTypes.Resp.Array)
     use tcpClient = new TcpClient(host, port)
     let strm = tcpClient.GetStream()
-    RespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
+    AsyncRespStreamFuncs.AsyncSendResp strm respIn |> Async.RunSynchronously
     let respTypeInt = strm.ReadByte()
     let respOut = RespMsgParser.LoadRESPMsg tcpClient.ReceiveBufferSize respTypeInt strm
     respIn = respOut

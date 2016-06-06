@@ -16,7 +16,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-test", "fredis-test\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{24841886-0A35-451E-9FD7-0E66336A8493}"
 	ProjectSection(SolutionItems) = preProject
-		Performance1.psess = Performance1.psess
 		snippets.fs = snippets.fs
 	EndProjectSection
 EndProject
@@ -39,9 +38,6 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fredis-test-lib", "fredis-test-lib\fredis-test-lib.fsproj", "{577E9DE9-E09C-4C02-A5BD-13EF9A1F52BB}"
 EndProject
 Global
-	GlobalSection(Performance) = preSolution
-		HasPerformanceSessions = true
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU

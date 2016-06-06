@@ -1,27 +1,26 @@
-﻿module RespStreamFuncs
+﻿module AsyncRespStreamFuncs
 
 
 open System.IO
 open FredisTypes
-open StructTuple
 
 
-let EatCRLF (strm:Stream) = 
-    strm.ReadByte() |> ignore
-    strm.ReadByte() |> ignore
+//let EatCRLF (strm:Stream) = 
+//    strm.ReadByte() |> ignore
+//    strm.ReadByte() |> ignore
 
 
-let Eat1 (strm:Stream) = 
-    strm.ReadByte() |> ignore
-
-
-
-let Eat5NoAlloc (strm:Stream) = 
-    strm.ReadByte() |> ignore
-    strm.ReadByte() |> ignore
-    strm.ReadByte() |> ignore
-    strm.ReadByte() |> ignore
-    strm.ReadByte() |> ignore
+//let Eat1 (strm:Stream) = 
+//    strm.ReadByte() |> ignore
+//
+//
+//
+//let Eat5NoAlloc (strm:Stream) = 
+//    strm.ReadByte() |> ignore
+//    strm.ReadByte() |> ignore
+//    strm.ReadByte() |> ignore
+//    strm.ReadByte() |> ignore
+//    strm.ReadByte() |> ignore
 
 
 

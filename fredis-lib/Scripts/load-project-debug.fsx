@@ -5,7 +5,7 @@
       "../StructTuple.fs"
       "../FredisTypes.fs"
       "../Utils.fs"
-      "../AsyncRespStreamFuncs.fs"
+      "../RespStreamFuncs.fs"
       "../RedisErrorMsgs.fs"
       "../RespUtils.fs"
       "../CmdCommon.fs"
@@ -21,3 +21,4 @@
       "../SocAsyncEventArgFuncs.fs"
       "../SaeaAsyncRespMsgParser.fs"
       "../SaeaRespStreamFuncs.fs"
+      "../AsyncRespStreamFuncs.fs"
