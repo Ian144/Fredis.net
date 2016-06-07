@@ -1,7 +1,7 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FsCheck (2.4)
+    FsCheck (2.5)
       FSharp.Core (>= 3.1.2.5)
     FsCheck.Xunit (2.2.4)
       FsCheck (>= 2.2.4)
@@ -10,8 +10,8 @@ NUGET
     FSharp.Core (4.0.0.1)
     FSharpx.Async (1.12) - framework: >= net452
       FSharp.Control.AsyncSeq
-    FSharpx.Collections (1.14) - framework: >= net452
-      FSharp.Core (>= 3.0)
+    FSharpx.Collections (1.15.1) - framework: >= net452
+      FSharp.Core
     FSharpx.Extras (1.10.3) - framework: >= net452
       FSharpx.Async (>= 1.12)
       FSharpx.Collections (>= 1.10.1)

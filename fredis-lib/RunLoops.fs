@@ -1,6 +1,5 @@
 ﻿module RunLoops
 
-open System.Net
 open System.Net.Sockets
 open AsyncRespStreamFuncs
 

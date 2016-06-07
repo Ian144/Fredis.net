@@ -50,11 +50,6 @@ for ctr = 0 to (maxNumConnections - 1) do
 
 
 
-
-
-
-
-
 let ClientListenerLoop (client:Socket, saea:SocketAsyncEventArgs) : unit =
 
     let userTok:UserToken = {
