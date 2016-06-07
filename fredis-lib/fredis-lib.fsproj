@@ -62,6 +62,7 @@
     <Compile Include="StructTuple.fs" />
     <Compile Include="FredisTypes.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="AsyncRespStreamFuncs.fs" />
     <Compile Include="RespStreamFuncs.fs" />
     <Compile Include="RedisErrorMsgs.fs" />
     <Compile Include="RespUtils.fs" />
@@ -78,12 +79,12 @@
     <Compile Include="SocAsyncEventArgFuncs.fs" />
     <Compile Include="SaeaAsyncRespMsgParser.fs" />
     <Compile Include="SaeaRespStreamFuncs.fs" />
+    <Compile Include="RunLoops.fs" />
     <Content Include="paket.references" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />
     <None Include="Scripts\load-references-release.fsx" />
     <None Include="Scripts\load-project-release.fsx" />
-    <Compile Include="AsyncRespStreamFuncs.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
