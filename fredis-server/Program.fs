@@ -31,7 +31,7 @@ let main argv =
         let ipAddr = IPAddress.Parse(host)
         let listener = TcpListener(ipAddr, port) 
         listener.Start ()
-        RunLoops.ConnectionListenerLoop bufSize listener
+        MsgLoops.ConnectionListenerLoop bufSize listener
         printfn "fredis.net startup complete\nawaiting incoming connection requests\npress 'X' to exit"
         WaitForExitCmd ()
         do Async.CancelDefaultToken()

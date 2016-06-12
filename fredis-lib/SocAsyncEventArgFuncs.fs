@@ -455,7 +455,6 @@ let AsyncEatCRLF (saea:SocketAsyncEventArgs) : Async<unit> =
             // the hopefully rare case where asking for 2 bytes requires another socket read
             if availableBytes = 1 then
                 // the CR is the last char in the saea buffer, throw it away and read again, then throw away the first byte which should be LF
-                
                 ut.SaeaBufStart <- ut.SaeaBufSize // the entire saea buffer has now been read into the client buffer, so set the saea buf to empty
                 ut.SaeaBufEnd <- ut.SaeaBufSize
                 ut.Continuation <- cProcessReceiveEatFirstByteAsyncUnit             

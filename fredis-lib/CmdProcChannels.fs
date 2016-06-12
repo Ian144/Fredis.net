@@ -19,13 +19,13 @@ type MboxMessage = FredisCmd * AsyncReplyChannel<Resp>
 
 
 let private mbox =
-    MailboxProcessor<MboxMessage>.Start( fun inbox ->
+    MailboxProcessor<MboxMessage>.Start <| fun inbox ->
         let rec msgLoop () = async {
             let! cmd, replyChannel = inbox.Receive()
             let respReply = FredisCmdProcessor.Execute hashMap cmd 
             replyChannel.Reply respReply
             return! msgLoop () } 
-        msgLoop () )
+        msgLoop () 
 
 
 

@@ -13,7 +13,7 @@ let BytesToStr bs = System.Text.Encoding.UTF8.GetString(bs)
 let StrToBytes (str:string) = System.Text.Encoding.UTF8.GetBytes(str)
 let BytesToKey = BytesToStr >> Key
 
-// short aliases for use in debugger watch window
+// short aliases for use in debugger watch windows
 let bToS = BytesToStr
 let sToB = StrToBytes
 
