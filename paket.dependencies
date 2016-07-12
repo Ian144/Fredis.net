@@ -3,6 +3,7 @@ source https://www.nuget.org/api/v2/
 nuget FsCheck.Xunit 2.2.4
 nuget FSharpx.Extras 1.10.3 framework: >= net452
 nuget MSBuild.Extension.Pack 1.8.0 framework: >= net452
+nuget Paket 3.5.0 framework: >= net461
 nuget Unquote 3.1.0 framework: >= net452
 nuget xunit 2.1.0
 nuget xunit.runner.visualstudio 2.1.0
