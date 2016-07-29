@@ -35,12 +35,12 @@ let LF = 10
 
 
 // TODO reading a single byte at at time is probably inefficient, consider a more efficient version of this function
-let rec ReadUntilCRLF (ns:Stream) : int list = 
-    match ns.ReadByte() with    // annoyingly ReadByte returns an int32
+let rec ReadUntilCRLF (strm:Stream) : int list = 
+    match strm.ReadByte() with    // annoyingly ReadByte returns an int32
     | -1    ->  failwith "ReadUntilCRLF EOS before CRLF"
-    | CR    ->  RespStreamFuncs.Eat1 ns         // assuming the next char is LF, and eating it
+    | CR    ->  RespStreamFuncs.Eat1 strm         // assuming the next char is LF, and eating it
                 []
-    | b     ->  b :: (ReadUntilCRLF ns ) 
+    | b     ->  b :: (ReadUntilCRLF strm ) 
 
 
 

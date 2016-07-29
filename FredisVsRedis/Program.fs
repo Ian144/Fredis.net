@@ -56,7 +56,6 @@ let genAlphaByte = Gen.choose(65,90) |> Gen.map byte
 let genAlphaByteArray = Gen.arrayOfLength 80 genAlphaByte 
 
 
-
  
 let FredisCmdFilter cmd =
     match cmd with

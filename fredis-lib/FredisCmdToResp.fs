@@ -15,7 +15,9 @@ let KeyToBulkStr = KeyToStr >> StrToBulkStr
 let Int32ToBulkStr (ii:int32) = sprintf "%d" ii |> StrToBulkStr
 let Int64ToBulkStr (ii:int64) = sprintf "%d" ii |> StrToBulkStr
 //let floatToBulkStr (ff:float) = sprintf "%f" ff |> StrToBulkStr
+
 let floatToBulkStr (ff:float) = System.Convert.ToString ff |> StrToBulkStr
+
 let boolToBulkStr  (bb:bool)  = 
     match bb with
     | true  -> "1" |> StrToBulkStr

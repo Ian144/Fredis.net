@@ -5,7 +5,7 @@ NUGET
     FsCheck.Xunit (2.2.4)
       FsCheck (>= 2.2.4)
       xunit.extensibility.execution (>= 2.1 < 2.2)
-    FSharp.Control.AsyncSeq (2.0.8) - framework: >= net452
+    FSharp.Control.AsyncSeq (2.0.9) - framework: >= net452
     FSharp.Core (4.0.0.1)
     FSharpx.Async (1.12) - framework: >= net452
       FSharp.Control.AsyncSeq
